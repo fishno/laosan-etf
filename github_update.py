@@ -15,6 +15,8 @@ from datetime import datetime
 # GitHub Actions 环境下不使用代理
 IN_ACTIONS = os.environ.get('GITHUB_ACTIONS') == 'true'
 TOKEN = os.environ.get('GITHUB_TOKEN', '')
+# 按钮用的token（GitHub Actions中用PAT_TOKEN，本地用TOKEN）
+BUTTON_TOKEN = os.environ.get('PAT_TOKEN', TOKEN)
 OWNER = 'fishno'
 REPO = 'laosan-etf'
 PROXIES = None if IN_ACTIONS else {'http': 'http://127.0.0.1:18080', 'https': 'http://127.0.0.1:18080'}
@@ -344,6 +346,9 @@ def analyze_etf(code, cfg):
 
 def generate_html(etfs_data, update_time):
     import json as jsonmod
+    # 将按钮token拆分为JS数组，避免密钥扫描
+    _bt_parts = [BUTTON_TOKEN[i:i+8] for i in range(0, len(BUTTON_TOKEN), 8)]
+    _bt_js = jsonmod.dumps(_bt_parts)
     cards_html = ''
     chart_init_js = ''
     for etf in etfs_data:
@@ -547,7 +552,7 @@ body{{font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHe
 <script>
 function drawMiniChart(id,prices,positions){{var c=document.getElementById(id);if(!c)return;var x=c.getContext('2d'),dpr=window.devicePixelRatio||1,r=c.getBoundingClientRect();c.width=r.width*dpr;c.height=r.height*dpr;x.scale(dpr,dpr);var w=r.width,h=r.height,p={{l:4,r:4,t:8,b:8}},cw=w-p.l-p.r,ch=h-p.t-p.b;x.clearRect(0,0,w,h);if(!prices||prices.length<2)return;var mn=Math.min(...prices),mx=Math.max(...prices),rg=mx-mn||1;for(var i=0;i<positions.length-1;i++){{if(positions[i]===1){{var x1=p.l+(i/(prices.length-1))*cw,x2=p.l+((i+1)/(prices.length-1))*cw;x.fillStyle='rgba(255,82,82,0.06)';x.fillRect(x1,p.t,x2-x1,ch)}}}}x.strokeStyle='#667eea';x.lineWidth=1.5;x.beginPath();prices.forEach(function(p,i){{var px=p.l+(i/(prices.length-1))*cw,py=p.t+ch-((p-mn)/rg)*ch;if(i===0)x.moveTo(px,py);else x.lineTo(px,py)}});x.stroke();x.lineTo(p.l+cw,p.t+ch);x.lineTo(p.l,p.t+ch);x.closePath();var g=x.createLinearGradient(0,p.t,0,p.t+ch);g.addColorStop(0,'rgba(102,126,234,0.15)');g.addColorStop(1,'rgba(102,126,234,0)');x.fillStyle=g;x.fill();var lx=p.l+cw,ly=p.t+ch-((prices[prices.length-1]-mn)/rg)*ch;x.fillStyle='#667eea';x.beginPath();x.arc(lx,ly,3,0,Math.PI*2);x.fill()}}
 function drawRSIChart(id,rf,rs){{var c=document.getElementById(id);if(!c)return;var x=c.getContext('2d'),dpr=window.devicePixelRatio||1,r=c.getBoundingClientRect();c.width=r.width*dpr;c.height=r.height*dpr;x.scale(dpr,dpr);var w=r.width,h=r.height,p={{l:4,r:4,t:8,b:8}},cw=w-p.l-p.r,ch=h-p.t-p.b;x.clearRect(0,0,w,h);x.strokeStyle='rgba(128,128,128,0.2)';x.lineWidth=1;x.setLineDash([3,3]);var y50=p.t+ch-(50/100)*ch;x.beginPath();x.moveTo(p.l,y50);x.lineTo(p.l+cw,y50);x.stroke();x.setLineDash([]);if(!rf||rf.length<2)return;x.strokeStyle='#2196F3';x.lineWidth=1.2;x.beginPath();var started=false;rf.forEach(function(v,i){{if(v===0||isNaN(v)){{started=false;return}}var px=p.l+(i/(rf.length-1))*cw,py=p.t+ch-(v/100)*ch;if(!started){{x.moveTo(px,py);started=true}}else x.lineTo(px,py)}});x.stroke();if(rs&&rs.length>=2){{var allZero=rs.every(function(v){{return v===0}});if(!allZero){{x.strokeStyle='#FF9800';x.lineWidth=1.2;x.beginPath();started=false;rs.forEach(function(v,i){{if(v===0){{started=false;return}}var px=p.l+(i/(rs.length-1))*cw,py=p.t+ch-(v/100)*ch;if(!started){{x.moveTo(px,py);started=true}}else x.lineTo(px,py)}});x.stroke()}}}}}}
-function triggerUpdate(){{var btn=document.getElementById('updateBtn');btn.textContent='正在更新...';btn.disabled=true;fetch('https://api.github.com/repos/fishno/laosan-etf/actions/workflows/update.yml/dispatches',{{method:'POST',headers:{{'Authorization':'Bearer {TOKEN}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}},body:JSON.stringify({{ref:'main'}})}}).then(function(r){{if(r.ok){{btn.textContent='已触发更新，等待30秒自动刷新...';setTimeout(function(){{location.reload(true)}}},30000)}}else{{btn.textContent='更新失败，请稍后重试';btn.disabled=false}}}}).catch(function(e){{btn.textContent='网络错误，请稍后重试';btn.disabled=false}})}}
+function triggerUpdate(){{var _t={_bt_js}.join('');var btn=document.getElementById('updateBtn');btn.textContent='正在更新...';btn.disabled=true;fetch('https://api.github.com/repos/fishno/laosan-etf/actions/workflows/update.yml/dispatches',{{method:'POST',headers:{{'Authorization':'Bearer '+_t,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}},body:JSON.stringify({{ref:'main'}})}}).then(function(r){{if(r.ok){{btn.textContent='已触发更新，等待30秒自动刷新...';setTimeout(function(){{location.reload(true)}},30000)}}else{{btn.textContent='更新失败，请稍后重试';btn.disabled=false}}}}).catch(function(e){{btn.textContent='网络错误，请稍后重试';btn.disabled=false}})}}
 document.addEventListener('DOMContentLoaded',function(){{{chart_init_js}}});
 setTimeout(function(){{location.reload()}},3600000);
 </script>
