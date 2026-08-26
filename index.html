@@ -768,6 +768,9 @@ async function computeData(wantDebug) {
     };
     const tradeLog = [];
     const wallet = { cash: 100000, shares: 0, code: "CASH" };
+    // 净值曲线记录(窗口起点至最新, 供回测指标/图表实时更新)
+    const navDates = [], navValues = [], navHoldings = [], navDD = [];
+    let navPeak = 100000;
     for (let i = S; i < N; i++) {
       const s = sig(i);
       let h2 = h;
@@ -821,6 +824,13 @@ async function computeData(wantDebug) {
         h = h2;
       }
       p = s;
+      // 记录每日净值曲线(实时回测)
+      const curVal = wallet.cash + wallet.shares * (h === "780" ? c780[i] : (h === "398" ? c398[i] : 0));
+      navDates.push(dates[i]);
+      navValues.push(Math.round(curVal));
+      navHoldings.push(h);
+      if (curVal > navPeak) navPeak = curVal;
+      navDD.push(Math.round((curVal - navPeak) / navPeak * 10000) / 100);
     }
 
     // 最新一天信号 + 边缘检测(昨日未触发/今日触发)
@@ -891,6 +901,55 @@ async function computeData(wantDebug) {
       });
     }
 
+    // ============================================================
+    // 回测指标计算(2025-08-15至今, 实时更新)
+    // ============================================================
+    const finalValue = navValues[navValues.length - 1];
+    const totalReturn = (finalValue / 100000 - 1) * 100;
+    let maxDD = 0, maxDDIdx = 0;
+    for (let i = 0; i < navDD.length; i++) { if (navDD[i] < maxDD) { maxDD = navDD[i]; maxDDIdx = i; } }
+    // 夏普比率(年化, 无风险利率按0)
+    let sharpe = 0;
+    if (navValues.length > 2) {
+      let sMean = 0;
+      const dRets = [];
+      for (let i = 1; i < navValues.length; i++) { const r = navValues[i] / navValues[i - 1] - 1; dRets.push(r); sMean += r; }
+      sMean /= dRets.length;
+      let sVar = 0;
+      for (let i = 0; i < dRets.length; i++) sVar += (dRets[i] - sMean) * (dRets[i] - sMean);
+      sVar /= dRets.length;
+      const sStd = Math.sqrt(sVar);
+      sharpe = sStd > 0 ? Math.round((sMean / sStd) * Math.sqrt(252) * 100) / 100 : 0;
+    }
+    const calmar = maxDD !== 0 ? Math.round((totalReturn / Math.abs(maxDD)) * 100) / 100 : 0;
+    const totalComm = tradeLog.reduce((a, t) => a + (t.comm || 0), 0);
+    // 买入持有780基准(窗口起点)
+    const bhReturn = (c780[N - 1] / c780[S] - 1) * 100;
+    const bhDDArr = calcDD(c780.slice(S));
+    let bhMaxDD = 0;
+    for (let i = 0; i < bhDDArr.length; i++) if (bhDDArr[i] < bhMaxDD) bhMaxDD = bhDDArr[i];
+    bhMaxDD *= 100;
+    const excessReturn = totalReturn - bhReturn;
+    const ddImprove = Math.abs(bhMaxDD) - Math.abs(maxDD);
+    // 买入持有780回撤序列(窗口起点, 用于回撤对比图)
+    const bh780DD = [];
+    let bhPeak = c780[S];
+    for (let i = S; i < N; i++) {
+      if (c780[i] > bhPeak) bhPeak = c780[i];
+      bh780DD.push(Math.round((c780[i] - bhPeak) / bhPeak * 10000) / 100);
+    }
+    // 月度收益率(按自然月, 月末净值/月初净值-1)
+    const monthMap = {};
+    for (let i = 0; i < navDates.length; i++) {
+      const mk = navDates[i].slice(0, 7);
+      if (!monthMap[mk]) monthMap[mk] = { first: navValues[i], last: navValues[i] };
+      monthMap[mk].last = navValues[i];
+    }
+    const monthlyReturns = Object.keys(monthMap).sort().map(mk => ({
+      month: mk,
+      return: Math.round((monthMap[mk].last / monthMap[mk].first - 1) * 10000) / 100
+    }));
+
     const result = {
       success: true, date: dates[li], holding: h,
       close780: Math.round(c780[li] * 1000) / 1000,
@@ -909,10 +968,28 @@ async function computeData(wantDebug) {
       action: action, actionText: actionText, actionDetail: actionDetail,
       recentDays: recent,
       intraday: intraday, rtDiag: rtDiag,
+      // 实时回测数据(2025-08-15至今)
+      nav: { dates: navDates, values: navValues, holdings: navHoldings, dd: navDD, bhDD: bh780DD },
+      backtest: {
+        totalReturn: Math.round(totalReturn * 100) / 100,
+        maxDD: Math.round(maxDD * 100) / 100,
+        maxDDDate: navDates[maxDDIdx],
+        sharpe: sharpe,
+        calmar: calmar,
+        tradeCount: tradeLog.length,
+        totalComm: Math.round(totalComm * 100) / 100,
+        excessReturn: Math.round(excessReturn * 100) / 100,
+        bhMaxDD: Math.round(bhMaxDD * 100) / 100,
+        bhReturn: Math.round(bhReturn * 100) / 100,
+        ddImprove: Math.round(ddImprove * 100) / 100,
+        finalValue: finalValue,
+      },
+      monthlyReturns: monthlyReturns,
+      windowStart: dates[S],
+      trades: tradeLog,
     };
     if (wantDebug) {
-      result.windowStart = dates[S];
-      result.trades = tradeLog; // 自窗口起的全部状态切换(用于核对)
+      result.debug = { windowStart: dates[S], tradeCount: tradeLog.length };
     }
     return result;
   } catch (err) {
@@ -954,6 +1031,29 @@ async function handleDiag() {
     try {
       var data = await computeData(true);
       if (data.success) {
+        // === 更新回测表现(实时) ===
+        var bt = data.backtest;
+        if (bt) {
+          var btCards = document.querySelectorAll("#backtest .metrics-grid .metric-card");
+          if (btCards.length >= 8) {
+            btCards[0].querySelector(".m-value").textContent = (bt.totalReturn >= 0 ? "+" : "") + bt.totalReturn.toFixed(2) + "%";
+            btCards[0].querySelector(".m-sub").textContent = "10万→" + bt.finalValue.toLocaleString();
+            btCards[1].querySelector(".m-value").textContent = bt.maxDD.toFixed(2) + "%";
+            btCards[1].querySelector(".m-sub").textContent = bt.maxDDDate;
+            btCards[2].querySelector(".m-value").textContent = bt.sharpe.toFixed(2);
+            btCards[2].querySelector(".m-sub").textContent = "年化";
+            btCards[3].querySelector(".m-value").textContent = bt.calmar.toFixed(2);
+            btCards[3].querySelector(".m-sub").textContent = "收益/回撤";
+            btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
+            btCards[5].querySelector(".m-value").textContent = bt.totalComm.toFixed(2);
+            btCards[6].querySelector(".m-value").textContent = (bt.excessReturn >= 0 ? "+" : "") + bt.excessReturn.toFixed(2) + "%";
+            btCards[6].querySelector(".m-sub").textContent = "vs买入持有780(" + (bt.bhReturn >= 0 ? "+" : "") + bt.bhReturn.toFixed(2) + "%)";
+            btCards[7].querySelector(".m-value").textContent = (bt.ddImprove >= 0 ? "+" : "") + bt.ddImprove.toFixed(2) + "%";
+            btCards[7].querySelector(".m-sub").textContent = "vs 780的" + bt.bhMaxDD.toFixed(2) + "%";
+          }
+          var btTitle = document.querySelector("#backtest h2");
+          if (btTitle) btTitle.textContent = "回测表现（2025-08-15 至 " + data.date + "）";
+        }
         document.getElementById("update-time").textContent = "\u6570\u636e: " + data.date + (data.intraday ? "\uff08\u76d8\u4e2d\u5b9e\u65f6\uff09" : "");
         document.getElementById("signal-action").textContent = data.actionText;
         document.getElementById("signal-detail").textContent = data.actionDetail;
@@ -988,13 +1088,58 @@ async function handleDiag() {
           var holdLabel = data.holding === '780' ? '\u6301\u6709780' : (data.holding === '398' ? '\u6301\u6709398' : '\u7a7a\u4ed3');
           cards[5].querySelector(".ind-status").textContent = holdLabel;
         }
-        // 当前持仓买入点同步标注到净值曲线(与横幅"买入于X"一致)
-        if (data.entryDate && allDates.indexOf(data.entryDate) >= 0) {
-          var eIdx = allDates.indexOf(data.entryDate);
-          var eColor = data.entryCode === '398' ? accent2 : accent;
-          var curMp = mp.concat([{coord:[data.entryDate, allValues[eIdx]], value:(data.entryCode === '398' ? '买398' : '买780'), itemStyle:{color:eColor}, label:{color:'#fff',fontSize:9}}]);
-          c2.setOption({ series: [{ markPoint:{ symbol:'pin', symbolSize:46, data: curMp.concat([{coord:[allDates[allDates.length-1],allValues[allDates.length-1]],value:'终值',itemStyle:{color:accent},label:{color:'#fff',fontSize:10}}]) } }] });
+        // === 更新月度收益率图表(实时) ===
+        var mr = data.monthlyReturns || [];
+        if (mr.length > 0) {
+          c1.setOption({
+            xAxis: { data: mr.map(function(m){ return m.month; }) },
+            series: [{ data: mr.map(function(m){ return m.return; }) }]
+          });
         }
+        // === 更新净值曲线/回撤图表(实时) ===
+        var nav = data.nav;
+        if (nav && nav.dates && nav.dates.length > 0) {
+          // 重建持仓分段底色
+          var navMarkAreas = [], navSegStart = 0;
+          for (var ni = 1; ni <= nav.holdings.length; ni++) {
+            if (ni === nav.holdings.length || nav.holdings[ni] !== nav.holdings[navSegStart]) {
+              var nh = nav.holdings[navSegStart];
+              var nbg = nh === '780' ? 'rgba(217,119,46,0.16)' : (nh === '398' ? 'rgba(180,83,9,0.08)' : 'rgba(138,119,101,0.12)');
+              navMarkAreas.push([{xAxis: nav.dates[navSegStart], itemStyle:{color: nbg}}, {xAxis: nav.dates[ni - 1]}]);
+              navSegStart = ni;
+            }
+          }
+          // 买卖点标记(实时交易流水)
+          var navMp = [];
+          (data.trades || []).forEach(function(t){
+            var isBuy780 = (t.action === 'CASH→780' || t.action === '398→780');
+            var isBuy398 = (t.action === '780→398' || t.action === 'CASH→398');
+            var isCash = (t.action === '398→CASH' || t.action === '780→CASH');
+            if (isBuy780) navMp.push({coord:[t.date, t.value], value:'买780', itemStyle:{color:accent}, label:{color:'#fff',fontSize:9}});
+            else if (isBuy398) navMp.push({coord:[t.date, t.value], value:'买398', itemStyle:{color:accent2}, label:{color:'#fff',fontSize:9}});
+            else if (isCash) navMp.push({coord:[t.date, t.value], value:'清仓', itemStyle:{color:'#8a7765'}, label:{color:'#fff',fontSize:9}});
+          });
+          var lastVal = nav.values[nav.values.length - 1];
+          var lastDate = nav.dates[nav.dates.length - 1];
+          c2.setOption({
+            xAxis: { data: nav.dates },
+            series: [{
+              data: nav.values,
+              markArea: { data: navMarkAreas },
+              markPoint: { data: navMp.concat([{coord:[lastDate, lastVal], value:'终值', itemStyle:{color:accent}, label:{color:'#fff',fontSize:10}}]) }
+            }]
+          });
+          // 回撤对比图
+          var bt2 = data.backtest || {};
+          c3.setOption({
+            xAxis: { data: nav.dates },
+            series: [
+              { data: nav.dd, markPoint: { data: [{coord:[bt2.maxDDDate, bt2.maxDD], value:'最大回撤\n' + bt2.maxDD.toFixed(2) + '%', itemStyle:{color:accent2}, label:{color:'#fff',fontSize:9,lineHeight:12}}] }, markLine: { silent:true, symbol:'none', lineStyle:{color:accent2,type:'dashed',width:1}, data:[{yAxis: bt2.maxDD, label:{formatter:'策略D3最大回撤 ' + bt2.maxDD.toFixed(2) + '%', color:accent2, fontSize:10}}] } },
+              { data: nav.bhDD, markLine: { silent:true, symbol:'none', lineStyle:{color:accent2,type:'dotted',width:1}, data:[{yAxis: bt2.bhMaxDD, label:{formatter:'买入持有 ' + bt2.bhMaxDD.toFixed(2) + '%', color:accent2, fontSize:10}}] } }
+            ]
+          });
+        }
+        // 当前持仓买入点已在净值曲线实时更新中标注(见上方 navMp)
         var tbody = document.querySelector(".recent-table tbody");
         if (tbody) {
           tbody.innerHTML = "";
@@ -1043,15 +1188,11 @@ async function handleDiag() {
           ltsEl.textContent = "\u5f53\u524d\u7a7a\u4ed3\uff0c\u65e0\u6301\u4ed3\u6536\u76ca";
           lteEl.textContent = "\u2014";
         }
-        // 续接实时交易: 把回测窗口外的实时信号交易补进"交易记录"表(高亮, 防重复)
-        var staticDates = trades.map(function(t){ return t.date; });
+        // === 更新交易记录表(实时回测, 最后一笔净值随实时股价更新) ===
         var tb2 = document.getElementById("trades-body");
-        var liveRows = tb2.querySelectorAll("tr.live-trade");
-        liveRows.forEach(function(r){ r.remove(); });
-        var appended = 0;
-        if (data.trades && Array.isArray(data.trades)) {
-          data.trades.forEach(function(tt){
-            if (staticDates.indexOf(tt.date) >= 0) return;
+        if (data.trades && data.trades.length > 0) {
+          tb2.innerHTML = "";
+          data.trades.forEach(function(tt, idx) {
             var parts = tt.action.split("\u2192");
             var to = parts[1];
             var isCash = to === "CASH";
@@ -1059,17 +1200,22 @@ async function handleDiag() {
             var holdLabel = isCash ? "空仓" : to;
             var color = isCash ? "#8a7765" : (to === "398" ? accent2 : accent);
             var tr = document.createElement("tr");
-            tr.className = "live-trade";
-            tr.style.background = "#fff5e8";
-            var num = staticDates.length + (++appended);
-            var cumTd = tt.value != null ? '<td class="mono" style="color:' + (((tt.value / 100000 - 1) * 100) >= 0 ? up : down) + ';font-weight:600;">' + (((tt.value / 100000 - 1) * 100) >= 0 ? '+' : '') + ((tt.value / 100000 - 1) * 100).toFixed(2) + '%</td>' : '<td class="mono">-</td>';
-            tr.innerHTML = '<td class="mono">' + num + '</td><td class="mono">' + tt.date + '</td><td><span style="color:' + color + ';font-weight:600;">' + tt.action + '</span></td><td style="font-size:0.8rem;">' + (tt.reason || "实时信号") + '</td><td class="mono">' + (tt.comm != null ? tt.comm.toFixed(2) : "-") + '</td><td class="mono">' + (tt.value != null ? tt.value.toLocaleString() : "-") + '</td>' + cumTd + '<td>' + (isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.75rem;">空仓</span>' : '<span class="badge ' + badgeClass + '">' + holdLabel + '</span>') + '</td>';
+            // 最后一笔交易: 若当前持仓, 净值/累计收益率用实时股价重算
+            var isLast = idx === data.trades.length - 1;
+            var value = tt.value;
+            if (isLast && data.holding !== "CASH" && data.nav && data.nav.values && data.nav.values.length > 0) {
+              value = data.nav.values[data.nav.values.length - 1];
+            }
+            var cum = (value / 100000 - 1) * 100;
+            var actionLabel = tt.action;
+            if (actionLabel === "CASH\u2192780") actionLabel = "\u5efa\u4ed3780";
+            else if (actionLabel === "CASH\u2192398") actionLabel = "\u5efa\u4ed3398";
+            tr.innerHTML = '<td class="mono">' + (idx + 1) + '</td><td class="mono">' + tt.date + '</td><td><span style="color:' + color + ';font-weight:600;">' + actionLabel + '</span></td><td style="font-size:0.8rem;">' + (tt.reason || "") + '</td><td class="mono">' + (tt.comm != null ? tt.comm.toFixed(2) : "-") + '</td><td class="mono">' + value.toLocaleString() + '</td><td class="mono" style="color:' + (cum >= 0 ? up : down) + ';font-weight:600;">' + (cum >= 0 ? '+' : '') + cum.toFixed(2) + '%</td><td>' + (isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.75rem;">空仓</span>' : '<span class="badge ' + badgeClass + '">' + holdLabel + '</span>') + '</td>';
+            if (isLast) tr.style.background = "#fff5e8";
             tb2.appendChild(tr);
           });
-        }
-        if (appended > 0) {
-          var tnote = document.querySelector("#trades p");
-          if (tnote) tnote.innerHTML = "回测14次操作（总佣金322.60元）＋ 实时续接 " + appended + " 笔（高亮行为窗口外实时信号，行内含佣金/净值）。";
+          var tnote2 = document.querySelector("#trades p");
+          if (tnote2) tnote2.innerHTML = "实时回测" + data.backtest.tradeCount + "次操作（总佣金" + data.backtest.totalComm.toFixed(2) + "元），净值/累计盈利率随实时行情更新。";
         }
         btn.textContent = "\u5df2\u66f4\u65b0 \u2713";
         setTimeout(function() { btn.textContent = "\u66f4\u65b0\u6570\u636e"; }, 2000);
