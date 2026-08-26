@@ -237,11 +237,6 @@
           <div class="m-value" id="last-trade-code" style="font-size:1.1rem;">--</div>
           <div class="m-sub" id="last-trade-entrysub">—</div>
         </div>
-        <div class="metric-card neutral" id="last-trade-nav">
-          <div class="m-label">当前净值 / 累计盈利率</div>
-          <div class="m-value" id="last-trade-navvalue" style="font-size:1.1rem;">--</div>
-          <div class="m-sub" id="last-trade-navsub">等待数据…</div>
-        </div>
       </div>
     </section>
 
@@ -551,171 +546,173 @@
     tr.innerHTML = '<td class="mono">'+(idx+1)+'</td><td class="mono">'+t.date+'</td><td><span style="color:'+color+';font-weight:600;">'+t.action+'</span></td><td style="font-size:0.8rem;">'+t.reason+'</td><td class="mono">'+t.comm.toFixed(2)+'</td><td class="mono">'+t.value.toLocaleString()+'</td><td class="mono" style="color:'+(cum>=0?up:down)+';font-weight:600;">'+(cum>=0?'+':'')+cum.toFixed(2)+'%</td><td>'+(isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.75rem;">空仓</span>' : '<span class="badge '+badgeClass+'">'+holdLabel+'</span>')+'</td>';
     tb.appendChild(tr);
   });
+  
+  // === Client-side Data Computation ===
+// ============================================================
+// 数据获取: 腾讯前复权(主) + 东方财富前复权(备), 双源自动切换
+// ============================================================
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+const DATA_BEG = "2024-01-01";   // RSI/MA全量预热起点(回测共识口径)
+const WINDOW_START = "2025-08-15"; // 策略状态机窗口起点(与回测一致)
 
-  // === Client-side data fetching (replaces Cloudflare Worker /api/data) ===
-  // GitHub Pages is static-only, so we port the worker's server logic to the browser
-  // with CORS proxy fallbacks (direct -> allorigins.win -> corsproxy.io)
+async function fetchTx(code) {
+  const end = new Date().toISOString().slice(0, 10);
+  const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${DATA_BEG},${end},800,qfq`;
+  const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+  if (!res.ok) throw new Error("腾讯源 HTTP " + res.status);
+  const json = await res.json();
+  const d = json && json.data && json.data[code];
+  const arr = d && (d.qfqday || d.day);
+  if (!arr || !arr.length) throw new Error("腾讯源无K线数据");
+  return arr.map(k => ({ date: k[0], close: parseFloat(k[2]) }));
+}
 
-  async function fetchWithProxy(url) {
-    // Try direct first (some APIs support CORS)
-    try {
-      var res = await fetch(url);
-      if (res.ok) return res;
-    } catch (e) {}
-    // Fallback 1: allorigins.win
-    try {
-      var res2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
-      if (res2.ok) return res2;
-    } catch (e) {}
-    // Fallback 2: corsproxy.io
-    try {
-      var res3 = await fetch('https://corsproxy.io/?url=' + encodeURIComponent(url));
-      if (res3.ok) return res3;
-    } catch (e) {}
-    throw new Error('数据源全部失败: ' + url);
-  }
+async function fetchEm(secid) {
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}` +
+    `&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1` +
+    `&beg=${DATA_BEG.replace(/-/g, "")}&end=20991231`;
+  const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://quote.eastmoney.com/" } });
+  if (!res.ok) throw new Error("东财源 HTTP " + res.status);
+  const json = await res.json();
+  const klines = json && json.data && json.data.klines; // 注意: 东财返回 data.klines, 逗号分隔字符串
+  if (!klines || !klines.length) throw new Error("东财源无K线数据");
+  return klines.map(k => {
+    const p = k.split(",");
+    return { date: p[0], close: parseFloat(p[2]) };
+  });
+}
 
-  async function fetchTx(code) {
-    var end = new Date().toISOString().slice(0, 10);
-    var url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + code + ',day,2024-01-01,' + end + ',800,qfq';
-    var res = await fetchWithProxy(url);
-    var json = await res.json();
-    var d = json && json.data && json.data[code];
-    var arr = d && (d.qfqday || d.day);
-    if (!arr || !arr.length) throw new Error("腾讯源无K线数据");
-    return arr.map(function(k) { return { date: k[0], close: parseFloat(k[2]) }; });
-  }
+async function getKlines(code, secid, label) {
+  const errors = [];
+  try { return await fetchTx(code); } catch (e) { errors.push("腾讯: " + e.message); }
+  try { return await fetchEm(secid); } catch (e) { errors.push("东财: " + e.message); }
+  throw new Error(label + " 双源获取失败 [" + errors.join(" | ") + "]");
+}
 
-  async function fetchEm(secid) {
-    var url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + secid +
-      '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1' +
-      '&beg=20240101&end=20991231';
-    var res = await fetchWithProxy(url);
-    var json = await res.json();
-    var klines = json && json.data && json.data.klines;
-    if (!klines || !klines.length) throw new Error("东财源无K线数据");
-    return klines.map(function(k) {
-      var p = k.split(",");
-      return { date: p[0], close: parseFloat(p[2]) };
-    });
-  }
-
-  async function getKlines(code, secid, label) {
-    var errors = [];
-    try { return await fetchTx(code); } catch (e) { errors.push("腾讯: " + e.message); }
-    try { return await fetchEm(secid); } catch (e) { errors.push("东财: " + e.message); }
-    throw new Error(label + " 双源获取失败 [" + errors.join(" | ") + "]");
-  }
-
-  async function fetchRealtime(code) {
-    var errors = [];
-    // Source 1: Tencent minute API (same domain, CF-reliable)
-    try {
-      var url1 = 'https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=' + code;
-      var res1 = await fetchWithProxy(url1);
-      if (res1.ok) {
-        var json1 = await res1.json();
-        var node1 = json1 && json1.data && json1.data[code];
-        var arr1 = node1 && node1.qt && node1.qt[code];
-        if (arr1 && arr1.length > 30 && parseFloat(arr1[3]) > 0) {
-          return { price: parseFloat(arr1[3]), volume: parseFloat(arr1[6]) || 0, time: arr1[30] || "", source: "分时" };
-        }
-        errors.push("分时: 无快照");
-      } else {
-        errors.push("分时: HTTP " + res1.status);
+// ============================================================
+// 盘中实时增强: 腾讯分时接口(主, 同域CF可靠) + qt.gtimg.cn(备)
+// 两者 qt 快照格式相同: 字段[3]=现价 [6]=成交量 [30]=时间戳(YYYYMMDDHHMMSS)
+// ============================================================
+async function fetchRealtime(code) {
+  const errors = [];
+  // 源1: 腾讯分时接口 (同域, CF可靠)
+  try {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (res.ok) {
+      const json = await res.json();
+      const node = json && json.data && json.data[code];
+      const arr = node && node.qt && node.qt[code];
+      if (arr && arr.length > 30 && parseFloat(arr[3]) > 0) {
+        return { price: parseFloat(arr[3]), volume: parseFloat(arr[6]) || 0, time: arr[30] || "", source: "分时" };
       }
-    } catch (e) { errors.push("分时: " + e.message); }
-    // Source 2: qt.gtimg.cn real-time
+      errors.push("分时: 无快照");
+    } else {
+      errors.push("分时: HTTP " + res.status);
+    }
+  } catch (e) { errors.push("分时: " + e.message); }
+  // 源2: qt.gtimg.cn 实时 (CF出口可能被拦)
+  try {
+    const url = `https://qt.gtimg.cn/q=${code}`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const m = text.match(/v_\w+="([^"]*)"/);
+    if (!m) throw new Error("无行情数据");
+    const f = m[1].split("~");
+    if (parseFloat(f[3]) > 0) {
+      return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+    }
+    throw new Error("现价为0");
+  } catch (e) { errors.push("实时: " + e.message); }
+  const err = new Error("实时行情获取失败 [" + errors.join(" | ") + "]");
+  err.detail = errors.join(" | ");
+  throw err;
+}
+
+function realtimeDate(ts) { // "20260817103237" -> "2026-08-17"
+  return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8);
+}
+
+function isWeekday(dateStr) { // 周一~周五 (用 UTC 锚定, 不受运行时本地时区影响)
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const day = dt.getUTCDay();
+  return day >= 1 && day <= 5;
+}
+
+// 若实时行情日期晚于日K末条(即今天已有盘中/收盘数据), 追加当日K线使信号实时化
+function augmentDaily(klines, rt) {
+  if (!rt || !rt.price || !rt.time) return klines;
+  const last = klines[klines.length - 1];
+  const rtDate = realtimeDate(rt.time);
+  if (rtDate > last.date && isWeekday(rtDate) && rt.volume > 0) {
+    return [...klines, { date: rtDate, close: rt.price }];
+  }
+  return klines;
+}
+
+// ============================================================
+// 指标计算 (与已验证回测 route_b_backtest.py 完全一致)
+// ============================================================
+function calcRSI(p, n) { // Wilder RSI
+  const r = new Array(p.length).fill(null);
+  if (p.length < n + 1) return r;
+  let g = 0, l = 0;
+  for (let i = 1; i <= n; i++) { const c = p[i] - p[i - 1]; if (c >= 0) g += c; else l -= c; }
+  let ag = g / n, al = l / n;
+  r[n] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  for (let i = n + 1; i < p.length; i++) {
+    const c = p[i] - p[i - 1];
+    ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
+    al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
+    r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return r;
+}
+
+function calcMA(p, n) {
+  const m = new Array(p.length).fill(null);
+  let s = 0;
+  for (let i = 0; i < p.length; i++) {
+    s += p[i];
+    if (i >= n) s -= p[i - n];
+    if (i >= n - 1) m[i] = s / n;
+  }
+  return m;
+}
+
+function calcDD(p) { // 全历史高点回撤(2024-01-01起)
+  const d = new Array(p.length).fill(0);
+  let mx = p[0];
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] > mx) mx = p[i];
+    d[i] = (p[i] - mx) / mx;
+  }
+  return d;
+}
+
+// ============================================================
+// /api/data — D3策略实时信号 (策略逻辑与回测逐行对齐, 未做任何改动)
+// ============================================================
+async function computeData(wantDebug) {
+  try {
+    const [d780raw, d398raw] = await Promise.all([
+      getKlines("sz159780", "0.159780", "159780"),
+      getKlines("sh601398", "0.601398", "601398"),
+    ]);
+    let d780 = d780raw, d398 = d398raw;
+
+    // 盘中实时增强: 把当日分时快照价并回日K(失败不影响主流程)
+    let intraday = false;
+    const rtDiag = { rtOk: false, rtErr: null, augment780: false, augment398: false };
     try {
-      var url2 = 'https://qt.gtimg.cn/q=' + code;
-      var res2 = await fetchWithProxy(url2);
-      var text2 = await res2.text();
-      var m2 = text2.match(/v_\w+="([^"]*)"/);
-      if (!m2) throw new Error("无行情数据");
-      var f2 = m2[1].split("~");
-      if (parseFloat(f2[3]) > 0) {
-        return { price: parseFloat(f2[3]), volume: parseFloat(f2[6]) || 0, time: f2[30] || "", source: "实时" };
-      }
-      throw new Error("现价为0");
-    } catch (e) { errors.push("实时: " + e.message); }
-    throw new Error("实时行情获取失败 [" + errors.join(" | ") + "]");
-  }
-
-  function realtimeDate(ts) {
-    return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8);
-  }
-
-  function isWeekday(dateStr) {
-    var parts = dateStr.split("-").map(Number);
-    var dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
-    var day = dt.getUTCDay();
-    return day >= 1 && day <= 5;
-  }
-
-  function augmentDaily(klines, rt) {
-    if (!rt || !rt.price || !rt.time) return klines;
-    var last = klines[klines.length - 1];
-    var rtDate = realtimeDate(rt.time);
-    if (rtDate > last.date && isWeekday(rtDate) && rt.volume > 0) {
-      return klines.concat([{ date: rtDate, close: rt.price }]);
-    }
-    return klines;
-  }
-
-  function calcRSI(p, n) {
-    var r = new Array(p.length).fill(null);
-    if (p.length < n + 1) return r;
-    var g = 0, l = 0;
-    for (var i = 1; i <= n; i++) { var c = p[i] - p[i - 1]; if (c >= 0) g += c; else l -= c; }
-    var ag = g / n, al = l / n;
-    r[n] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-    for (var i = n + 1; i < p.length; i++) {
-      var c = p[i] - p[i - 1];
-      ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
-      al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
-      r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-    }
-    return r;
-  }
-
-  function calcMA(p, n) {
-    var m = new Array(p.length).fill(null);
-    var s = 0;
-    for (var i = 0; i < p.length; i++) {
-      s += p[i];
-      if (i >= n) s -= p[i - n];
-      if (i >= n - 1) m[i] = s / n;
-    }
-    return m;
-  }
-
-  function calcDD(p) {
-    var d = new Array(p.length).fill(0);
-    var mx = p[0];
-    for (var i = 0; i < p.length; i++) {
-      if (p[i] > mx) mx = p[i];
-      d[i] = (p[i] - mx) / mx;
-    }
-    return d;
-  }
-
-  // D3 strategy state machine (ported from worker.js handleApi, logic unchanged)
-  var DATA_BEG = "2024-01-01";
-  var WINDOW_START = "2025-08-15";
-
-  async function computeData() {
-    var d780raw = await getKlines("sz159780", "0.159780", "159780");
-    var d398raw = await getKlines("sh601398", "0.601398", "601398");
-    var d780 = d780raw, d398 = d398raw;
-
-    // Intraday augmentation: append today's minute snapshot to daily K-line
-    var intraday = false;
-    var rtDiag = { rtOk: false, rtErr: null, augment780: false, augment398: false };
-    try {
-      var rt780 = await fetchRealtime("sz159780");
-      var rt398 = await fetchRealtime("sh601398");
-      var a780 = augmentDaily(d780raw, rt780);
-      var a398 = augmentDaily(d398raw, rt398);
+      const [rt780, rt398] = await Promise.all([
+        fetchRealtime("sz159780"),
+        fetchRealtime("sh601398"),
+      ]);
+      const a780 = augmentDaily(d780raw, rt780);
+      const a398 = augmentDaily(d398raw, rt398);
       if (a780.length !== d780raw.length) { intraday = true; rtDiag.augment780 = true; }
       if (a398.length !== d398raw.length) { intraday = true; rtDiag.augment398 = true; }
       rtDiag.rtOk = true;
@@ -726,46 +723,41 @@
       rtDiag.rtErr = e.message || String(e);
     }
 
-    // Align by date (both ETFs must have trading data)
-    var m780 = new Map(d780.map(function(x) { return [x.date, x.close]; }));
-    var m398 = new Map(d398.map(function(x) { return [x.date, x.close]; }));
-    var dates = Array.from(m780.keys()).filter(function(dd) { return m398.has(dd); }).sort();
+    // 按日期对齐(两ETF共同交易日)
+    const m780 = new Map(d780.map(x => [x.date, x.close]));
+    const m398 = new Map(d398.map(x => [x.date, x.close]));
+    const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
     if (dates.length < 60) throw new Error("对齐后交易日不足: " + dates.length);
-    var c780 = dates.map(function(dd) { return m780.get(dd); });
-    var c398 = dates.map(function(dd) { return m398.get(dd); });
-    var N = dates.length;
+    const c780 = dates.map(dd => m780.get(dd));
+    const c398 = dates.map(dd => m398.get(dd));
+    const N = dates.length;
 
-    // Indicators: full calculation from 2024-01-01 (warmup)
-    var rsi6 = calcRSI(c780, 6);
-    var rsi6398 = calcRSI(c398, 6);
-    var ma20 = calcMA(c780, 20);
-    var dd = calcDD(c780);
-    var r5 = new Array(N).fill(null);
-    for (var i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+    // 指标: 全量计算(2024-01-01起预热)
+    const rsi6 = calcRSI(c780, 6);
+    const rsi6398 = calcRSI(c398, 6);   // 398 自己的 RSI6(之前从未计算)
+    const ma20 = calcMA(c780, 20);
+    const dd = calcDD(c780);
+    const r5 = new Array(N).fill(null);
+    for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
 
-    // Cut window: D3 state machine starts from 2025-08-15
-    var S = dates.findIndex(function(d) { return d >= WINDOW_START; });
+    // 切窗口: 2025-08-15起跑D3状态机(与回测一致)
+    let S = dates.findIndex(d => d >= WINDOW_START);
     if (S < 0) S = Math.max(0, N - 60);
 
-    function sig(i) {
-      return {
-        sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
-        sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
-        bk: rsi6[i] !== null && rsi6[i] < 25,
-        d398: r5[i] !== null && r5[i] < -0.02,
-        aMA: ma20[i] !== null && c780[i] > ma20[i],
-      };
-    }
+    const sig = i => ({
+      sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,        // 切398
+      sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,       // 空仓避险
+      bk: rsi6[i] !== null && rsi6[i] < 25,                     // 抢底
+      d398: r5[i] !== null && r5[i] < -0.02,                    // 398止损
+      aMA: ma20[i] !== null && c780[i] > ma20[i],               // MA20恢复
+    });
 
-    var h = "CASH";
-    var p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
-    var entryDate = null, entryPrice = null, entryCode = null;
-    var tradeLog = [];
-    var wallet = { cash: 100000, shares: 0, code: "CASH" };
-
-    function tradeReason(from, to, s, r5i, ddi) {
-      var ddPct = (ddi * 100).toFixed(1);
-      var r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
+    let h = "CASH"; // 窗口起点空仓, 由状态机自然演进到当前持仓
+    let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
+    let entryDate = null, entryPrice = null, entryCode = null; // 当前持仓的买入日期/价格
+    const tradeReason = (from, to, s, r5i, ddi) => {
+      const ddPct = (ddi * 100).toFixed(1);
+      const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
       if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
       if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
       if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
@@ -773,11 +765,12 @@
       if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
       if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
       return "状态切换";
-    }
-
-    for (var i = S; i < N; i++) {
-      var s = sig(i);
-      var h2 = h;
+    };
+    const tradeLog = [];
+    const wallet = { cash: 100000, shares: 0, code: "CASH" };
+    for (let i = S; i < N; i++) {
+      const s = sig(i);
+      let h2 = h;
       if (h === "780") {
         if (s.sw && !p.sw) h2 = "398";
         else if (s.sc && !p.sc) h2 = "CASH";
@@ -790,11 +783,12 @@
         else if (s.sw && !p.sw) h2 = "398";
       }
       if (h2 !== h) {
-        var comm = 0, sellPx = null, buyPx = null;
+        // 钱包重放(万1佣金, 100股取整), 计算该笔佣金/净值/股数
+        let comm = 0, sellPx = null, buyPx = null;
         if (h !== "CASH") {
           sellPx = h === "780" ? c780[i] : c398[i];
-          var gross = wallet.shares * sellPx;
-          var c = gross * 0.0001;
+          const gross = wallet.shares * sellPx;
+          const c = gross * 0.0001;
           comm += c;
           wallet.cash += gross - c;
           wallet.shares = 0;
@@ -802,15 +796,15 @@
         }
         if (h2 !== "CASH") {
           buyPx = h2 === "780" ? c780[i] : c398[i];
-          var investable = wallet.cash * 0.9999;
-          var c2 = wallet.cash * 0.0001;
-          comm += c2;
-          var sh = Math.floor(investable / buyPx / 100) * 100;
+          const investable = wallet.cash * 0.9999;
+          const c = wallet.cash * 0.0001;
+          comm += c;
+          const sh = Math.floor(investable / buyPx / 100) * 100;
           wallet.shares = sh;
-          wallet.cash = wallet.cash - sh * buyPx - c2;
+          wallet.cash = wallet.cash - sh * buyPx - c;
           wallet.code = h2;
         }
-        var value = wallet.cash + wallet.shares * (h2 === "780" ? c780[i] : c398[i]);
+        const value = wallet.cash + wallet.shares * (h2 === "780" ? c780[i] : c398[i]);
         tradeLog.push({
           date: dates[i], action: h + "\u2192" + h2, reason: tradeReason(h, h2, s, r5[i], dd[i]),
           comm: Math.round(comm * 10) / 10,
@@ -820,6 +814,7 @@
           price: buyPx != null ? Math.round(buyPx * 1000) / 1000 : null,
           priceSold: sellPx != null ? Math.round(sellPx * 1000) / 1000 : null,
         });
+        // 记录新开仓的买入日期与价格
         if (h2 === "780") { entryCode = "780"; entryDate = dates[i]; entryPrice = c780[i]; }
         else if (h2 === "398") { entryCode = "398"; entryDate = dates[i]; entryPrice = c398[i]; }
         else { entryCode = null; entryDate = null; entryPrice = null; }
@@ -828,62 +823,62 @@
       p = s;
     }
 
-    // Latest day signal + edge detection (yesterday not triggered, today triggered)
-    var li = N - 1;
-    var s = sig(li);
-    var pv = sig(li - 1);
+    // 最新一天信号 + 边缘检测(昨日未触发/今日触发)
+    const li = N - 1;
+    const s = sig(li);
+    const pv = sig(li - 1);
 
-    var action = "HOLD", actionText = "", actionDetail = "";
+    let action = "HOLD", actionText = "", actionDetail = "";
     if (h === "780") {
       if (s.sw && !pv.sw) {
         action = "SWITCH_398";
-        actionText = "切换至 601398 工商银行";
-        actionDetail = "780回撤" + (dd[li] * 100).toFixed(1) + "%, 398五日涨" + (r5[li] * 100).toFixed(1) + "%";
+        actionText = "\u5398\u6362\u81f3 601398 工商银行";
+        actionDetail = "780\u56de\u64a4" + (dd[li] * 100).toFixed(1) + "%, 398\u4e94\u65e5\u6da8" + (r5[li] * 100).toFixed(1) + "%";
       } else if (s.sc && !pv.sc) {
         action = "GO_CASH";
-        actionText = "空仓避险";
-        actionDetail = "780回撤" + (dd[li] * 100).toFixed(1) + "%, 398五日" + (r5[li] * 100).toFixed(1) + "%, 双跌避险";
+        actionText = "\u7a7a\u4ed3\u907f\u9669";
+        actionDetail = "780\u56de\u64a4" + (dd[li] * 100).toFixed(1) + "%, 398\u4e94\u65e5" + (r5[li] * 100).toFixed(1) + "%, \u53cc\u8dcc\u907f\u9669";
       } else {
         action = "HOLD_780";
-        actionText = "持仓 159780 科创创业50ETF";
-        actionDetail = "买入于" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
+        actionText = "\u6301\u4ed3 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "\u4e70\u5165\u4e8e" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
       }
     } else if (h === "398") {
       if (s.bk && !pv.bk) {
         action = "SWITCH_780";
-        actionText = "切回 159780 科创创业50ETF";
-        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, 超卖反弹";
+        actionText = "\u5398\u56de 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, \u8d85\u5356\u53cd\u5f39";
       } else if (s.d398 && !pv.d398) {
         action = "GO_CASH";
-        actionText = "空仓止损";
-        actionDetail = "398五日" + (r5[li] * 100).toFixed(1) + "%, 止损离场";
+        actionText = "\u7a7a\u4ed3\u6b62\u635f";
+        actionDetail = "398\u4e94\u65e5" + (r5[li] * 100).toFixed(1) + "%, \u6b62\u635f\u79bb\u573a";
       } else {
         action = "HOLD_398";
-        actionText = "持仓 601398 工商银行";
-        actionDetail = "买入于" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
+        actionText = "\u6301\u4ed3 601398 工商银行";
+        actionDetail = "\u4e70\u5165\u4e8e" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
       }
     } else {
       if (s.bk && !pv.bk) {
         action = "BUY_780";
-        actionText = "买入 159780 科创创业50ETF";
-        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, 极度超卖抢底";
+        actionText = "\u4e70\u5165 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, \u6781\u5ea6\u8d85\u5356\u62a2\u5e95";
       } else if (s.aMA && !pv.aMA) {
         action = "BUY_780";
-        actionText = "买入 159780 科创创业50ETF";
-        actionDetail = "780重回MA20上方, 趋势恢复";
+        actionText = "\u4e70\u5165 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "780\u91cd\u56deMA20\u4e0a\u65b9, \u8d8b\u52bf\u6062\u590d";
       } else if (s.sw && !pv.sw) {
         action = "BUY_398";
-        actionText = "买入 601398 工商银行";
-        actionDetail = "398转强, 五日涨" + (r5[li] * 100).toFixed(1) + "%";
+        actionText = "\u4e70\u5165 601398 工商银行";
+        actionDetail = "398\u8f6c\u5f3a, \u4e94\u65e5\u6da8" + (r5[li] * 100).toFixed(1) + "%";
       } else {
         action = "HOLD_CASH";
-        actionText = "空仓等待";
-        actionDetail = "等待RSI<25或MA20恢复 | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
+        actionText = "\u7a7a\u4ed3\u7b49\u5f85";
+        actionDetail = "\u7b49\u5f85RSI<25\u6216MA20\u6062\u590d | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
       }
     }
 
-    var recent = [];
-    for (var i = Math.max(0, N - 10); i < N; i++) {
+    const recent = [];
+    for (let i = Math.max(0, N - 10); i < N; i++) {
       recent.push({
         date: dates[i],
         close780: Math.round(c780[i] * 1000) / 1000,
@@ -896,12 +891,7 @@
       });
     }
 
-    // 当前实时净值与累计盈利率(基于实时更新的股价)
-    var curPx = wallet.code === "780" ? c780[li] : (wallet.code === "398" ? c398[li] : 0);
-    var curValue = wallet.cash + wallet.shares * curPx;
-    var curCum = (curValue / 100000 - 1) * 100;
-
-    return {
+    const result = {
       success: true, date: dates[li], holding: h,
       close780: Math.round(c780[li] * 1000) / 1000,
       close398: Math.round(c398[li] * 1000) / 1000,
@@ -919,24 +909,50 @@
       action: action, actionText: actionText, actionDetail: actionDetail,
       recentDays: recent,
       intraday: intraday, rtDiag: rtDiag,
-      windowStart: dates[S],
-      trades: tradeLog,
-      walletCash: Math.round(wallet.cash * 100) / 100,
-      walletShares: wallet.shares,
-      walletCode: wallet.code,
-      currentPrice: Math.round(curPx * 10000) / 10000,
-      currentValue: Math.round(curValue),
-      currentCumReturn: Math.round(curCum * 100) / 100,
     };
+    if (wantDebug) {
+      result.windowStart = dates[S];
+      result.trades = tradeLog; // 自窗口起的全部状态切换(用于核对)
+    }
+    return result;
+  } catch (err) {
+    throw new Error(err.message);
   }
+}
 
-  // === Update Data (D3) ===
+// /api/diag — 实时数据源连通性诊断
+async function handleDiag() {
+  const out = { success: true, time: new Date().toISOString(), kline: {}, realtime: {} };
+  try {
+    const [d780, d398] = await Promise.all([
+      getKlines("sz159780", "0.159780", "159780"),
+      getKlines("sh601398", "0.601398", "601398"),
+    ]);
+    out.kline.ok = true;
+    out.kline.last780 = d780[d780.length - 1];
+    out.kline.last398 = d398[d398.length - 1];
+  } catch (e) {
+    out.kline.ok = false;
+    out.kline.error = e.message;
+  }
+  for (const code of ["sz159780", "sh601398"]) {
+    try {
+      const rt = await fetchRealtime(code);
+      out.realtime[code] = { ok: true, source: rt.source, price: rt.price, time: rt.time, date: realtimeDate(rt.time) };
+    } catch (e) {
+      out.realtime[code] = { ok: false, error: e.message };
+    }
+  }
+  return out;
+}
+
+// === Update Data (D3) ===
   async function updateData() {
     var btn = document.getElementById("update-btn");
     btn.textContent = "\u66f4\u65b0\u4e2d...";
     btn.disabled = true;
     try {
-      var data = await computeData();
+      var data = await computeData(true);
       if (data.success) {
         document.getElementById("update-time").textContent = "\u6570\u636e: " + data.date + (data.intraday ? "\uff08\u76d8\u4e2d\u5b9e\u65f6\uff09" : "");
         document.getElementById("signal-action").textContent = data.actionText;
@@ -1027,15 +1043,6 @@
           ltsEl.textContent = "\u5f53\u524d\u7a7a\u4ed3\uff0c\u65e0\u6301\u4ed3\u6536\u76ca";
           lteEl.textContent = "\u2014";
         }
-        // 当前净值与累计盈利率(基于实时股价)
-        var ltnEl = document.getElementById("last-trade-navvalue");
-        var ltnsEl = document.getElementById("last-trade-navsub");
-        if (ltnEl && data.currentValue != null) {
-          var cum = data.currentCumReturn;
-          ltnEl.textContent = data.currentValue.toLocaleString() + " \u5143";
-          ltnEl.style.color = cum >= 0 ? up : down;
-          ltnsEl.textContent = "\u7d2f\u8ba1\u76c8\u5229\u7387 " + (cum >= 0 ? "+" : "") + cum.toFixed(2) + "%\uff08\u57fa\u4e8e\u5b9e\u65f6\u80a1\u4ef7" + data.currentPrice + "\uff09";
-        }
         // 续接实时交易: 把回测窗口外的实时信号交易补进"交易记录"表(高亮, 防重复)
         var staticDates = trades.map(function(t){ return t.date; });
         var tb2 = document.getElementById("trades-body");
@@ -1063,16 +1070,6 @@
         if (appended > 0) {
           var tnote = document.querySelector("#trades p");
           if (tnote) tnote.innerHTML = "回测14次操作（总佣金322.60元）＋ 实时续接 " + appended + " 笔（高亮行为窗口外实时信号，行内含佣金/净值）。";
-        }
-        // 最后一笔交易记录的净值与累计盈利率按实时股价重算
-        var lastRow = tb2.lastElementChild;
-        if (lastRow && data.currentValue != null) {
-          var cells = lastRow.children;
-          if (cells.length >= 7) {
-            cells[5].innerHTML = data.currentValue.toLocaleString() + ' <span style="color:#d9772e;font-size:0.7rem;">(实时)</span>';
-            var cum = data.currentCumReturn;
-            cells[6].innerHTML = '<span style="color:' + (cum >= 0 ? up : down) + ';font-weight:600;">' + (cum >= 0 ? '+' : '') + cum.toFixed(2) + '%</span>';
-          }
         }
         btn.textContent = "\u5df2\u66f4\u65b0 \u2713";
         setTimeout(function() { btn.textContent = "\u66f4\u65b0\u6570\u636e"; }, 2000);
