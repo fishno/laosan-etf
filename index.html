@@ -237,6 +237,11 @@
           <div class="m-value" id="last-trade-code" style="font-size:1.1rem;">--</div>
           <div class="m-sub" id="last-trade-entrysub">—</div>
         </div>
+        <div class="metric-card neutral" id="last-trade-nav">
+          <div class="m-label">当前净值 / 累计盈利率</div>
+          <div class="m-value" id="last-trade-navvalue" style="font-size:1.1rem;">--</div>
+          <div class="m-sub" id="last-trade-navsub">等待数据…</div>
+        </div>
       </div>
     </section>
 
@@ -891,6 +896,11 @@
       });
     }
 
+    // 当前实时净值与累计盈利率(基于实时更新的股价)
+    var curPx = wallet.code === "780" ? c780[li] : (wallet.code === "398" ? c398[li] : 0);
+    var curValue = wallet.cash + wallet.shares * curPx;
+    var curCum = (curValue / 100000 - 1) * 100;
+
     return {
       success: true, date: dates[li], holding: h,
       close780: Math.round(c780[li] * 1000) / 1000,
@@ -911,6 +921,12 @@
       intraday: intraday, rtDiag: rtDiag,
       windowStart: dates[S],
       trades: tradeLog,
+      walletCash: Math.round(wallet.cash * 100) / 100,
+      walletShares: wallet.shares,
+      walletCode: wallet.code,
+      currentPrice: Math.round(curPx * 10000) / 10000,
+      currentValue: Math.round(curValue),
+      currentCumReturn: Math.round(curCum * 100) / 100,
     };
   }
 
@@ -1011,6 +1027,15 @@
           ltsEl.textContent = "\u5f53\u524d\u7a7a\u4ed3\uff0c\u65e0\u6301\u4ed3\u6536\u76ca";
           lteEl.textContent = "\u2014";
         }
+        // 当前净值与累计盈利率(基于实时股价)
+        var ltnEl = document.getElementById("last-trade-navvalue");
+        var ltnsEl = document.getElementById("last-trade-navsub");
+        if (ltnEl && data.currentValue != null) {
+          var cum = data.currentCumReturn;
+          ltnEl.textContent = data.currentValue.toLocaleString() + " \u5143";
+          ltnEl.style.color = cum >= 0 ? up : down;
+          ltnsEl.textContent = "\u7d2f\u8ba1\u76c8\u5229\u7387 " + (cum >= 0 ? "+" : "") + cum.toFixed(2) + "%\uff08\u57fa\u4e8e\u5b9e\u65f6\u80a1\u4ef7" + data.currentPrice + "\uff09";
+        }
         // 续接实时交易: 把回测窗口外的实时信号交易补进"交易记录"表(高亮, 防重复)
         var staticDates = trades.map(function(t){ return t.date; });
         var tb2 = document.getElementById("trades-body");
@@ -1038,6 +1063,16 @@
         if (appended > 0) {
           var tnote = document.querySelector("#trades p");
           if (tnote) tnote.innerHTML = "回测14次操作（总佣金322.60元）＋ 实时续接 " + appended + " 笔（高亮行为窗口外实时信号，行内含佣金/净值）。";
+        }
+        // 最后一笔交易记录的净值与累计盈利率按实时股价重算
+        var lastRow = tb2.lastElementChild;
+        if (lastRow && data.currentValue != null) {
+          var cells = lastRow.children;
+          if (cells.length >= 7) {
+            cells[5].innerHTML = data.currentValue.toLocaleString() + ' <span style="color:#d9772e;font-size:0.7rem;">(实时)</span>';
+            var cum = data.currentCumReturn;
+            cells[6].innerHTML = '<span style="color:' + (cum >= 0 ? up : down) + ';font-weight:600;">' + (cum >= 0 ? '+' : '') + cum.toFixed(2) + '%</span>';
+          }
         }
         btn.textContent = "\u5df2\u66f4\u65b0 \u2713";
         setTimeout(function() { btn.textContent = "\u66f4\u65b0\u6570\u636e"; }, 2000);
