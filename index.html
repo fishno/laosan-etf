@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>科技银行轮动策略 — 实时操作面板</title>
+  <title>老杨的科技银行轮动策略 — 实时操作面板</title>
   <style>
     :root {
       --bg: #fdf6ee;
@@ -200,7 +200,7 @@
 </head>
 <body>
   <nav class="topbar">
-    <div class="logo">ETF轮动策略D3</div>
+    <div class="logo">杨老三的轮动策略D3</div>
     <div class="nav-links">
       <a href="#signal">当前信号</a>
       <a href="#indicators">实时指标</a>
@@ -241,6 +241,93 @@
     </section>
 
     <!-- === 实时指标 === -->
+    <!-- === 回测表现 === -->
+    <section id="backtest" class="card">
+      <h2>回测表现（2023-01-01 至 2026-08-28）</h2>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="m-label">总收益率</div>
+          <div class="m-value">+134.4%</div>
+          <div class="m-sub">10万→21.37万</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="m-label">最大回撤</div>
+          <div class="m-value">-10.97%</div>
+          <div class="m-sub">10-09至10-14</div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">夏普比率</div>
+          <div class="m-value">2.72</div>
+          <div class="m-sub">年化</div>
+        </div>
+        <div class="metric-card neutral">
+          <div class="m-label">卡尔玛比率</div>
+          <div class="m-value">7.21</div>
+          <div class="m-sub">收益/回撤</div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card neutral">
+          <div class="m-label">操作次数</div>
+          <div class="m-value">14</div>
+          <div class="m-sub">含建仓+3次空仓</div>
+        </div>
+        <div class="metric-card neutral">
+          <div class="m-label">总佣金</div>
+          <div class="m-value">322.60</div>
+          <div class="m-sub">元</div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">超额收益</div>
+          <div class="m-value">+41.02%</div>
+          <div class="m-sub">vs买入持有780</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="m-label">回撤改善</div>
+          <div class="m-value">+13.41%</div>
+          <div class="m-sub">vs 780的-29.18%</div>
+        </div>
+      </div>
+
+
+      <div class="chart-figure">
+        <figcaption>累计净值曲线（橙=持780，深棕=持398，灰=空仓）</figcaption>
+        <div class="chart-container">
+          <div id="chart-nav" style="width:100%;height:400px;"></div>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- === 交易记录 === -->
+    <!-- === 月度收益(近一年) === -->
+    <section id="monthly" class="card">
+      <h2>月度收益（近一年）</h2>
+      <div class="chart-figure">
+        <figcaption>月度收益率 · 最近 12 个月</figcaption>
+        <div class="chart-container">
+          <div id="chart-monthly" style="width:100%;height:340px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === 年度战绩 === -->
+    <section id="yearly" class="card">
+      <h2>年度战绩</h2>
+      <p style="font-size:0.85rem;color:#8a7765;margin-bottom:0.85rem;">自 2023-01-01 起 · 相对沪深300</p>
+      <div class="table-wrap">
+        <table id="yearly-table">
+          <thead>
+            <tr><th>年份</th><th>策略收益</th><th>沪深300</th><th>跑赢大盘</th></tr>
+          </thead>
+          <tbody id="yearly-body"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="indicators" class="card">
       <h2>实时指标监控</h2>
       <p>以下指标基于2026-08-14收盘数据计算，用于判断策略D3的信号状态。</p>
@@ -357,82 +444,9 @@
       </div>
     </section>
 
-    <!-- === 回测表现 === -->
-    <section id="backtest" class="card">
-      <h2>回测表现（2025-08-15 至 2026-08-14）</h2>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="m-label">总收益率</div>
-          <div class="m-value">+134.4%</div>
-          <div class="m-sub">10万→21.37万</div>
-        </div>
-        <div class="metric-card danger">
-          <div class="m-label">最大回撤</div>
-          <div class="m-value">-10.97%</div>
-          <div class="m-sub">10-09至10-14</div>
-        </div>
-        <div class="metric-card">
-          <div class="m-label">夏普比率</div>
-          <div class="m-value">2.72</div>
-          <div class="m-sub">年化</div>
-        </div>
-        <div class="metric-card neutral">
-          <div class="m-label">卡尔玛比率</div>
-          <div class="m-value">7.21</div>
-          <div class="m-sub">收益/回撤</div>
-        </div>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card neutral">
-          <div class="m-label">操作次数</div>
-          <div class="m-value">14</div>
-          <div class="m-sub">含建仓+3次空仓</div>
-        </div>
-        <div class="metric-card neutral">
-          <div class="m-label">总佣金</div>
-          <div class="m-value">322.60</div>
-          <div class="m-sub">元</div>
-        </div>
-        <div class="metric-card">
-          <div class="m-label">超额收益</div>
-          <div class="m-value">+41.02%</div>
-          <div class="m-sub">vs买入持有780</div>
-        </div>
-        <div class="metric-card danger">
-          <div class="m-label">回撤改善</div>
-          <div class="m-value">+13.41%</div>
-          <div class="m-sub">vs 780的-29.18%</div>
-        </div>
-      </div>
-
-      <div class="chart-figure">
-        <figcaption>月度收益率</figcaption>
-        <div class="chart-container">
-          <div id="chart-monthly" style="width:100%;height:340px;"></div>
-        </div>
-      </div>
-
-      <div class="chart-figure">
-        <figcaption>累计净值曲线（橙=持780，深棕=持398，灰=空仓）</figcaption>
-        <div class="chart-container">
-          <div id="chart-nav" style="width:100%;height:400px;"></div>
-        </div>
-      </div>
-
-      <div class="chart-figure">
-        <figcaption>回撤对比：策略D3 vs 买入持有780</figcaption>
-        <div class="chart-container">
-          <div id="chart-drawdown" style="width:100%;height:360px;"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- === 交易记录 === -->
     <section id="trades" class="card">
       <h2>交易记录</h2>
-      <p>全年14次操作（含初始建仓、3次空仓避险），总佣金322.60元。</p>
+      <p id="trades-note">全年14次操作（含初始建仓、3次空仓避险），总佣金322.60元。</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -497,9 +511,9 @@
       segStart = i;
     }
   }
-  // 买卖点标记: 基于回测交易流水(建仓/换仓/清仓)
+  // 买卖点标记: 已隐藏(曲线只保留"终值"), 如需恢复请重新启用下方循环与 markPoint 的 mp
   var mp = [];
-  trades.forEach(function(t){
+  if (false) trades.forEach(function(t){
     var isBuy780 = (t.action === '建仓780' || t.action === '清仓→780' || t.action === '398→780');
     var isBuy398 = (t.action === '780→398' || t.action === '清仓→398');
     var isCash = (t.action === '398→清仓' || t.action === '780→清仓');
@@ -513,25 +527,9 @@
     grid: { left:'10%',right:'5%',top:'8%',bottom:'15%' },
     xAxis: { type:'category', data:allDates, axisLabel:{color:muted,fontSize:10,interval:Math.floor(allDates.length/8)}, axisLine:{lineStyle:{color:rule}}, axisTick:{show:false} },
     yAxis: { type:'value', name:'净值', axisLabel:{color:muted,fontSize:11,formatter:function(v){return (v/10000).toFixed(0)+'万';}}, splitLine:{lineStyle:{color:rule,type:'dashed'}}, axisLine:{show:false} },
-    series: [{ type:'line', data:allValues, smooth:0.1, symbol:'none', lineStyle:{color:accent,width:2}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(217,119,46,0.15)'},{offset:1,color:'rgba(217,119,46,0)'}]}}, markArea:{silent:true,data:markAreas}, markPoint:{symbol:'pin',symbolSize:46,data:mp.concat([{coord:[allDates[allDates.length-1],allValues[allDates.length-1]],value:'终值',itemStyle:{color:accent},label:{color:'#fff',fontSize:10}}])} }]
+    series: [{ type:'line', data:allValues, smooth:0.1, symbol:'none', lineStyle:{color:accent,width:2}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(217,119,46,0.15)'},{offset:1,color:'rgba(217,119,46,0)'}]}}, markArea:{silent:true,data:markAreas}, markPoint:{symbol:'pin',symbolSize:46,data:[{coord:[allDates[allDates.length-1],allValues[allDates.length-1]],value:'终值',itemStyle:{color:accent},label:{color:'#fff',fontSize:10}}]} }]
   });
   window.addEventListener('resize', function(){c2.resize();});
-
-  // === Chart 3: Drawdown ===
-  var c3 = echarts.init(document.getElementById('chart-drawdown'), null, {renderer:'svg'});
-  c3.setOption({
-    animation: false,
-    tooltip: { trigger:'axis', appendToBody:true, formatter: function(p){ var html=p[0].axisValue+'<br/>'; p.forEach(function(x){ var c = down; html+=x.marker+x.seriesName+': <span style="color:'+c+';font-weight:700;">'+x.value+'%</span><br/>'; }); return html; } },
-    legend: { data:['策略D3回撤','买入持有780回撤'], top:5, textStyle:{color:muted,fontSize:12}, itemWidth:14, itemHeight:10 },
-    grid: { left:'8%',right:'5%',top:'15%',bottom:'15%' },
-    xAxis: { type:'category', data:allDates, axisLabel:{color:muted,fontSize:10,interval:Math.floor(allDates.length/8)}, axisLine:{lineStyle:{color:rule}}, axisTick:{show:false} },
-    yAxis: { type:'value', name:'回撤', min:-32, max:2, axisLabel:{color:muted,fontSize:11,formatter:'{value}%'}, splitLine:{lineStyle:{color:rule,type:'dashed'}}, axisLine:{show:false} },
-    series: [
-      { name:'策略D3回撤', type:'line', data:allDD, symbol:'none', smooth:0.1, lineStyle:{color:accent,width:2}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(217,119,46,0)'},{offset:1,color:'rgba(217,119,46,0.2)'}]}}, markPoint:{symbol:'pin',symbolSize:45,data:[{coord:['2025-10-14',-10.97],value:'最大回撤\n-10.97%',itemStyle:{color:accent2},label:{color:'#fff',fontSize:9,lineHeight:12}}]}, markLine:{silent:true,symbol:'none',lineStyle:{color:accent2,type:'dashed',width:1},data:[{yAxis:-10.97,label:{formatter:'策略D3最大回撤 -10.97%',color:accent2,fontSize:10}}]} },
-      { name:'买入持有780回撤', type:'line', data:bh780DD, symbol:'none', smooth:0.1, lineStyle:{color:accent2,width:1.5,type:'dashed'}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(180,83,9,0)'},{offset:1,color:'rgba(180,83,9,0.1)'}]}}, markLine:{silent:true,symbol:'none',lineStyle:{color:accent2,type:'dotted',width:1},data:[{yAxis:-29.18,label:{formatter:'买入持有 -29.18%',color:accent2,fontSize:10}}]} }
-    ]
-  });
-  window.addEventListener('resize', function(){c3.resize();});
 
   // === Trades Table ===
   var tb = document.getElementById('trades-body');
@@ -552,19 +550,27 @@
 // 数据获取: 腾讯前复权(主) + 东方财富前复权(备), 双源自动切换
 // ============================================================
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-const DATA_BEG = "2024-01-01";   // RSI/MA全量预热起点(回测共识口径)
-const WINDOW_START = "2025-08-15"; // 策略状态机窗口起点(与回测一致)
+const DATA_BEG = "2022-07-01";   // RSI/MA全量预热起点(回测共识口径, 2023-01-01 回测需前置预热)
+const WINDOW_START = "2023-01-01";  // 策略状态机窗口起点(与回测一致)
 
 async function fetchTx(code) {
   const end = new Date().toISOString().slice(0, 10);
-  const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${DATA_BEG},${end},800,qfq`;
-  const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
-  if (!res.ok) throw new Error("腾讯源 HTTP " + res.status);
-  const json = await res.json();
-  const d = json && json.data && json.data[code];
-  const arr = d && (d.qfqday || d.day);
-  if (!arr || !arr.length) throw new Error("腾讯源无K线数据");
-  return arr.map(k => ({ date: k[0], close: parseFloat(k[2]) }));
+  // 腾讯单请求会截断(约 640-1000 根), 分段拼接保证 2022-07 起全量
+  const SEGS = [["2022-07-01", "2023-12-31"], ["2024-01-01", "2025-06-30"], ["2025-07-01", end]];
+  const map = {};
+  for (const [b, e] of SEGS) {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${b},${e},800,qfq`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const d = json && json.data && json.data[code];
+    const arr = d && (d.qfqday || d.day);
+    if (!arr || !arr.length) continue;
+    for (const k of arr) map[k[0]] = { date: k[0], close: parseFloat(k[2]) };
+  }
+  const out = Object.keys(map).sort().map(k => map[k]);
+  if (!out.length) throw new Error("empty");
+  return out;
 }
 
 async function fetchEm(secid) {
@@ -697,9 +703,10 @@ function calcDD(p) { // 全历史高点回撤(2024-01-01起)
 // ============================================================
 async function computeData(wantDebug) {
   try {
-    const [d780raw, d398raw] = await Promise.all([
+    const [d780raw, d398raw, d300raw] = await Promise.all([
       getKlines("sz159780", "0.159780", "159780"),
       getKlines("sh601398", "0.601398", "601398"),
+      getKlines("sh000300", "1.000300", "沪深300"),
     ]);
     let d780 = d780raw, d398 = d398raw;
 
@@ -945,10 +952,37 @@ async function computeData(wantDebug) {
       if (!monthMap[mk]) monthMap[mk] = { first: navValues[i], last: navValues[i] };
       monthMap[mk].last = navValues[i];
     }
-    const monthlyReturns = Object.keys(monthMap).sort().map(mk => ({
+    const monthlyAll = Object.keys(monthMap).sort().map(mk => ({
       month: mk,
       return: Math.round((monthMap[mk].last / monthMap[mk].first - 1) * 10000) / 100
     }));
+    const monthlyReturns = monthlyAll.slice(-12);   // 月度收益仅展示近一年
+
+    // 年度收益率(按自然年, 年末净值 / 年初净值 - 1)
+    const yrMap = {};
+    for (let i = 0; i < navDates.length; i++) {
+      const yk = navDates[i].slice(0, 4);
+      if (!yrMap[yk]) yrMap[yk] = { first: navValues[i], last: navValues[i] };
+      yrMap[yk].last = navValues[i];
+    }
+    const yearlyReturns = Object.keys(yrMap).sort().map(yk => ({
+      year: yk,
+      return: Math.round((yrMap[yk].last / yrMap[yk].first - 1) * 10000) / 100
+    }));
+    // 沪深300 年度收益(窗口起点对齐, 用于"跑赢大盘"对比)
+    const hs300Yearly = [];
+    try {
+      const hm = {};
+      for (const b of (d300raw || [])) {
+        if (b.date < dates[S]) continue;
+        const yk = b.date.slice(0, 4);
+        if (!hm[yk]) hm[yk] = { first: b.close, last: b.close };
+        hm[yk].last = b.close;
+      }
+      for (const yk of Object.keys(hm).sort()) {
+        hs300Yearly.push({ year: yk, return: Math.round((hm[yk].last / hm[yk].first - 1) * 10000) / 100 });
+      }
+    } catch (e) { }
 
     const result = {
       success: true, date: dates[li], holding: h,
@@ -985,6 +1019,8 @@ async function computeData(wantDebug) {
         finalValue: finalValue,
       },
       monthlyReturns: monthlyReturns,
+      yearlyReturns: yearlyReturns,
+      hs300Yearly: hs300Yearly,
       windowStart: dates[S],
       trades: tradeLog,
     };
@@ -1045,6 +1081,8 @@ async function handleDiag() {
             btCards[3].querySelector(".m-value").textContent = bt.calmar.toFixed(2);
             btCards[3].querySelector(".m-sub").textContent = "收益/回撤";
             btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
+            var cashN = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
+            btCards[4].querySelector(".m-sub").textContent = "\u542b\u5efa\u4ed3+" + cashN + "\u6b21\u7a7a\u4ed3";
             btCards[5].querySelector(".m-value").textContent = bt.totalComm.toFixed(2);
             btCards[6].querySelector(".m-value").textContent = (bt.excessReturn >= 0 ? "+" : "") + bt.excessReturn.toFixed(2) + "%";
             btCards[6].querySelector(".m-sub").textContent = "vs买入持有780(" + (bt.bhReturn >= 0 ? "+" : "") + bt.bhReturn.toFixed(2) + "%)";
@@ -1052,7 +1090,26 @@ async function handleDiag() {
             btCards[7].querySelector(".m-sub").textContent = "vs 780的" + bt.bhMaxDD.toFixed(2) + "%";
           }
           var btTitle = document.querySelector("#backtest h2");
-          if (btTitle) btTitle.textContent = "回测表现（2025-08-15 至 " + data.date + "）";
+          if (btTitle) btTitle.textContent = "回测表现（2023-01-01 至 " + data.date + "）";
+
+          // === 年度战绩(策略 vs 沪深300) ===
+          var yb = document.getElementById("yearly-body");
+          if (yb && data.yearlyReturns && data.yearlyReturns.length) {
+            yb.innerHTML = "";
+            var hsMap = {};
+            (data.hs300Yearly || []).forEach(function(x){ hsMap[x.year] = x.return; });
+            data.yearlyReturns.forEach(function(y){
+              var hs = hsMap[y.year];
+              var extra = (hs === undefined) ? null : (y.return - hs);
+              var tr = document.createElement("tr");
+              tr.innerHTML = '<td class="mono">' + y.year + ' \u5e74</td>' +
+                '<td class="mono" style="color:' + (y.return >= 0 ? up : down) + ';font-weight:600;">' + (y.return >= 0 ? '+' : '') + y.return.toFixed(2) + '%</td>' +
+                '<td class="mono">' + (hs === undefined ? '-' : ((hs >= 0 ? '+' : '') + hs.toFixed(2) + '%')) + '</td>' +
+                '<td class="mono" style="color:' + (extra === null ? muted : (extra >= 0 ? up : down)) + ';font-weight:600;">' +
+                (extra === null ? '-' : ((extra >= 0 ? '\u8dd1\u8d62 ' : '\u8dd1\u8f93 ') + Math.abs(extra).toFixed(2) + 'pp')) + '</td>';
+              yb.appendChild(tr);
+            });
+          }
         }
         document.getElementById("update-time").textContent = "\u6570\u636e: " + data.date + (data.intraday ? "\uff08\u76d8\u4e2d\u5b9e\u65f6\uff09" : "");
         document.getElementById("signal-action").textContent = data.actionText;
@@ -1110,8 +1167,8 @@ async function handleDiag() {
             }
           }
           // 买卖点标记(实时交易流水)
-          var navMp = [];
-          (data.trades || []).forEach(function(t){
+          var navMp = [];   // 买卖点已隐藏, 曲线只标"终值"
+          if (false) (data.trades || []).forEach(function(t){
             var isBuy780 = (t.action === 'CASH→780' || t.action === '398→780');
             var isBuy398 = (t.action === '780→398' || t.action === 'CASH→398');
             var isCash = (t.action === '398→CASH' || t.action === '780→CASH');
@@ -1126,20 +1183,11 @@ async function handleDiag() {
             series: [{
               data: nav.values,
               markArea: { data: navMarkAreas },
-              markPoint: { data: navMp.concat([{coord:[lastDate, lastVal], value:'终值', itemStyle:{color:accent}, label:{color:'#fff',fontSize:10}}]) }
+              markPoint: { data: [{coord:[lastDate, lastVal], value:'终值', itemStyle:{color:accent}, label:{color:'#fff',fontSize:10}}] }
             }]
           });
-          // 回撤对比图
-          var bt2 = data.backtest || {};
-          c3.setOption({
-            xAxis: { data: nav.dates },
-            series: [
-              { data: nav.dd, markPoint: { data: [{coord:[bt2.maxDDDate, bt2.maxDD], value:'最大回撤\n' + bt2.maxDD.toFixed(2) + '%', itemStyle:{color:accent2}, label:{color:'#fff',fontSize:9,lineHeight:12}}] }, markLine: { silent:true, symbol:'none', lineStyle:{color:accent2,type:'dashed',width:1}, data:[{yAxis: bt2.maxDD, label:{formatter:'策略D3最大回撤 ' + bt2.maxDD.toFixed(2) + '%', color:accent2, fontSize:10}}] } },
-              { data: nav.bhDD, markLine: { silent:true, symbol:'none', lineStyle:{color:accent2,type:'dotted',width:1}, data:[{yAxis: bt2.bhMaxDD, label:{formatter:'买入持有 ' + bt2.bhMaxDD.toFixed(2) + '%', color:accent2, fontSize:10}}] } }
-            ]
-          });
         }
-        // 当前持仓买入点已在净值曲线实时更新中标注(见上方 navMp)
+        // 净值曲线仅标注终值(买卖点标记已按需求移除)
         var tbody = document.querySelector(".recent-table tbody");
         if (tbody) {
           tbody.innerHTML = "";
@@ -1191,8 +1239,9 @@ async function handleDiag() {
         // === 更新交易记录表(实时回测, 最后一笔净值随实时股价更新) ===
         var tb2 = document.getElementById("trades-body");
         if (data.trades && data.trades.length > 0) {
+          var shown = data.trades.slice(-30);   // 仅展示最近 30 笔
           tb2.innerHTML = "";
-          data.trades.forEach(function(tt, idx) {
+          shown.forEach(function(tt, idx) {
             var parts = tt.action.split("\u2192");
             var to = parts[1];
             var isCash = to === "CASH";
@@ -1201,7 +1250,7 @@ async function handleDiag() {
             var color = isCash ? "#8a7765" : (to === "398" ? accent2 : accent);
             var tr = document.createElement("tr");
             // 最后一笔交易: 若当前持仓, 净值/累计收益率用实时股价重算
-            var isLast = idx === data.trades.length - 1;
+            var isLast = idx === shown.length - 1;
             var value = tt.value;
             if (isLast && data.holding !== "CASH" && data.nav && data.nav.values && data.nav.values.length > 0) {
               value = data.nav.values[data.nav.values.length - 1];
@@ -1216,7 +1265,10 @@ async function handleDiag() {
             tb2.appendChild(tr);
           });
           var tnote2 = document.querySelector("#trades p");
-          if (tnote2) tnote2.innerHTML = "实时回测" + data.backtest.tradeCount + "次操作（总佣金" + data.backtest.totalComm.toFixed(2) + "元），净值/累计盈利率随实时行情更新。";
+          if (tnote2) {
+            var cashCnt = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
+            tnote2.innerHTML = "2023-01-01 \u81f3\u4eca\u5171 " + data.backtest.tradeCount + " \u6b21\u64cd\u4f5c\uff08\u542b\u521d\u59cb\u5efa\u4ed3\u3001" + cashCnt + " \u6b21\u7a7a\u4ed3\u907f\u9669\uff09\uff0c\u603b\u4f63\u91d1 " + data.backtest.totalComm.toFixed(2) + " \u5143\uff0c\u51c0\u503c/\u7d2f\u8ba1\u76c8\u5229\u7387\u968f\u5b9e\u65f6\u884c\u60c5\u66f4\u65b0\u3002\u4e0b\u8868\u4e3a\u6700\u8fd1 " + shown.length + " \u7b14\u3002";
+          }
         }
         btn.textContent = "\u5df2\u66f4\u65b0 \u2713";
         setTimeout(function() { btn.textContent = "\u66f4\u65b0\u6570\u636e"; }, 2000);
