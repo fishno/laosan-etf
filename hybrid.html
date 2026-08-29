@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#d9772e">
+<title>杨老三的混合策略 — 新高牛市开关</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{--bg:#fdf6ee;--bg2:#fffaf4;--ink:#2b2018;--muted:#8a7765;--rule:#efe2d4;--accent:#d9772e;--accent-light:#fbe6d4;--accent2:#b45309;--danger:#c0392b;--danger-light:#fbeae8;--up:#d63031;--down:#1f9d55;--font:'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;--max:1000px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.6}
+  header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--rule);backdrop-filter:blur(6px)}
+  .bar{max-width:var(--max);margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-size:17px;font-weight:600;color:var(--accent)}
+  .tag{font-size:12px;color:var(--muted)}
+  nav{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap}
+  nav a{font-size:13px;color:var(--ink);text-decoration:none;border-bottom:2px solid transparent;padding:2px 0}
+  nav a:hover{color:var(--accent);border-color:var(--accent)}
+  .wrap{max-width:var(--max);margin:0 auto;padding:20px}
+  .card{background:var(--bg2);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+  .card h2{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:720px){.g4{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
+  .m{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
+  .m-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .m-value{font-size:22px;font-weight:600}
+  .m-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .badge{display:inline-block;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600}
+  .b-on{background:#fbe6d4;color:#b45309}
+  .b-off{background:#fbeae8;color:#c0392b}
+  .b-hold{background:#eaf3de;color:#3b6d11}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:500;font-size:12px}
+  .up{color:var(--up)}.down{color:var(--down)}
+  .chart{width:100%;height:400px}
+  .rule-box{background:var(--accent-light);border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:12px}
+  .rule-box b{color:var(--accent2)}
+  ul{padding-left:20px;font-size:13px}
+  li{margin-bottom:5px}
+  .warn{background:var(--danger-light);border-left:4px solid var(--danger);padding:10px 14px;border-radius:8px;font-size:12px;margin-top:10px}
+  .foot{color:var(--muted);font-size:12px;padding:6px 0 20px}
+  .load{text-align:center;padding:60px;color:var(--muted)}
+  @media(max-width:640px){.chart{height:300px}table{font-size:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo">杨老三的混合策略</div>
+    <div class="tag">D3 防守 + 近250日新高牛市开关</div>
+    <nav>
+      <a href="#signal">信号</a>
+      <a href="#backtest">回测</a>
+      <a href="#yearly">年度战绩</a>
+      <a href="#nav">净值</a>
+      <a href="#regime">信号可视化</a>
+      <a href="#trades">交易记录</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="load" id="loading">正在拉取行情数据…</div>
+  <div id="main" style="display:none">
+
+  <section id="signal" class="card">
+    <h2><span class="dot"></span>当前信号（实时）</h2>
+    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）；否则 → 维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或MA20恢复回780）。</div>
+    <div class="grid g4">
+      <div class="m"><div class="m-label">牛市开关</div><div><span class="badge" id="bullBadge">--</span></div><div class="m-sub" id="bullSub"></div></div>
+      <div class="m"><div class="m-label">当前持仓</div><div class="m-value" id="holdNow">--</div><div class="m-sub" id="holdSub"></div></div>
+      <div class="m"><div class="m-label">159780 距250日高点</div><div class="m-value" id="distHigh">--</div><div class="m-sub">触发线 = 0.95 × 250日高</div></div>
+      <div class="m"><div class="m-label">当前资产 / 累计收益</div><div class="m-value" id="curNav">--</div><div class="m-sub" id="curRet"></div></div>
+    </div>
+  </section>
+
+  <section id="backtest" class="card">
+    <h2><span class="dot"></span>回测表现（2023-01-01 至今，万1佣金，10万本金）</h2>
+    <div class="grid g2">
+      <div class="m">
+        <div class="m-label">混合策略（D3 + 牛市开关）</div>
+        <div class="grid g4" style="gap:8px">
+          <div><div class="m-label">总收益</div><div class="m-value up" id="hyTotal">--</div></div>
+          <div><div class="m-label">年化</div><div class="m-value" id="hyCagr">--</div></div>
+          <div><div class="m-label">最大回撤</div><div class="m-value down" id="hyMdd">--</div></div>
+          <div><div class="m-label">夏普</div><div class="m-value" id="hySharpe">--</div></div>
+        </div>
+        <div class="m-sub" id="hyExtra"></div>
+      </div>
+      <div class="m">
+        <div class="m-label">D3 现状（对照组）</div>
+        <div class="grid g4" style="gap:8px">
+          <div><div class="m-label">总收益</div><div class="m-value" id="d3Total">--</div></div>
+          <div><div class="m-label">年化</div><div class="m-value" id="d3Cagr">--</div></div>
+          <div><div class="m-label">最大回撤</div><div class="m-value" id="d3Mdd">--</div></div>
+          <div><div class="m-label">夏普</div><div class="m-value" id="d3Sharpe">--</div></div>
+        </div>
+        <div class="m-sub" id="d3Extra"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="yearly" class="card">
+    <h2><span class="dot"></span>年度战绩（混合 vs D3）</h2>
+    <div style="overflow-x:auto"><table id="yearTable"></table></div>
+  </section>
+
+  <section id="nav" class="card">
+    <h2><span class="dot"></span>累计净值曲线（10万起点）</h2>
+    <div id="navChart" class="chart"></div>
+  </section>
+
+  <section id="regime" class="card">
+    <h2><span class="dot"></span>信号可视化：价格 + 250日高点 + 牛市开关</h2>
+    <div id="regimeChart" class="chart"></div>
+    <p class="foot" id="regimeStat"></p>
+  </section>
+
+  <section id="trades" class="card">
+    <h2><span class="dot"></span>交易记录（最近 30 笔）</h2>
+    <div style="overflow-x:auto"><table id="tradeTable"></table></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="dot"></span>策略说明与风险</h2>
+    <ul>
+      <li><b>牛市开关</b>：159780 收盘 ≥ 0.95 × 近250日最高收盘 → 满仓 780，吃单边主升浪（2025-08-13 首次触发，8-10月主升段）。</li>
+      <li><b>D3 防守</b>：开关关闭时完全按 D3 运行——780回撤&gt;10%且398五日涨&gt;0 切398；回撤&gt;12%且398五日≤0 空仓避险；RSI6&lt;25 或重回MA20上方 回780。</li>
+      <li><b>已验证</b>：回测 2023-01-01 至今 +476.3%（D3 +379.8%），最大回撤 -19.7% 与 D3 持平，2025 年 +50.8%（D3 +30.4%）；2023/2026 开关未触发，收益与 D3 完全一致。</li>
+      <li><b>风险</b>：最大敌人是"新高即崩"（2021 式行情）——接近新高时满仓，随后大跌可能来不及避险；参数基于 2023-2026 单窗口验证，仍需样本外检验。</li>
+    </ul>
+    <div class="warn">本页面基于历史数据回测，历史表现不代表未来收益。策略参数存在过拟合风险，回测未考虑滑点。本页面不构成投资建议。</div>
+  </section>
+
+  <div class="foot">数据源：腾讯财经前复权日线（东财备用，双源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍、空仓期无逆回购）。</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 数据获取 (与 index.html 同源同口径)
+// ============================================================
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+const DATA_BEG = "2022-07-01";
+const WINDOW_START = "2023-01-01";
+const BULL_PCT = 0.95;
+
+async function fetchTx(code) {
+  const end = new Date().toISOString().slice(0, 10);
+  const SEGS = [["2022-07-01", "2023-12-31"], ["2024-01-01", "2025-06-30"], ["2025-07-01", end]];
+  const map = {};
+  for (const [b, e] of SEGS) {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${b},${e},800,qfq`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const d = json && json.data && json.data[code];
+    const arr = d && (d.qfqday || d.day);
+    if (!arr || !arr.length) continue;
+    for (const k of arr) map[k[0]] = { date: k[0], close: parseFloat(k[2]) };
+  }
+  const out = Object.keys(map).sort().map(k => map[k]);
+  if (!out.length) throw new Error("empty");
+  return out;
+}
+
+async function fetchEm(secid) {
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}` +
+    `&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1` +
+    `&beg=${DATA_BEG.replace(/-/g, "")}&end=20991231`;
+  const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://quote.eastmoney.com/" } });
+  if (!res.ok) throw new Error("东财源 HTTP " + res.status);
+  const json = await res.json();
+  const klines = json && json.data && json.data.klines;
+  if (!klines || !klines.length) throw new Error("东财源无K线数据");
+  return klines.map(k => {
+    const p = k.split(",");
+    return { date: p[0], close: parseFloat(p[2]) };
+  });
+}
+
+async function getKlines(code, secid, label) {
+  const errors = [];
+  try { return await fetchTx(code); } catch (e) { errors.push("腾讯: " + e.message); }
+  try { return await fetchEm(secid); } catch (e) { errors.push("东财: " + e.message); }
+  throw new Error(label + " 双源获取失败 [" + errors.join(" | ") + "]");
+}
+
+async function fetchRealtime(code) {
+  const errors = [];
+  try {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (res.ok) {
+      const json = await res.json();
+      const node = json && json.data && json.data[code];
+      const arr = node && node.qt && node.qt[code];
+      if (arr && arr.length > 30 && parseFloat(arr[3]) > 0) {
+        return { price: parseFloat(arr[3]), volume: parseFloat(arr[6]) || 0, time: arr[30] || "", source: "分时" };
+      }
+      errors.push("分时: 无快照");
+    } else { errors.push("分时: HTTP " + res.status); }
+  } catch (e) { errors.push("分时: " + e.message); }
+  try {
+    const url = `https://qt.gtimg.cn/q=${code}`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const m = text.match(/v_\w+="([^"]*)"/);
+    if (!m) throw new Error("无行情数据");
+    const f = m[1].split("~");
+    if (parseFloat(f[3]) > 0) return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+    throw new Error("现价为0");
+  } catch (e) { errors.push("实时: " + e.message); }
+  throw new Error("实时行情失败 [" + errors.join(" | ") + "]");
+}
+
+function realtimeDate(ts) { return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8); }
+function isWeekday(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return day >= 1 && day <= 5;
+}
+function augmentDaily(klines, rt) {
+  if (!rt || !rt.price || !rt.time) return klines;
+  const last = klines[klines.length - 1];
+  const rtDate = realtimeDate(rt.time);
+  if (rtDate > last.date && isWeekday(rtDate) && rt.volume > 0) {
+    return [...klines, { date: rtDate, close: rt.price }];
+  }
+  return klines;
+}
+
+// ============================================================
+// 指标计算 (与回测完全一致)
+// ============================================================
+function calcRSI(p, n) {
+  const r = new Array(p.length).fill(null);
+  if (p.length < n + 1) return r;
+  let g = 0, l = 0;
+  for (let i = 1; i <= n; i++) { const c = p[i] - p[i - 1]; if (c >= 0) g += c; else l -= c; }
+  let ag = g / n, al = l / n;
+  r[n] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  for (let i = n + 1; i < p.length; i++) {
+    const c = p[i] - p[i - 1];
+    ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
+    al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
+    r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return r;
+}
+
+function calcMA(p, n) {
+  const m = new Array(p.length).fill(null);
+  let s = 0;
+  for (let i = 0; i < p.length; i++) {
+    s += p[i];
+    if (i >= n) s -= p[i - n];
+    if (i >= n - 1) m[i] = s / n;
+  }
+  return m;
+}
+
+function calcDD(p) {
+  const d = new Array(p.length).fill(0);
+  let mx = p[0];
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] > mx) mx = p[i];
+    d[i] = (p[i] - mx) / mx;
+  }
+  return d;
+}
+
+function rollingHigh(p, n) {
+  const out = new Array(p.length).fill(null);
+  for (let i = 0; i < p.length; i++) {
+    let mx = -Infinity;
+    for (let j = Math.max(0, i - n + 1); j <= i; j++) if (p[j] > mx) mx = p[j];
+    out[i] = mx;
+  }
+  return out;
+}
+
+// ============================================================
+// 主流程
+// ============================================================
+async function updateData() {
+  try {
+    const [d780raw, d398raw, d300raw] = await Promise.all([
+      getKlines("sz159780", "0.159780", "159780"),
+      getKlines("sh601398", "0.601398", "601398"),
+      getKlines("sh000300", "1.000300", "沪深300"),
+    ]);
+    let d780 = d780raw, d398 = d398raw;
+    try {
+      const [rt780, rt398] = await Promise.all([fetchRealtime("sz159780"), fetchRealtime("sh601398")]);
+      const a780 = augmentDaily(d780raw, rt780);
+      const a398 = augmentDaily(d398raw, rt398);
+      if (a780.length !== d780raw.length) d780 = a780;
+      if (a398.length !== d398raw.length) d398 = a398;
+    } catch (e) { /* 实时增强失败不影响主流程 */ }
+
+    const m780 = new Map(d780.map(x => [x.date, x.close]));
+    const m398 = new Map(d398.map(x => [x.date, x.close]));
+    const m300 = new Map(d300raw.map(x => [x.date, x.close]));
+    const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
+    if (dates.length < 100) throw new Error("对齐后交易日不足");
+    const c780 = dates.map(dd => m780.get(dd));
+    const c398 = dates.map(dd => m398.get(dd));
+    const c300 = dates.map(dd => m300.get(dd));
+    const N = dates.length;
+
+    const rsi6 = calcRSI(c780, 6);
+    const ma20 = calcMA(c780, 20);
+    const ma60 = calcMA(c780, 60);
+    const dd = calcDD(c780);
+    const r5 = new Array(N).fill(null);
+    for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+    const rh250 = rollingHigh(c780, 250);
+    const bull = [];
+    for (let i = 0; i < N; i++) bull.push(c780[i] >= BULL_PCT * rh250[i]);
+
+    const S = dates.findIndex(d => d >= WINDOW_START);
+    const sig = i => ({
+      sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
+      sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
+      bk: rsi6[i] !== null && rsi6[i] < 25,
+      d398: r5[i] !== null && r5[i] < -0.02,
+      aMA: ma20[i] !== null && c780[i] > ma20[i]
+    });
+
+    function d3Next(hold, s, p) {
+      if (hold === "780") {
+        if (s.sw && !p.sw) return "398";
+        if (s.sc && !p.sc) return "CASH";
+      } else if (hold === "398") {
+        if (s.bk && !p.bk) return "780";
+        if (s.d398 && !p.d398) return "CASH";
+      } else {
+        if (s.bk && !p.bk) return "780";
+        if (s.aMA && !p.aMA) return "780";
+        if (s.sw && !p.sw) return "398";
+      }
+      return hold;
+    }
+
+    function replay(useBull) {
+      let cash = 100000, shares = 0, hold = "CASH";
+      let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
+      const navs = [], holds = [], trades = [];
+      let totalComm = 0;
+      for (let i = S; i < N; i++) {
+        const s = sig(i);
+        let t;
+        if (useBull && bull[i]) t = "780";
+        else t = d3Next(hold, s, p);
+        if (t !== hold) {
+          let comm = 0;
+          if (hold !== "CASH") {
+            const sp = hold === "780" ? c780[i] : c398[i];
+            const g = shares * sp; const c = g * 0.0001; comm += c;
+            cash += g - c; shares = 0;
+          }
+          if (t !== "CASH") {
+            const bp = t === "780" ? c780[i] : c398[i];
+            const inv = cash * 0.9999; const c = cash * 0.0001; comm += c;
+            const sh = Math.floor(inv / bp / 100) * 100;
+            shares = sh; cash = cash - sh * bp - c;
+          }
+          totalComm += comm;
+          trades.push({ date: dates[i], from: hold, to: t, comm: Math.round(comm * 10) / 10 });
+          hold = t;
+        }
+        p = s;
+        const val = cash + shares * (hold === "780" ? c780[i] : (hold === "398" ? c398[i] : 0));
+        navs.push(val);
+        holds.push(hold);
+      }
+      return { navs, holds, trades, totalComm };
+    }
+
+    const hy = replay(true);
+    const d3 = replay(false);
+
+    function calcMetrics(navs) {
+      const T = navs.length;
+      const total = (navs[T - 1] / 100000 - 1) * 100;
+      const cagr = (Math.pow(navs[T - 1] / 100000, 252 / T) - 1) * 100;
+      let peak = navs[0], mdd = 0;
+      for (const n of navs) { if (n > peak) peak = n; mdd = Math.min(mdd, (n - peak) / peak); }
+      let sum = 0;
+      for (let i = 1; i < T; i++) sum += navs[i] / navs[i - 1] - 1;
+      const mean = sum / (T - 1);
+      let vsum = 0;
+      for (let i = 1; i < T; i++) { const d = navs[i] / navs[i - 1] - 1 - mean; vsum += d * d; }
+      const std = Math.sqrt(vsum / (T - 1));
+      const sharpe = std > 0 ? mean / std * Math.sqrt(252) : 0;
+      return { total, cagr, mdd: mdd * 100, sharpe };
+    }
+
+    function yearly(dates2, navs) {
+      const lastBy = {};
+      for (let i = 0; i < dates2.length; i++) lastBy[dates2[i].slice(0, 4)] = navs[i];
+      const yrs = Object.keys(lastBy).sort();
+      const out = {};
+      let prev = null;
+      for (const y of yrs) {
+        out[y] = prev === null ? (lastBy[y] / navs[0] - 1) * 100 : (lastBy[y] / prev - 1) * 100;
+        prev = lastBy[y];
+      }
+      return out;
+    }
+
+    const winDates = dates.slice(S);
+    const hyM = calcMetrics(hy.navs);
+    const d3M = calcMetrics(d3.navs);
+    const hyY = yearly(winDates, hy.navs);
+    const d3Y = yearly(winDates, d3.navs);
+
+    // ---- 信号面板 ----
+    const li = N - 1;
+    const bullOn = bull[li];
+    const distPct = (c780[li] / rh250[li] - 1) * 100;
+    const trigLine = BULL_PCT * rh250[li];
+    document.getElementById("bullBadge").textContent = bullOn ? "牛市 ON → 满仓780" : "牛市 OFF → D3";
+    document.getElementById("bullBadge").className = "badge " + (bullOn ? "b-on" : "b-off");
+    document.getElementById("bullSub").textContent = "159780@" + c780[li].toFixed(3) + " | 触发线 " + trigLine.toFixed(3);
+    const holdName = { "780": "159780 科创创业50", "398": "601398 工商银行", "CASH": "空仓（现金）" };
+    document.getElementById("holdNow").textContent = holdName[hy.holds[hy.holds.length - 1]];
+    document.getElementById("holdSub").textContent = "数据至 " + dates[li];
+    document.getElementById("distHigh").textContent = (distPct >= 0 ? "+" : "") + distPct.toFixed(2) + "%";
+    document.getElementById("distHigh").className = "m-value " + (distPct >= 0 ? "up" : "down");
+    const curNav = hy.navs[hy.navs.length - 1];
+    document.getElementById("curNav").textContent = "¥" + curNav.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
+    document.getElementById("curRet").textContent = "累计 +" + ((curNav / 100000 - 1) * 100).toFixed(1) + "%";
+
+    // ---- 回测面板 ----
+    document.getElementById("hyTotal").textContent = "+" + hyM.total.toFixed(1) + "%";
+    document.getElementById("hyCagr").textContent = "+" + hyM.cagr.toFixed(1) + "%";
+    document.getElementById("hyMdd").textContent = hyM.mdd.toFixed(1) + "%";
+    document.getElementById("hySharpe").textContent = hyM.sharpe.toFixed(2);
+    document.getElementById("hyExtra").textContent = hy.trades.length + " 笔交易 | 佣金 ¥" + Math.round(hy.totalComm);
+    document.getElementById("d3Total").textContent = "+" + d3M.total.toFixed(1) + "%";
+    document.getElementById("d3Cagr").textContent = "+" + d3M.cagr.toFixed(1) + "%";
+    document.getElementById("d3Mdd").textContent = d3M.mdd.toFixed(1) + "%";
+    document.getElementById("d3Sharpe").textContent = d3M.sharpe.toFixed(2);
+    document.getElementById("d3Extra").textContent = d3.trades.length + " 笔交易 | 佣金 ¥" + Math.round(d3.totalComm);
+
+    // ---- 年度战绩 ----
+    const years = ["2023", "2024", "2025", "2026"];
+    let yh = "<tr><th>年份</th><th>混合策略</th><th>D3 现状</th><th>跑赢</th></tr>";
+    for (const y of years) {
+      const a = hyY[y] !== undefined ? hyY[y] : null;
+      const b = d3Y[y] !== undefined ? d3Y[y] : null;
+      const diff = (a !== null && b !== null) ? a - b : null;
+      const sign = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+      const cls = v => v >= 0 ? "up" : "down";
+      yh += "<tr><td>" + y + "</td>" +
+        "<td class='" + (a !== null ? cls(a) : "") + "'>" + (a !== null ? sign(a) : "-") + "</td>" +
+        "<td class='" + (b !== null ? cls(b) : "") + "'>" + (b !== null ? sign(b) : "-") + "</td>" +
+        "<td class='" + (diff !== null ? cls(diff) : "") + "'>" + (diff !== null ? sign(diff) : "-") + "</td></tr>";
+    }
+    document.getElementById("yearTable").innerHTML = yh;
+
+    // ---- 净值曲线 ----
+    const hyNav = hy.navs.map(v => +(v / 100000).toFixed(4));
+    const d3Nav = d3.navs.map(v => +(v / 100000).toFixed(4));
+    const hs300Base = c300[S];
+    const hsNav = winDates.map((d, i) => +(c300[S + i] / hs300Base).toFixed(4));
+    echarts.init(document.getElementById("navChart")).setOption({
+      tooltip: { trigger: "axis", valueFormatter: v => "¥" + Math.round(v * 100000).toLocaleString() },
+      legend: { top: 0, data: ["混合策略", "D3 现状", "沪深300"] },
+      grid: { left: 60, right: 20, top: 36, bottom: 40 },
+      xAxis: { type: "category", data: winDates },
+      yAxis: { type: "value", scale: true, axisLabel: { formatter: v => (v * 100000).toLocaleString() } },
+      series: [
+        { name: "混合策略", type: "line", showSymbol: false, lineStyle: { width: 2, color: "#d9772e" }, itemStyle: { color: "#d9772e" }, data: hyNav },
+        { name: "D3 现状", type: "line", showSymbol: false, lineStyle: { width: 1.5, color: "#378ADD" }, itemStyle: { color: "#378ADD" }, data: d3Nav },
+        { name: "沪深300", type: "line", showSymbol: false, lineStyle: { width: 1.2, color: "#888780", type: "dashed" }, itemStyle: { color: "#888780" }, data: hsNav }
+      ]
+    });
+
+    // ---- 信号可视化 ----
+    const sigArr = [];
+    for (let i = S; i < N; i++) sigArr.push(bull[i] ? 1 : 0);
+    const p780 = c780.slice(S);
+    const p250 = rh250.slice(S);
+    const p60 = ma60.slice(S);
+    echarts.init(document.getElementById("regimeChart")).setOption({
+      tooltip: { trigger: "axis" },
+      legend: { top: 0, data: ["159780 收盘", "250日高点", "MA60", "牛市开关(满仓780)"] },
+      grid: [{ left: 60, right: 20, top: 40, height: "50%" }, { left: 60, right: 20, top: "76%", height: "14%" }],
+      xAxis: [
+        { type: "category", data: winDates, gridIndex: 0, axisLabel: { show: false } },
+        { type: "category", data: winDates, gridIndex: 1, axisLabel: { fontSize: 10 } }
+      ],
+      yAxis: [
+        { type: "value", gridIndex: 0, scale: true },
+        { type: "value", gridIndex: 1, min: 0, max: 1, interval: 1 }
+      ],
+      series: [
+        { name: "159780 收盘", type: "line", showSymbol: false, lineStyle: { width: 1.4, color: "#d9772e" }, itemStyle: { color: "#d9772e" }, data: p780 },
+        { name: "250日高点", type: "line", showSymbol: false, lineStyle: { type: "dashed", color: "#8a7765" }, itemStyle: { color: "#8a7765" }, data: p250 },
+        { name: "MA60", type: "line", showSymbol: false, lineStyle: { width: 1, color: "#378ADD" }, itemStyle: { color: "#378ADD" }, data: p60 },
+        { name: "牛市开关(满仓780)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, step: "end", lineStyle: { width: 0 }, itemStyle: { color: "#E24B4A" }, areaStyle: { color: "rgba(226,75,74,0.35)" }, data: sigArr }
+      ]
+    });
+    const on25 = sigArr.reduce((c, v, i) => c + (winDates[i].slice(0, 4) === "2025" && v === 1 ? 1 : 0), 0);
+    const tot25 = sigArr.reduce((c, v, i) => c + (winDates[i].slice(0, 4) === "2025" ? 1 : 0), 0);
+    const first25 = winDates.find((d, i) => d.slice(0, 4) === "2025" && sigArr[i] === 1);
+    document.getElementById("regimeStat").textContent = "2025 年牛市开关覆盖 " + on25 + "/" + tot25 + " 个交易日（" + (100 * on25 / Math.max(tot25, 1)).toFixed(0) + "%），首次触发 " + (first25 || "-") + "；2023/2026 未触发时段与纯 D3 收益一致。";
+
+    // ---- 交易记录 ----
+    const shown = hy.trades.slice(-30).reverse();
+    const act = t => {
+      const nm2 = { "780": "159780", "398": "601398", "CASH": "空仓" };
+      if (t.from === "CASH") return "<b class='up'>买入 " + nm2[t.to] + "</b>";
+      if (t.to === "CASH") return "<b class='down'>清仓 → 空仓</b>";
+      return "<b>" + nm2[t.from] + " → " + nm2[t.to] + "</b>";
+    };
+    const reason = t => {
+      if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
+      if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
+      if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
+      return "780回撤>12% 双跌避险 或 398五日跌>2%";
+    };
+    let th = "<tr><th>日期</th><th>动作</th><th>原因</th><th>佣金</th></tr>";
+    for (const t of shown) {
+      th += "<tr><td>" + t.date + "</td><td>" + act(t) + "</td><td>" + reason(t) + "</td><td>¥" + t.comm.toFixed(1) + "</td></tr>";
+    }
+    document.getElementById("tradeTable").innerHTML = th;
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("main").style.display = "block";
+  } catch (e) {
+    document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", updateData);
+</script>
+</body>
+</html>
