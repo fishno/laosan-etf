@@ -17,6 +17,8 @@
   nav{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap}
   nav a{font-size:13px;color:var(--ink);text-decoration:none;border-bottom:2px solid transparent;padding:2px 0}
   nav a:hover{color:var(--accent);border-color:var(--accent)}
+  .refresh{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:var(--font);margin-left:8px}
+  .refresh:hover{background:var(--accent2)}
   .wrap{max-width:var(--max);margin:0 auto;padding:20px}
   .card{background:var(--bg2);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;margin-bottom:16px}
   .card h2{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
@@ -65,6 +67,7 @@
       <a href="#regime">信号可视化</a>
       <a href="#trades">交易记录</a>
     </nav>
+    <button class="refresh" onclick="location.reload()">更新数据</button>
   </div>
 </header>
 
@@ -116,7 +119,7 @@
   </section>
 
   <section id="yearly" class="card">
-    <h2><span class="dot"></span>年度战绩（混合 vs D3）</h2>
+    <h2><span class="dot"></span>年度战绩（混合 vs 沪深300）</h2>
     <div style="overflow-x:auto"><table id="yearTable"></table></div>
   </section>
 
@@ -438,6 +441,9 @@ async function updateData() {
     const d3M = calcMetrics(d3.navs);
     const hyY = yearly(winDates, hy.navs);
     const d3Y = yearly(winDates, d3.navs);
+    const hs300Base = c300[S];
+    const hsNav = winDates.map((d, i) => c300[S + i] / hs300Base);
+    const hsY = yearly(winDates, hsNav);
 
     // ---- 信号面板 ----
     const li = N - 1;
@@ -470,10 +476,10 @@ async function updateData() {
 
     // ---- 年度战绩 ----
     const years = ["2023", "2024", "2025", "2026"];
-    let yh = "<tr><th>年份</th><th>混合策略</th><th>D3 现状</th><th>跑赢</th></tr>";
+    let yh = "<tr><th>年份</th><th>混合策略</th><th>沪深300</th><th>跑赢</th></tr>";
     for (const y of years) {
       const a = hyY[y] !== undefined ? hyY[y] : null;
-      const b = d3Y[y] !== undefined ? d3Y[y] : null;
+      const b = hsY[y] !== undefined ? hsY[y] : null;
       const diff = (a !== null && b !== null) ? a - b : null;
       const sign = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
       const cls = v => v >= 0 ? "up" : "down";
@@ -506,8 +512,6 @@ async function updateData() {
     // ---- 净值曲线 ----
     const hyNav = hy.navs.map(v => +(v / 100000).toFixed(4));
     const d3Nav = d3.navs.map(v => +(v / 100000).toFixed(4));
-    const hs300Base = c300[S];
-    const hsNav = winDates.map((d, i) => +(c300[S + i] / hs300Base).toFixed(4));
     echarts.init(document.getElementById("navChart")).setOption({
       tooltip: { trigger: "axis", valueFormatter: v => "¥" + Math.round(v * 100000).toLocaleString() },
       legend: { top: 0, data: ["混合策略", "D3 现状", "沪深300"] },
