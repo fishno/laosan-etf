@@ -524,11 +524,12 @@ async function updateData() {
     // ---- 月度收益柱状图 ----
     echarts.init(document.getElementById("monthlyChart")).setOption({
       tooltip: { trigger: "axis", valueFormatter: v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%" },
-      grid: { left: 50, right: 20, top: 24, bottom: 40 },
+      grid: { left: 50, right: 20, top: 36, bottom: 40 },
       xAxis: { type: "category", data: monthly12.map(m => m.month.slice(2)), axisLabel: { interval: 0, fontSize: 10 } },
       yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
       series: [{
         type: "bar", barMaxWidth: 28,
+        label: { show: true, position: "top", fontSize: 10, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
         data: monthly12.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#d63031" : "#1f9d55" } }))
       }]
     });
