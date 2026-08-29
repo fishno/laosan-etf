@@ -59,6 +59,7 @@
     <nav>
       <a href="#signal">信号</a>
       <a href="#backtest">回测</a>
+      <a href="#monthly">月度</a>
       <a href="#yearly">年度战绩</a>
       <a href="#nav">净值</a>
       <a href="#regime">信号可视化</a>
@@ -106,6 +107,12 @@
         <div class="m-sub" id="d3Extra"></div>
       </div>
     </div>
+  </section>
+
+  <section id="monthly" class="card">
+    <h2><span class="dot"></span>月度收益（近一年，混合策略）</h2>
+    <div id="monthlyChart" class="chart" style="height:280px"></div>
+    <div class="foot" id="monthlyStat"></div>
   </section>
 
   <section id="yearly" class="card">
@@ -477,6 +484,20 @@ async function updateData() {
     }
     document.getElementById("yearTable").innerHTML = yh;
 
+    // ---- 月度收益(近一年) ----
+    const monMap = {};
+    for (let i = 0; i < winDates.length; i++) {
+      const mk = winDates[i].slice(0, 7);
+      if (!monMap[mk]) monMap[mk] = { first: hy.navs[i] };
+      monMap[mk].last = hy.navs[i];
+    }
+    const monKeys = Object.keys(monMap).sort();
+    const monthly12 = monKeys.slice(-12).map(k => ({ month: k, ret: (monMap[k].last / monMap[k].first - 1) * 100 }));
+    const firstNav12 = monMap[monKeys[monKeys.length - 12]].first;
+    const ret12m = (hy.navs[hy.navs.length - 1] / firstNav12 - 1) * 100;
+    const bestM = monthly12.reduce((a, b) => (b.ret > a.ret ? b : a));
+    const worstM = monthly12.reduce((a, b) => (b.ret < a.ret ? b : a));
+
     // 先显示主区再初始化图表(容器不可见时 ECharts 尺寸为 0, 坐标轴会渲染异常)
     document.getElementById("loading").style.display = "none";
     document.getElementById("main").style.display = "block";
@@ -499,6 +520,21 @@ async function updateData() {
         { name: "沪深300", type: "line", showSymbol: false, lineStyle: { width: 1.2, color: "#888780", type: "dashed" }, itemStyle: { color: "#888780" }, data: hsNav }
       ]
     });
+
+    // ---- 月度收益柱状图 ----
+    echarts.init(document.getElementById("monthlyChart")).setOption({
+      tooltip: { trigger: "axis", valueFormatter: v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%" },
+      grid: { left: 50, right: 20, top: 24, bottom: 40 },
+      xAxis: { type: "category", data: monthly12.map(m => m.month.slice(2)), axisLabel: { interval: 0, fontSize: 10 } },
+      yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
+      series: [{
+        type: "bar", barMaxWidth: 28,
+        data: monthly12.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#d63031" : "#1f9d55" } }))
+      }]
+    });
+    document.getElementById("monthlyStat").textContent = "近一年累计 " + (ret12m >= 0 ? "+" : "") + ret12m.toFixed(1) +
+      "% | 最好月份 " + bestM.month + " (" + (bestM.ret >= 0 ? "+" : "") + bestM.ret.toFixed(1) + "%) | 最差月份 " + worstM.month +
+      " (" + (worstM.ret >= 0 ? "+" : "") + worstM.ret.toFixed(1) + "%)";
 
     // ---- 信号可视化 ----
     const sigArr = [];
