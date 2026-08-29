@@ -35,6 +35,13 @@
   .b-on{background:#fbe6d4;color:#b45309}
   .b-off{background:#fbeae8;color:#c0392b}
   .b-hold{background:#eaf3de;color:#3b6d11}
+  .b-green{background:#eaf3de;color:#3b6d11}
+  .b-amber{background:#faeeda;color:#854f0b}
+  .b-red{background:#fcebeb;color:#a32d2d}
+  .bear-warn{display:flex;align-items:center;gap:14px;margin-top:14px;border:1px solid var(--rule);border-radius:12px;padding:14px 16px;background:#fff}
+  .bear-left{flex-shrink:0}
+  .bear-right{font-size:13px}
+  .bear-detail{color:var(--muted);font-size:12px;margin-top:2px}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
   th:first-child,td:first-child{text-align:left}
@@ -83,6 +90,13 @@
       <div class="m"><div class="m-label">当前持仓</div><div class="m-value" id="holdNow">--</div><div class="m-sub" id="holdSub"></div></div>
       <div class="m"><div class="m-label">159780 距250日高点</div><div class="m-value" id="distHigh">--</div><div class="m-sub">触发线 = 0.95 × 250日高</div></div>
       <div class="m"><div class="m-label">当前资产 / 累计收益</div><div class="m-value" id="curNav">--</div><div class="m-sub" id="curRet"></div></div>
+    </div>
+    <div class="bear-warn" id="bearWarn">
+      <div class="bear-left"><span class="badge" id="bearBadge">--</span></div>
+      <div class="bear-right">
+        <div id="bearTitle">--</div>
+        <div class="bear-detail" id="bearDetail"></div>
+      </div>
     </div>
   </section>
 
@@ -461,6 +475,30 @@ async function updateData() {
     const curNav = hy.navs[hy.navs.length - 1];
     document.getElementById("curNav").textContent = "¥" + curNav.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
     document.getElementById("curRet").textContent = "累计 +" + ((curNav / 100000 - 1) * 100).toFixed(1) + "%";
+
+    // ---- 熊市预警灯 (纯显示, 不干预自动策略) ----
+    const ma60_398 = calcMA(c398, 60);
+    const ddNow = dd[li] * 100;
+    const m398v = ma60_398[li];
+    const sysBear = ddNow <= -20 && m398v !== null && c398[li] < m398v;
+    let bearState, bearTitle, bearDetail;
+    if (sysBear) {
+      bearState = "b-red";
+      bearTitle = "红灯 · 系统性熊市预警";
+      bearDetail = "159780 距高点回撤 " + ddNow.toFixed(1) + "% 且 601398 跌破其 MA60（双弱确认）——建议人工考虑减仓 / 空仓，勿机械抢底。";
+    } else if (ddNow <= -10) {
+      bearState = "b-amber";
+      bearTitle = "黄灯 · 回撤警惕";
+      bearDetail = "159780 距高点回撤 " + ddNow.toFixed(1) + "%（D3 正按规则防御 / 切换）。若 398 同步破位且回撤超 20%，将升级红灯。";
+    } else {
+      bearState = "b-green";
+      bearTitle = "绿灯 · 正常";
+      bearDetail = "159780 距高点回撤 " + (ddNow >= 0 ? "+" : "") + ddNow.toFixed(1) + "%，无需干预。";
+    }
+    document.getElementById("bearBadge").textContent = bearState === "b-red" ? "红灯" : (bearState === "b-amber" ? "黄灯" : "绿灯");
+    document.getElementById("bearBadge").className = "badge " + bearState;
+    document.getElementById("bearTitle").textContent = bearTitle;
+    document.getElementById("bearDetail").textContent = bearDetail;
 
     // ---- 回测面板 ----
     document.getElementById("hyTotal").textContent = "+" + hyM.total.toFixed(1) + "%";
