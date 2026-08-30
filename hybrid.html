@@ -42,6 +42,10 @@
   .bear-left{flex-shrink:0}
   .bear-right{font-size:13px}
   .bear-detail{color:var(--muted);font-size:12px;margin-top:2px}
+  .disc-list{display:flex;flex-direction:column;gap:8px}
+  .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
+  .disc-item b{color:var(--accent2)}
+  .disc-n{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:500;margin-top:1px}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
   th:first-child,td:first-child{text-align:left}
@@ -67,6 +71,7 @@
     <div class="tag">D3 防守 + 近250日新高牛市开关</div>
     <nav>
       <a href="#signal">信号</a>
+      <a href="#discipline">纪律</a>
       <a href="#backtest">回测</a>
       <a href="#monthly">月度</a>
       <a href="#yearly">年度战绩</a>
@@ -97,6 +102,17 @@
         <div id="bearTitle">--</div>
         <div class="bear-detail" id="bearDetail"></div>
       </div>
+    </div>
+  </section>
+
+  <section id="discipline" class="card">
+    <h2><span class="dot"></span>操作纪律卡（机械执行，按规则来）</h2>
+    <div class="disc-list">
+      <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
+      <div class="disc-item"><span class="disc-n">2</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
+      <div class="disc-item"><span class="disc-n">3</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
+      <div class="disc-item"><span class="disc-n">4</span><div><b>浮亏 -10% 以内不许手动割</b> —— 历史最大回撤 -19.7%，那都在规则内</div></div>
+      <div class="disc-item"><span class="disc-n">5</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
     </div>
   </section>
 
