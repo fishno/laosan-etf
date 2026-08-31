@@ -148,7 +148,7 @@
   </section>
 
   <section id="monthly" class="card">
-    <h2><span class="dot"></span>月度收益（近一年，混合策略）</h2>
+    <h2><span class="dot"></span>月度收益（近两年，混合策略）</h2>
     <div id="monthlyChart" class="chart" style="height:280px"></div>
     <div class="foot" id="monthlyStat"></div>
   </section>
@@ -579,7 +579,7 @@ async function updateData() {
     }
     document.getElementById("yearTable").innerHTML = yh;
 
-    // ---- 月度收益(近一年) ----
+    // ---- 月度收益(近两年) ----
     const monMap = {};
     for (let i = 0; i < winDates.length; i++) {
       const mk = winDates[i].slice(0, 7);
@@ -587,11 +587,11 @@ async function updateData() {
       monMap[mk].last = hy.navs[i];
     }
     const monKeys = Object.keys(monMap).sort();
-    const monthly12 = monKeys.slice(-12).map(k => ({ month: k, ret: (monMap[k].last / monMap[k].first - 1) * 100 }));
-    const firstNav12 = monMap[monKeys[monKeys.length - 12]].first;
-    const ret12m = (hy.navs[hy.navs.length - 1] / firstNav12 - 1) * 100;
-    const bestM = monthly12.reduce((a, b) => (b.ret > a.ret ? b : a));
-    const worstM = monthly12.reduce((a, b) => (b.ret < a.ret ? b : a));
+    const monthly24 = monKeys.slice(-24).map(k => ({ month: k, ret: (monMap[k].last / monMap[k].first - 1) * 100 }));
+    const firstNav24 = monMap[monKeys[monKeys.length - 24]].first;
+    const ret24m = (hy.navs[hy.navs.length - 1] / firstNav24 - 1) * 100;
+    const bestM = monthly24.reduce((a, b) => (b.ret > a.ret ? b : a));
+    const worstM = monthly24.reduce((a, b) => (b.ret < a.ret ? b : a));
 
     // 先显示主区再初始化图表(容器不可见时 ECharts 尺寸为 0, 坐标轴会渲染异常)
     document.getElementById("loading").style.display = "none";
@@ -618,15 +618,15 @@ async function updateData() {
     echarts.init(document.getElementById("monthlyChart")).setOption({
       tooltip: { trigger: "axis", valueFormatter: v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%" },
       grid: { left: 50, right: 20, top: 36, bottom: 40 },
-      xAxis: { type: "category", data: monthly12.map(m => m.month.slice(2)), axisLabel: { interval: 0, fontSize: 10 } },
+      xAxis: { type: "category", data: monthly24.map(m => m.month.slice(2)), axisLabel: { interval: 1, fontSize: 10 } },
       yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
       series: [{
-        type: "bar", barMaxWidth: 28,
-        label: { show: true, position: "top", fontSize: 10, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
-        data: monthly12.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#d63031" : "#1f9d55" } }))
+        type: "bar", barMaxWidth: 22,
+        label: { show: true, position: "top", fontSize: 9, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
+        data: monthly24.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#d63031" : "#1f9d55" } }))
       }]
     });
-    document.getElementById("monthlyStat").textContent = "近一年累计 " + (ret12m >= 0 ? "+" : "") + ret12m.toFixed(1) +
+    document.getElementById("monthlyStat").textContent = "近两年累计 " + (ret24m >= 0 ? "+" : "") + ret24m.toFixed(1) +
       "% | 最好月份 " + bestM.month + " (" + (bestM.ret >= 0 ? "+" : "") + bestM.ret.toFixed(1) + "%) | 最差月份 " + worstM.month +
       " (" + (worstM.ret >= 0 ? "+" : "") + worstM.ret.toFixed(1) + "%)";
 
