@@ -117,7 +117,7 @@
   </section>
 
   <section id="backtest" class="card">
-    <h2><span class="dot"></span>回测表现（2023-01-01 至今，万1佣金，10万本金）</h2>
+    <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金）</h2>
     <div class="grid g2">
       <div class="m">
         <div class="m-label">混合策略（D3 + 牛市开关）</div>
@@ -130,14 +130,14 @@
         <div class="m-sub" id="hyExtra"></div>
       </div>
       <div class="m">
-        <div class="m-label">D3 现状（对照组）</div>
+        <div class="m-label">实时股价 · 当前持仓最后一笔浮盈</div>
         <div class="grid g4" style="gap:8px">
-          <div><div class="m-label">总收益</div><div class="m-value" id="d3Total">--</div></div>
-          <div><div class="m-label">年化</div><div class="m-value" id="d3Cagr">--</div></div>
-          <div><div class="m-label">最大回撤</div><div class="m-value" id="d3Mdd">--</div></div>
-          <div><div class="m-label">夏普</div><div class="m-value" id="d3Sharpe">--</div></div>
+          <div><div class="m-label">159780 现价</div><div class="m-value" id="q780">--</div></div>
+          <div><div class="m-label">601398 现价</div><div class="m-value" id="q398">--</div></div>
+          <div><div class="m-label">当前持仓</div><div class="m-value" id="posNow">--</div></div>
+          <div><div class="m-label">最后一笔浮盈</div><div class="m-value" id="lastPl">--</div></div>
         </div>
-        <div class="m-sub" id="d3Extra"></div>
+        <div class="m-sub" id="lastDetail"></div>
       </div>
     </div>
   </section>
@@ -340,8 +340,10 @@ async function updateData() {
       getKlines("sh000300", "1.000300", "沪深300"),
     ]);
     let d780 = d780raw, d398 = d398raw;
+    let rt780 = null, rt398 = null;
     try {
-      const [rt780, rt398] = await Promise.all([fetchRealtime("sz159780"), fetchRealtime("sh601398")]);
+      const [r1, r2] = await Promise.all([fetchRealtime("sz159780"), fetchRealtime("sh601398")]);
+      rt780 = r1; rt398 = r2;
       const a780 = augmentDaily(d780raw, rt780);
       const a398 = augmentDaily(d398raw, rt398);
       if (a780.length !== d780raw.length) d780 = a780;
@@ -422,7 +424,8 @@ async function updateData() {
             comm: Math.round(comm * 10) / 10,
             value: Math.round(valNow),
             ret: (valNow / 100000 - 1) * 100,
-            price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i])
+            price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i]),
+            shares: shares
           });
           hold = t;
         }
@@ -522,11 +525,38 @@ async function updateData() {
     document.getElementById("hyMdd").textContent = hyM.mdd.toFixed(1) + "%";
     document.getElementById("hySharpe").textContent = hyM.sharpe.toFixed(2);
     document.getElementById("hyExtra").textContent = hy.trades.length + " 笔交易 | 佣金 ¥" + Math.round(hy.totalComm);
-    document.getElementById("d3Total").textContent = "+" + d3M.total.toFixed(1) + "%";
-    document.getElementById("d3Cagr").textContent = "+" + d3M.cagr.toFixed(1) + "%";
-    document.getElementById("d3Mdd").textContent = d3M.mdd.toFixed(1) + "%";
-    document.getElementById("d3Sharpe").textContent = d3M.sharpe.toFixed(2);
-    document.getElementById("d3Extra").textContent = d3.trades.length + " 笔交易 | 佣金 ¥" + Math.round(d3.totalComm);
+
+    // ---- 实时股价 + 当前持仓最后一笔浮盈 ----
+    const price780 = (rt780 && rt780.price) ? rt780.price : c780[li];
+    const price398 = (rt398 && rt398.price) ? rt398.price : c398[li];
+    const chg780 = (price780 / c780[li - 1] - 1) * 100;
+    const chg398 = (price398 / c398[li - 1] - 1) * 100;
+    const qcls = v => (v >= 0 ? "up" : "down");
+    const qsgn = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+    document.getElementById("q780").textContent = price780.toFixed(3) + " (" + qsgn(chg780) + ")";
+    document.getElementById("q780").className = "m-value " + qcls(chg780);
+    document.getElementById("q398").textContent = price398.toFixed(3) + " (" + qsgn(chg398) + ")";
+    document.getElementById("q398").className = "m-value " + qcls(chg398);
+    const posNow = hy.holds[hy.holds.length - 1];
+    document.getElementById("posNow").textContent = { "780": "159780 科技", "398": "601398 银行", "CASH": "空仓" }[posNow];
+    let entry = null;
+    if (posNow !== "CASH") {
+      for (let k = hy.trades.length - 1; k >= 0; k--) {
+        if (hy.trades[k].to === posNow) { entry = hy.trades[k]; break; }
+      }
+    }
+    if (entry) {
+      const cur = posNow === "780" ? price780 : price398;
+      const pl = (cur - entry.price) * entry.shares;
+      const plPct = (cur / entry.price - 1) * 100;
+      document.getElementById("lastPl").textContent = (pl >= 0 ? "+" : "-") + "¥" + Math.abs(pl).toLocaleString("zh-CN", { maximumFractionDigits: 0 });
+      document.getElementById("lastPl").className = "m-value " + qcls(pl);
+      document.getElementById("lastDetail").textContent = "开仓 " + entry.date + " @" + entry.price.toFixed(3) + " × " + entry.shares.toLocaleString() +
+        " 股 → 现价 " + cur.toFixed(3) + " | 收益率 " + qsgn(plPct);
+    } else {
+      document.getElementById("lastPl").textContent = "--";
+      document.getElementById("lastDetail").textContent = "当前空仓，无持仓浮盈。";
+    }
 
     // ---- 年度战绩 ----
     const years = ["2023", "2024", "2025", "2026"];
