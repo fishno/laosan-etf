@@ -56,6 +56,10 @@
   th:first-child,td:first-child{text-align:left}
   th{color:var(--muted);font-weight:500;font-size:12px}
   .up{color:var(--up)}.down{color:var(--down)}
+  .rt-row{background:var(--accent-light)}
+  .rt-row td{font-weight:600;border-bottom:2px solid var(--accent)}
+  .rt-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:10px;
+    font-weight:500;background:var(--accent);color:#fff;vertical-align:1px}
   .chart{width:100%;height:400px}
   .rule-box{background:var(--accent-light);border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:12px}
   .rule-box b{color:var(--accent2)}
@@ -439,7 +443,7 @@ async function updateData() {
         navs.push(val);
         holds.push(hold);
       }
-      return { navs, holds, trades, totalComm };
+      return { navs, holds, trades, totalComm, lastCash: cash, lastShares: shares, lastHold: hold };
     }
 
     const hy = replay(true);
@@ -496,9 +500,7 @@ async function updateData() {
     document.getElementById("holdSub").textContent = "数据至 " + dates[li];
     document.getElementById("distHigh").textContent = (distPct >= 0 ? "+" : "") + distPct.toFixed(2) + "%";
     document.getElementById("distHigh").className = "m-value " + (distPct >= 0 ? "up" : "down");
-    const curNav = hy.navs[hy.navs.length - 1];
-    document.getElementById("curNav").textContent = "¥" + curNav.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
-    document.getElementById("curRet").textContent = "累计 +" + ((curNav / 100000 - 1) * 100).toFixed(1) + "%";
+    // 当前资产按【实时价】重算, 见下方「实时股价」段 (curNav / curRet)
 
     // ---- 熊市预警灯 (纯显示, 不干预自动策略) ----
     const ma60_398 = calcMA(c398, 60);
@@ -562,6 +564,23 @@ async function updateData() {
       document.getElementById("lastPl").textContent = "--";
       document.getElementById("lastDetail").textContent = "当前空仓，无持仓浮盈。";
     }
+
+    // ---- 当前资产 (按实时价重算, 与交易记录首行口径一致) ----
+    const hasRT = !!(rt780 && rt780.price && rt780.time);
+    const rtStamp = (rt780 && rt780.time) ? rt780.time : (rt398 && rt398.time ? rt398.time : "");
+    const rtDate = rtStamp ? realtimeDate(rtStamp) : dates[li];
+    const rtClock = rtStamp ? rtStamp.slice(8, 10) + ":" + rtStamp.slice(10, 12) : "";
+    const rtNav = posNow === "CASH" ? hy.lastCash
+      : hy.lastCash + hy.lastShares * (posNow === "780" ? price780 : price398);
+    const rtRet = (rtNav / 100000 - 1) * 100;
+    window.__rt = { nav: rtNav, ret: rtRet, date: rtDate, clock: rtClock, hasRT: hasRT,
+                    px: posNow === "CASH" ? null : (posNow === "780" ? price780 : price398), hold: posNow };
+    document.getElementById("curNav").textContent = "¥" + Math.round(rtNav).toLocaleString("zh-CN");
+    document.getElementById("curRet").textContent = "累计 " + (rtRet >= 0 ? "+" : "") + rtRet.toFixed(1) + "%" +
+      (hasRT ? " · 实时" : " · 昨收");
+    document.getElementById("holdSub").textContent = hasRT
+      ? "数据至 " + dates[li] + "，净值按 " + rtDate + " " + rtClock + " 实时价重算"
+      : "数据至 " + dates[li] + "（实时价获取失败，按收盘价）";
 
     // ---- 年度战绩 ----
     const years = ["2023", "2024", "2025", "2026"];
@@ -676,13 +695,25 @@ async function updateData() {
     };
     const pxFmt = p => p === null || p === undefined ? "-" : p.toFixed(3);
     let th = "<tr><th>日期</th><th>动作</th><th>原因</th><th>成交价</th><th>净值</th><th>累计盈利率</th><th>佣金</th></tr>";
+    // 首行：当前持仓（实时）。最后一笔切换之后可能已过去很久，净值会变，需单列避免误读
+    const R = window.__rt;
+    if (R) {
+      const nmNow = { "780": "159780", "398": "601398", "CASH": "空仓" }[R.hold];
+      const dateCell = R.hasRT ? (R.date + " " + R.clock) : R.date;
+      th += "<tr class='rt-row'><td>" + dateCell + "<span class='rt-badge'>实时</span></td>" +
+        "<td><b>持仓中 · " + nmNow + "</b></td>" +
+        "<td>" + (R.hold === "CASH" ? "空仓等待，逆回购计息" : "未触发切换，继续持有（浮盈未兑现）") + "</td>" +
+        "<td>" + pxFmt(R.px) + "</td><td>¥" + Math.round(R.nav).toLocaleString("zh-CN") + "</td>" +
+        "<td class='" + (R.ret >= 0 ? "up" : "down") + "'>" + (R.ret >= 0 ? "+" : "") + R.ret.toFixed(2) + "%</td>" +
+        "<td>-</td></tr>";
+    }
     for (const t of allTrades) {
       th += "<tr><td>" + t.date + "</td><td>" + act(t) + "</td><td>" + reason(t) + "</td><td>" + pxFmt(t.price) +
         "</td><td>¥" + t.value.toLocaleString("zh-CN") + "</td><td class='" + (t.ret >= 0 ? "up" : "down") + "'>" +
         (t.ret >= 0 ? "+" : "") + t.ret.toFixed(2) + "%</td><td>¥" + t.comm.toFixed(1) + "</td></tr>";
     }
     document.getElementById("tradeWrap").innerHTML =
-      "<details><summary>全部 " + hy.trades.length + " 笔交易记录（点击展开）</summary>" +
+      "<details><summary>全部 " + hy.trades.length + " 笔已成交记录 + 1 行当前持仓（实时，点击展开）</summary>" +
       "<div style='overflow-x:auto'><table>" + th + "</table></div></details>";
   } catch (e) {
     document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
