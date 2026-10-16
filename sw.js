@@ -1,9 +1,10 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v2';
+const CACHE = 'laosan-d3-v3';
 
 const SHELL = [
   './',
   './index.html',
+  './hybrid.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
