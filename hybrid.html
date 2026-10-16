@@ -25,9 +25,10 @@
   .card h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
   .grid{display:grid;gap:14px}
   .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
   .g5{grid-template-columns:repeat(5,1fr)}
-  @media(max-width:720px){.g4{grid-template-columns:repeat(2,1fr)}.g5{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
+  @media(max-width:720px){.g3{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,1fr)}.g5{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
   .m{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
   .m-label{font-size:12px;color:var(--muted);margin-bottom:4px}
   .m-value{font-size:22px;font-weight:600}
@@ -100,12 +101,12 @@
 
   <section id="signal" class="card">
     <h2><span class="dot"></span>当前信号（实时）</h2>
-    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损（本次新增）：</b>持有 159780 期间<b>跌破买入价 4%</b> → 立即切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。</div>
+    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损（本次新增）：</b>持有 159780 期间<b>跌破买入价 4%</b> → 立即切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。<br><b>★回补 780（切工行后）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b></div>
     <div class="grid g5">
       <div class="m"><div class="m-label">牛市开关</div><div><span class="badge" id="bullBadge">--</span></div><div class="m-sub" id="bullSub"></div></div>
       <div class="m"><div class="m-label">当前持仓</div><div class="m-value" id="holdNow">--</div><div class="m-sub" id="holdSub"></div></div>
       <div class="m"><div class="m-label">159780 距250日高点</div><div class="m-value" id="distHigh">--</div><div class="m-sub">触发线 = 0.95 × 250日高</div></div>
-      <div class="m"><div class="m-label">★止损监控（780）</div><div class="m-value" id="stopMon">--</div><div class="m-sub" id="stopSub"></div></div>
+      <div class="m"><div class="m-label">★出口监控</div><div class="m-value" id="stopMon">--</div><div class="m-sub" id="stopSub"></div></div>
       <div class="m"><div class="m-label">当前资产 / 累计收益</div><div class="m-value" id="curNav">--</div><div class="m-sub" id="curRet"></div></div>
     </div>
     <div class="bear-warn" id="bearWarn">
@@ -117,12 +118,23 @@
     </div>
   </section>
 
+  <section id="reentry" class="card" style="display:none">
+    <h2><span class="dot"></span>★780 回补监控（未持 159780 时显示）</h2>
+    <div class="rule-box" id="reentryBanner">--</div>
+    <div class="grid g3">
+      <div class="m"><div class="m-label">路径① RSI6 &lt; 25（主力路径，历史占比 74%）</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
+      <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
+      <div class="m"><div class="m-label">路径③ 绕道空仓 → 站上 MA20</div><div class="m-value" id="re3v">--</div><div class="m-sub" id="re3s">--</div></div>
+    </div>
+    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损切走时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
+  </section>
+
   <section id="discipline" class="card">
     <h2><span class="dot"></span>操作纪律卡（机械执行，按规则来）</h2>
     <div class="disc-list">
       <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
       <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就切 601398，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的</div></div>
-      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后切工行，不空仓</b> —— 工行与双创负相关，是防守腿；工行期间的离场仍按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）</div></div>
+      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后切工行，不空仓；回补必须靠信号</b> —— 工行是防守腿，期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
       <div class="disc-item"><span class="disc-n">4</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
       <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.7% 都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
       <div class="disc-item"><span class="disc-n">6</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
@@ -323,6 +335,20 @@ function calcRSI(p, n) {
     r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
   }
   return r;
+}
+
+// 取 index i 处的 Wilder 平均涨幅/跌幅 —— 用于反推「明日 RSI 恰好 = 25」的价位
+function rsiWilder(p, n, i) {
+  if (i < n) return null;
+  let g = 0, l = 0;
+  for (let k = 1; k <= n; k++) { const c = p[k] - p[k - 1]; if (c >= 0) g += c; else l -= c; }
+  let ag = g / n, al = l / n;
+  for (let k = n + 1; k <= i; k++) {
+    const c = p[k] - p[k - 1];
+    ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
+    al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
+  }
+  return { ag: ag, al: al };
 }
 
 function calcMA(p, n) {
@@ -603,9 +629,66 @@ async function updateData() {
       stopMonEl.className = "m-value " + (gapPct <= 3 ? "down" : "up");
       stopSubEl.textContent = "买入 " + hy.ep780.toFixed(3) + " | 现价距止损 " + (gapPct >= 0 ? "+" : "") + gapPct.toFixed(2) + "%";
     } else {
-      stopMonEl.textContent = "未持仓";
+      stopMonEl.textContent = "未持 780";
       stopMonEl.className = "m-value";
-      stopSubEl.textContent = "规则：跌破买入价 −" + Math.round(STOP_PCT * 100) + "% 即切工行";
+      stopSubEl.textContent = "买入 780 后此处显示止损价（跌破买入价 −" + Math.round(STOP_PCT * 100) + "% 即切工行）";
+    }
+
+    // ---- ★780 回补监控：未持 780 时，算出三条回补路径的实时门槛 ----
+    const reSec = document.getElementById("reentry");
+    if (posNow !== "780") {
+      reSec.style.display = "";
+      const rsNow = rsi6[li];
+      const st = rsiWilder(c780, 6, li);
+      let pxUp = null, pxDown = null;
+      if (st) {
+        const dUp = (5 * st.al - 15 * st.ag) / 3;   // 需上涨多少，RSI6 才回到 25
+        const dDn = 15 * st.ag - 5 * st.al;         // 需下跌多少，RSI6 才跌破 25
+        if (dUp > 0) pxUp = price780 + dUp;
+        if (dDn > 0) pxDown = price780 - dDn;
+      }
+      const armed = (rsNow !== null && rsNow !== undefined && rsNow >= 25);
+      const upPct = pxUp ? (pxUp / price780 - 1) * 100 : null;
+
+      const e1v = document.getElementById("re1v"), e1s = document.getElementById("re1s");
+      if (armed) {
+        e1v.textContent = "已复位 · 等下穿";
+        e1v.className = "m-value up";
+        e1s.textContent = pxDown
+          ? "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；跌到 ≤ ¥" + pxDown.toFixed(3) + " 即触发买入"
+          : "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；单日跌幅不足以触发，明日再看";
+      } else {
+        e1v.textContent = "等反弹复位";
+        e1v.className = "m-value down";
+        e1s.textContent = pxUp
+          ? "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方（事件已用掉）；涨到 ≥ ¥" + pxUp.toFixed(3) + "（+" + upPct.toFixed(2) + "%）复位后，再跌破 25 才买入"
+          : "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方；需先反弹回 25 上方复位";
+      }
+
+      const bullPx = BULL_PCT * rh250[li];
+      const e2v = document.getElementById("re2v");
+      e2v.textContent = "+" + ((bullPx / price780 - 1) * 100).toFixed(1) + "%";
+      e2v.className = "m-value";
+      document.getElementById("re2s").textContent = "需 ¥" + bullPx.toFixed(3) + "（现 " + price780.toFixed(3) + "）；触发即满仓 780";
+
+      const r5p = (r5[li] === null || r5[li] === undefined) ? 0 : r5[li] * 100;
+      const e3v = document.getElementById("re3v");
+      e3v.textContent = (r5p >= 0 ? "+" : "") + r5p.toFixed(2) + "%";
+      e3v.className = "m-value " + (r5p < -2 ? "down" : "up");
+      document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；空仓后 780 站上 MA20 = ¥" +
+        ma20[li].toFixed(3) + "（+" + ((ma20[li] / price780 - 1) * 100).toFixed(1) + "%）";
+
+      const bn = document.getElementById("reentryBanner");
+      if (armed) {
+        bn.innerHTML = "<b>当前状态：</b>RSI6 已复位到 25 上方 —— <b>等它再跌破 25 的那一天</b>，当天 14:50 前挂单买回 159780。";
+      } else if (pxUp) {
+        bn.innerHTML = "<b>当前状态：</b>抄底事件已被消耗（RSI6 在持 780 期间就下穿了 25）。<b>先等一根约 +" +
+          upPct.toFixed(2) + "% 的阳线把 RSI6 推回 25 上方</b>；复位之后哪天下穿 25，就在那天 14:50 前挂单买回 159780。";
+      } else {
+        bn.innerHTML = "<b>当前状态：</b>等 RSI6 回到 25 上方并重新下穿 —— 那一天买回 159780。";
+      }
+    } else {
+      reSec.style.display = "none";
     }
 
     // ---- 当前资产 (按实时价重算, 与交易记录首行口径一致) ----
