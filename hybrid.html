@@ -134,7 +134,7 @@
     <div class="disc-list">
       <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
       <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就切 601398，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的</div></div>
-      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后切工行，不空仓；回补必须靠信号</b> —— 工行是防守腿，期间离场按原规则（<b>398 距 20 日最高回撤&gt;4%</b>〔2026-11-04 由"五日跌&gt;2%"改〕 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
+      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后切工行，不空仓；回补必须靠信号</b> —— 工行是防守腿，期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
       <div class="disc-item"><span class="disc-n">4</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
       <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.7% 都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
       <div class="disc-item"><span class="disc-n">6</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
@@ -419,14 +419,7 @@ async function updateData() {
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
-    // 398 的 20 日最高价：dd4 口径（2026-11-04 起，离场判据由「5日跌幅<-2%」改为「距20日高回撤>=4%」）
-    const hh20_398 = new Array(N).fill(null);
-    for (let i = 19; i < N; i++) {
-      let mx = -Infinity;
-      for (let j = i - 19; j <= i; j++) if (c398[j] > mx) mx = c398[j];
-      hh20_398[i] = mx;
-    }
-    const DD398_PCT = 0.04;   // 距 20 日高回撤阈值
+    // 注：2026-11-04 曾试「距20日高回撤>=4%」(dd4)，实盘口径回测 2023-26 少赚 96pct → 已回滚
     const rh250 = rollingHigh(c780, 250);
     const bull = [];
     for (let i = 0; i < N; i++) bull.push(c780[i] >= BULL_PCT * rh250[i]);
@@ -436,7 +429,7 @@ async function updateData() {
       sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
       sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
       bk: rsi6[i] !== null && rsi6[i] < 25,
-      d398: hh20_398[i] !== null && c398[i] <= hh20_398[i] * (1 - DD398_PCT),
+      d398: r5[i] !== null && r5[i] < -0.02,
       aMA: ma20[i] !== null && c780[i] > ma20[i]
     });
 
@@ -828,7 +821,7 @@ async function updateData() {
       if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
       if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
       if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
-      return "780回撤>12% 双跌避险 或 398距20日高回撤>4%";
+      return "780回撤>12% 双跌避险 或 398五日跌>2%";
     };
     const pxFmt = p => p === null || p === undefined ? "-" : p.toFixed(3);
     let th = "<tr><th>日期</th><th>动作</th><th>原因</th><th>成交价</th><th>净值</th><th>累计盈利率</th><th>佣金</th></tr>";
