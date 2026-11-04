@@ -360,7 +360,7 @@
           <div class="ind-status">>10%阈值</div>
         </div>
         <div class="ind-card red">
-          <div class="ind-label">398 五日涨幅</div>
+          <div class="ind-label">398 距20日高</div>
           <div class="ind-value">-0.87%</div>
           <div class="ind-status">为负，不触发</div>
         </div>
@@ -427,6 +427,10 @@
             <div class="r-action">398 → 780（反弹）</div>
             <div class="r-value">RSI6 < 25</div>
           </div>
+          <div class="rule-box sell">
+            <div class="r-action">398 → 空仓（止损）</div>
+            <div class="r-value">距20日高<br>回撤 ≥ 4%</div>
+          </div>
         </div>
       </div>
 
@@ -436,6 +440,7 @@
         <li><strong>空仓避险：</strong>780回撤>12%且398同步走弱时空仓离场，避免"两ETF同跌"的双杀局面</li>
         <li><strong>双重回场：</strong>空仓后RSI6<25极度超卖或780重回MA20上方均可回场，不错过反弹机会</li>
         <li><strong>目标质量检查：</strong>切换至398前需确认398五日涨幅>0，过滤弱势标的</li>
+        <li><strong>398离场口径（2026-11-04改）：</strong>由「398五日跌幅≤-2%」改为「398距20日最高价回撤≥4%」，专治高位阴跌测不出的问题；2022压测收益-17.2%→-12.0%、回撤-27.4%→-22.0%</li>
         <li><strong>默认仓位：</strong>无信号时持有780，保持对高弹性品种的风险暴露</li>
       </ul>
 
@@ -752,6 +757,14 @@ async function computeData(wantDebug) {
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+    // 398 的 20 日最高价：dd4 口径用（2026-11-04 起，离场判据由「5日跌幅<-2%」改为「距20日高回撤>=4%」）
+    const hh20_398 = new Array(N).fill(null);
+    for (let i = 19; i < N; i++) {
+      let mx = -Infinity;
+      for (let j = i - 19; j <= i; j++) if (c398[j] > mx) mx = c398[j];
+      hh20_398[i] = mx;
+    }
+    const DD398_PCT = 0.04;   // 距 20 日高回撤阈值
 
     // 切窗口: 2025-08-15起跑D3状态机(与回测一致)
     let S = dates.findIndex(d => d >= WINDOW_START);
@@ -761,21 +774,22 @@ async function computeData(wantDebug) {
       sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,        // 切398
       sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,       // 空仓避险
       bk: rsi6[i] !== null && rsi6[i] < 25,                     // 抢底
-      d398: r5[i] !== null && r5[i] < -0.02,                    // 398止损
+      d398: hh20_398[i] !== null && c398[i] <= hh20_398[i] * (1 - DD398_PCT), // 398距20日高回撤>=4% 离场
       aMA: ma20[i] !== null && c780[i] > ma20[i],               // MA20恢复
     });
 
     let h = "CASH"; // 窗口起点空仓, 由状态机自然演进到当前持仓
     let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
     let entryDate = null, entryPrice = null, entryCode = null; // 当前持仓的买入日期/价格
-    const tradeReason = (from, to, s, r5i, ddi) => {
+    const tradeReason = (from, to, s, r5i, ddi, hh3, px3) => {
       const ddPct = (ddi * 100).toFixed(1);
       const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
+      const d398Pct = (hh3 != null && px3 != null) ? ((px3 / hh3 - 1) * 100).toFixed(1) : "-";
       if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
       if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
       if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
       if (from === "780" && to === "CASH") return s.sc ? ("780回撤" + ddPct + "%, 398五日" + r5Pct + "%, 双跌避险") : "离场";
-      if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
+      if (from === "398" && to === "CASH") return s.d398 ? ("398距20日高" + d398Pct + "%, 止损离场") : "离场";
       if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
       return "状态切换";
     };
@@ -822,7 +836,7 @@ async function computeData(wantDebug) {
         }
         const value = wallet.cash + wallet.shares * (h2 === "780" ? c780[i] : c398[i]);
         tradeLog.push({
-          date: dates[i], action: h + "\u2192" + h2, reason: tradeReason(h, h2, s, r5[i], dd[i]),
+          date: dates[i], action: h + "\u2192" + h2, reason: tradeReason(h, h2, s, r5[i], dd[i], hh20_398[i], c398[i]),
           comm: Math.round(comm * 10) / 10,
           value: Math.round(value),
           shares: wallet.shares,
@@ -874,7 +888,7 @@ async function computeData(wantDebug) {
       } else if (s.d398 && !pv.d398) {
         action = "GO_CASH";
         actionText = "\u7a7a\u4ed3\u6b62\u635f";
-        actionDetail = "398\u4e94\u65e5" + (r5[li] * 100).toFixed(1) + "%, \u6b62\u635f\u79bb\u573a";
+        actionDetail = "398\u8ddd20\u65e5\u9ad8" + ((c398[li] / hh20_398[li] - 1) * 100).toFixed(1) + "%, \u6b62\u635f\u79bb\u573a";
       } else {
         action = "HOLD_398";
         actionText = "\u6301\u4ed3 601398 工商银行";
@@ -1002,6 +1016,9 @@ async function computeData(wantDebug) {
       ma20: ma20[li] !== null ? Math.round(ma20[li] * 1000) / 1000 : null,
       drawdown: Math.round(dd[li] * 10000) / 100,
       ret5d398: r5[li] !== null ? Math.round(r5[li] * 10000) / 100 : null,
+      dd398: hh20_398[li] !== null ? Math.round((c398[li] / hh20_398[li] - 1) * 10000) / 100 : null,
+      hh20_398: hh20_398[li] !== null ? Math.round(hh20_398[li] * 10000) / 10000 : null,
+      d398line: hh20_398[li] !== null ? Math.round(hh20_398[li] * (1 - DD398_PCT) * 10000) / 10000 : null,
       aboveMA20: ma20[li] !== null && c780[li] > ma20[li],
       switchTo398Signal: s.sw, goCashSignal: s.sc, buyBackSignal: s.bk,
       drop398Signal: s.d398, maRecoverSignal: s.aMA,
@@ -1144,9 +1161,9 @@ async function handleDiag() {
           cards[3].querySelector(".ind-status").textContent = Math.abs(data.drawdown) > 12 ? ">12%\u53cc\u8dcc\u907f\u9669" : (Math.abs(data.drawdown) > 10 ? ">10%\u9608\u503c" : "<10%\u5b89\u5168");
           cards[3].className = "ind-card neutral";
           cards[3].querySelector(".ind-value").style.color = down; // 回撤=绿
-          cards[4].querySelector(".ind-value").textContent = (data.ret5d398 >= 0 ? "+" : "") + data.ret5d398 + "%";
-          cards[4].querySelector(".ind-status").textContent = data.ret5d398 > 0 ? "\u4e3a\u6b63\uff0c\u89e6\u53d1\u5398\u6362" : (data.ret5d398 < -2 ? "\u8dcc<-2%\uff0c\u6b62\u635f" : "\u4e3a\u8d1f\uff0c\u4e0d\u89e6\u53d1");
-          cards[4].className = "ind-card " + (data.ret5d398 > 0 ? "green" : (data.ret5d398 < -2 ? "red" : "neutral"));
+          cards[4].querySelector(".ind-value").textContent = (data.dd398 >= 0 ? "+" : "") + data.dd398 + "%";
+          cards[4].querySelector(".ind-status").textContent = data.dd398 <= -4 ? "\u8dcc\u7834-4%\uff0c\u6b62\u635f" : ("\u7ebf" + data.d398line + "\uff0c\u73b0\u4ef7\u5dee" + ((data.close398 / data.d398line - 1) * 100).toFixed(2) + "%");
+          cards[4].className = "ind-card " + (data.dd398 <= -4 ? "red" : "neutral");
           cards[5].querySelector(".ind-value").textContent = data.close398;
           var holdLabel = data.holding === '780' ? '\u6301\u6709780' : (data.holding === '398' ? '\u6301\u6709398' : '\u7a7a\u4ed3');
           cards[5].querySelector(".ind-status").textContent = holdLabel;
