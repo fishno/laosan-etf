@@ -79,7 +79,7 @@
 <header>
   <div class="bar">
     <div class="logo">杨老三的混合策略 · 成本止损版</div>
-    <div class="tag">牛市开关 + 跌破成本 4% 止损切工行</div>
+    <div class="tag">牛市开关 + 跌破成本 4% 止损 · 398 乖离&gt;4% 改空仓</div>
     <nav>
       <a href="#signal">信号</a>
       <a href="#discipline">纪律</a>
@@ -101,7 +101,7 @@
 
   <section id="signal" class="card">
     <h2><span class="dot"></span>当前信号（实时）</h2>
-    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损（本次新增）：</b>持有 159780 期间<b>跌破买入价 4%</b> → 立即切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。<br><b>★回补 780（切工行后）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b></div>
+    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b></div>
     <div class="grid g5">
       <div class="m"><div class="m-label">牛市开关</div><div><span class="badge" id="bullBadge">--</span></div><div class="m-sub" id="bullSub"></div></div>
       <div class="m"><div class="m-label">当前持仓</div><div class="m-value" id="holdNow">--</div><div class="m-sub" id="holdSub"></div></div>
@@ -126,17 +126,17 @@
       <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
       <div class="m"><div class="m-label">路径③ 绕道空仓 → 站上 MA20</div><div class="m-value" id="re3v">--</div><div class="m-sub" id="re3s">--</div></div>
     </div>
-    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损切走时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
+    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
   </section>
 
   <section id="discipline" class="card">
     <h2><span class="dot"></span>操作纪律卡（机械执行，按规则来）</h2>
     <div class="disc-list">
       <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
-      <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就切 601398，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的</div></div>
-      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后切工行，不空仓；回补必须靠信号</b> —— 工行是防守腿，期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
+      <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就执行卖出，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的。但<b>卖出后买什么要单独看</b>（见下条）</div></div>
+      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后去哪：先量工行的位置，再决定切工行还是空仓</b> —— 打开工行日线看 <b>MA20</b>：现价<b>乖离 ≤ +4%</b> 切 601398；<b>乖离 &gt; +4%</b>（说明是避险资金把它顶上去的）<b>直接空仓</b>，不追。空仓/持工行期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
       <div class="disc-item"><span class="disc-n">4</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
-      <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.7% 都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
+      <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.2%（2023-05-11→2023-10-26）都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
       <div class="disc-item"><span class="disc-n">6</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
       <div class="disc-item"><span class="disc-n">7</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
     </div>
@@ -146,7 +146,7 @@
     <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金）</h2>
     <div class="grid g2">
       <div class="m">
-        <div class="m-label">★混合策略 · 成本止损版（牛市开关 + 跌破成本 4% 切工行）</div>
+        <div class="m-label">★混合策略 · 成本止损版（跌破成本 4% 止损 + 398 乖离&gt;4% 改空仓）</div>
         <div class="grid g4" style="gap:8px">
           <div><div class="m-label">总收益</div><div class="m-value up" id="hyTotal">--</div></div>
           <div><div class="m-label">年化</div><div class="m-value" id="hyCagr">--</div></div>
@@ -206,11 +206,12 @@
     <div class="rule-box"><b>为什么改：</b>2026-09-28 那笔抄底（买入 @0.994）后 159780 一路阴跌，浮亏一度 −13.98%（10-16 收 0.855）。复盘发现根因是<b>防守出口写成了"事件触发式"</b>——它要求"今天成立且昨天不成立"，而 9-28 当天条件已长期为真，此后<b>永不触发</b>，等于没有出口。同时 601398 工行同期 <b>+2.42%</b>，防守腿在涨却空着。</div>
     <ul>
       <li><b>原规则（已被替换）</b>：780 回撤&gt;10% 且 398五日涨&gt;0 → 切398；回撤&gt;12% 且 398五日≤0 → 空仓。问题在于判据是"距高点回撤"，而双创回撤 10% 后反弹是常态 → 震荡市反复被赶出（2023、2024 各伤约 16pct）。</li>
-      <li><b>★新规则（本次部署）</b>：<b>持有 159780 期间，价格跌破买入价 4% → 立即切 601398 工行</b>；牛市开关与其余 D3 逻辑不变。判据从"距高点回撤多少"换成"这笔亏没亏"。</li>
-      <li><b>为什么切工行而不是空仓</b>：159780 与 601398 日收益负相关很强（近 3 个月 −0.60，2026 年以来 −0.54），止损后切工行＝用负相关资产对冲，比空仓更赚（−4% 档 +505.8% vs 空仓 +488.8%）。</li>
+      <li><b>★成本止损规则（2026-10 部署）</b>：<b>持有 159780 期间，价格跌破买入价 4% → 卖出 159780</b>；牛市开关与其余 D3 逻辑不变。判据从"距高点回撤多少"换成"这笔亏没亏"。</li>
+      <li><b>为什么默认切工行而不是空仓</b>：159780 与 601398 日收益负相关很强（近 3 个月 −0.60，2026 年以来 −0.54），止损后切工行＝用负相关资产对冲，长期看比空仓更赚。<b>但前提是工行本身没被追高</b>——见下条补丁。</li>
+      <li><b>★2026-11-06 补丁 · 换仓前先量位置（本页已生效）</b>：原规则只管"780 亏了 4% 就卖"，没管<b>卖完买什么价位的工行</b>。2026-10-29 就是反面案例：780 触发止损，同日 601398 创<b>历史新高</b>、乖离 MA20 <b>+5.3%</b>，满仓切进去，5 天后工行跌到 8.350，这笔亏 <b>−4.9%</b>。本质是<b>用 A 标的的风险信号，在最贵的位置满仓买 B</b>。新规则：<b>398 乖离 MA20 &gt; 4% → 止损后不换仓、直接空仓</b>，等信号再进。同口径回测（2023-01-03 ~ 2026-11-05）：<b>+471.4% → +500.9%（+29.5pct）</b>，回撤不变；阈值 4% 与 5% 结果完全相同（说明不是挑参数）。<span class="down">注意：全窗口只拦下 1 次，这 29.5pct 全部来自 2026-10-29 这一笔，样本撑不住"铁律"两个字——加它是因为修补了一个真实逻辑漏洞，不是因为它被历史反复验证过。</span></li>
       <li><b>低频动作</b>：3.8 年里 −4% 止损只触发 <b>3 次</b>（−8% 仅 1 次）——平时不交保费，出事才赔付。</li>
       <li><b>稳健性</b>：样本外（IS 2023-24 / OOS 2025-26）参数秩相关 <b>+0.973</b>，起点漂移 <b>6/6 全跑赢</b>原版；剔除 2026-10 这段单边下跌，仍比原版高约 18pct。</li>
-      <li><b>改善的是收益，不是回撤</b>：历史最大回撤 −19.70%（2023-05-11→2023-10-26）仅改善到 −18.95%；止损不填历史最深的坑，只避免"单边下跌里死扛"。</li>
+      <li><b>回撤：止损把最深回撤从 −28.3% 压到 −19.2%</b>（最深的坑在 2023-05-11→2023-10-26 那段）。注意止损不创造收益，它避免的是"单边下跌里死扛"；收益端的贡献主要来自避开 2026-10 这类急跌。</li>
     </ul>
     <div class="warn">历史表现不代表未来收益。−4% 是按<b>收盘价</b>回测的收益最优档，但<b>实盘按盘中价触发会比回测更疼</b>（盘中扫损后可能当天就反弹）；若担心噪音，可自行放宽到 −5% ~ −6%。回测未计滑点。本页不构成投资建议。</div>
   </section>
@@ -228,9 +229,16 @@ const DATA_BEG = "2022-07-01";
 const WINDOW_START = "2023-01-01";
 const BULL_PCT = 0.95;
 // ★ 成本止损线：持有 159780 期间跌破买入价 STOP_PCT → 立即切 601398（工行），借负相关对冲
-//   回测已验证：−4% 全窗口 +505.8%（原策略 +421.4%）、卡玛 3.24、样本外秩相关 +0.973、起点漂移 6/6 跑赢
+//   本页同口径实测（2023-01-03~2026-11-05）：无止损 +345.9% → 含止损 +471.4% → 含止损+乖离过滤 +500.9%
+//   （注：早期文字里的 +505.8% / +421.4% 是预热起点 2022-07 的旧口径，与本页窗口不可直接比较，已不再引用）
 const STOP_PCT = 0.04;
 const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
+// ★ 止损切工行前的「位置检查」（2026-11-06 新增）
+//   止损信号来自 780 的风险，买入动作落在 398 身上 —— 若 398 当天已远离 MA20（刚创新高、被避险资金顶上去），
+//   就是拿 A 的风险信号在最贵的位置满仓买 B。实测 2026-10-29：398 创历史新高、乖离 +5.3%，5 天后 -4.9%。
+//   规则：398 乖离 MA20 > BIAS_MAX → 止损后不切工行，直接空仓等信号。
+//   回测（2023-01-03~2026-11-05，本页同口径）：+471.4% → +500.9%，只拦 1 次；4%~5% 结果相同（不敏感）。
+const BIAS_MAX = 0.04;
 
 async function fetchTx(code) {
   const end = new Date().toISOString().slice(0, 10);
@@ -416,6 +424,9 @@ async function updateData() {
     const rsi6 = calcRSI(c780, 6);
     const ma20 = calcMA(c780, 20);
     const ma60 = calcMA(c780, 60);
+    const ma398_20 = calcMA(c398, 20);   // ★398 的 MA20 —— 止损换仓前的位置尺
+    const bias398 = new Array(N).fill(null);
+    for (let i = 0; i < N; i++) if (ma398_20[i]) bias398[i] = c398[i] / ma398_20[i] - 1;
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
@@ -435,8 +446,8 @@ async function updateData() {
 
     function d3Next(hold, s, p, px780, ep780, stopPct) {
       if (hold === "780") {
-        // ★成本止损优先：跌破买入成本 stopPct → 切工行（事件式出口之外的新防线）
-        if (ep780 !== null && stopPct > 0 && px780 <= ep780 * (1 - stopPct)) return "398";
+        // ★成本止损优先：跌破买入成本 → 目标标记为 STOP，具体切 398 还是空仓由 replay 按 398 的位置定
+        if (ep780 !== null && stopPct > 0 && px780 <= ep780 * (1 - stopPct)) return "STOP";
         if (s.sw && !p.sw) return "398";
         if (s.sc && !p.sc) return "CASH";
       } else if (hold === "398") {
@@ -454,14 +465,23 @@ async function updateData() {
       let cash = 100000, shares = 0, hold = "CASH", ep780 = null;
       let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
       const navs = [], holds = [], trades = [];
-      let totalComm = 0;
+      let totalComm = 0, nStop = 0, nStopBlocked = 0;
       for (let i = S; i < N; i++) {
         const s = sig(i);
         let t;
         if (useBull && bull[i]) t = "780";
         else t = d3Next(hold, s, p, c780[i], ep780, stopPct);
+        // ★止损落地：398 乖离 MA20 过大 → 不追高换仓，改空仓等信号
+        let isStop = false, stopBlocked = false, stopBias = null;
+        if (t === "STOP") {
+          isStop = true;
+          stopBias = bias398[i];
+          stopBlocked = BIAS_MAX > 0 && stopBias !== null && stopBias > BIAS_MAX;
+          t = stopBlocked ? "CASH" : "398";
+          nStop++;
+          if (stopBlocked) nStopBlocked++;
+        }
         if (t !== hold) {
-          const isStop = hold === "780" && t === "398" && stopPct > 0 && ep780 !== null && c780[i] <= ep780 * (1 - stopPct);
           let comm = 0;
           if (hold !== "CASH") {
             const sp = hold === "780" ? c780[i] : c398[i];
@@ -483,7 +503,7 @@ async function updateData() {
             ret: (valNow / 100000 - 1) * 100,
             price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i]),
             shares: shares,
-            stop: isStop, ep: ep780
+            stop: isStop, stopBlocked: stopBlocked, stopBias: stopBias, ep: ep780
           });
           hold = t;
           ep780 = t === "780" ? c780[i] : null;
@@ -493,10 +513,10 @@ async function updateData() {
         navs.push(val);
         holds.push(hold);
       }
-      return { navs, holds, trades, totalComm, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
+      return { navs, holds, trades, totalComm, nStop, nStopBlocked, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
     }
 
-    const hy = replay(true, STOP_PCT);   // 新版：牛市开关 + 跌破成本 STOP_PCT 止损切工行
+    const hy = replay(true, STOP_PCT);   // 新版：牛市开关 + 止损 + 398 乖离过大改空仓
     const hyOld = replay(true, 0);       // 原版：事件式出口（仅作对照曲线）
     const d3 = replay(false, 0);         // D3 现状（对照）
 
@@ -620,19 +640,26 @@ async function updateData() {
       document.getElementById("lastDetail").textContent = "当前空仓，无持仓浮盈。";
     }
 
-    // ---- ★止损监控：持有 780 时显示其止损价与现价距离 ----
+    // ---- ★止损监控：持有 780 时显示其止损价与现价距离，并预告触发后去哪儿 ----
     const stopMonEl = document.getElementById("stopMon");
     const stopSubEl = document.getElementById("stopSub");
+    const biasNow = ma398_20[li] ? (price398 / ma398_20[li] - 1) : null;
+    const biasNowPct = biasNow === null ? null : biasNow * 100;
     if (posNow === "780" && hy.ep780 !== null && hy.ep780 !== undefined) {
       const stopPx = hy.ep780 * (1 - STOP_PCT);
       const gapPct = (price780 / stopPx - 1) * 100;
+      const willBlock = biasNow !== null && BIAS_MAX > 0 && biasNow > BIAS_MAX;
       stopMonEl.textContent = stopPx.toFixed(3);
       stopMonEl.className = "m-value " + (gapPct <= 3 ? "down" : "up");
-      stopSubEl.textContent = "买入 " + hy.ep780.toFixed(3) + " | 现价距止损 " + (gapPct >= 0 ? "+" : "") + gapPct.toFixed(2) + "%";
+      stopSubEl.innerHTML = "买入 " + hy.ep780.toFixed(3) + " | 现价距止损 " + (gapPct >= 0 ? "+" : "") + gapPct.toFixed(2) + "%" +
+        "<br>触发后 → <b class='" + (willBlock ? "down" : "up") + "'>" + (willBlock ? "空仓" : "切工行") + "</b>（398 乖离 " +
+        (biasNowPct === null ? "-" : (biasNowPct >= 0 ? "+" : "") + biasNowPct.toFixed(1) + "%") + "）";
     } else {
       stopMonEl.textContent = "未持 780";
       stopMonEl.className = "m-value";
-      stopSubEl.textContent = "买入 780 后此处显示止损价（跌破买入价 −" + Math.round(STOP_PCT * 100) + "% 即切工行）";
+      stopSubEl.innerHTML = "买入 780 后此处显示止损价（买入价 −" + Math.round(STOP_PCT * 100) + "%）" +
+        "<br>398 当前乖离 " + (biasNowPct === null ? "-" : (biasNowPct >= 0 ? "+" : "") + biasNowPct.toFixed(1) + "%") +
+        "（>+" + Math.round(BIAS_MAX * 100) + "% 则改空仓）";
     }
 
     // ---- ★780 回补监控：未持 780 时，算出三条回补路径的实时门槛 ----
@@ -817,7 +844,9 @@ async function updateData() {
       return "<b>" + nm2[t.from] + " → " + nm2[t.to] + "</b>";
     };
     const reason = t => {
-      if (t.stop) return "★成本止损 跌破买入价 −" + Math.round(STOP_PCT * 100) + "% → 切工行防守";
+      const bTxt = (t.stopBias === null || t.stopBias === undefined) ? "" : (t.stopBias >= 0 ? "+" : "") + (t.stopBias * 100).toFixed(1) + "%";
+      if (t.stop && t.stopBlocked) return "★成本止损 → <b>改空仓</b>（398 乖离 " + bTxt + " &gt; +" + Math.round(BIAS_MAX * 100) + "%，不追高）";
+      if (t.stop) return "★成本止损 跌破买入价 −" + Math.round(STOP_PCT * 100) + "% → 切工行防守（398 乖离 " + bTxt + "）";
       if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
       if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
       if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
@@ -855,7 +884,7 @@ async function updateData() {
       return (navs[li] / base - 1) * 100;
     }
     const sgn = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-    let sHtml = "<tr><th>止损线</th><th>全窗口</th><th>年化</th><th>最大回撤</th><th>卡玛</th><th>近一年</th><th>本月</th><th>交易</th><th>止损触发</th></tr>";
+    let sHtml = "<tr><th>止损线</th><th>全窗口</th><th>年化</th><th>最大回撤</th><th>卡玛</th><th>近一年</th><th>本月</th><th>交易</th><th>止损触发</th><th>其中改空仓</th></tr>";
     for (const pct of STOP_SCAN) {
       const cur = Math.abs(pct - STOP_PCT) < 1e-9;
       const r = cur ? hy : replay(true, pct);
@@ -873,13 +902,15 @@ async function updateData() {
         "<td>" + (y1 === null ? "-" : sgn(y1)) + "</td>" +
         "<td>" + (mo === null ? "-" : sgn(mo)) + "</td>" +
         "<td>" + r.trades.length + "</td>" +
-        "<td>" + nStop + " 次</td></tr>";
+        "<td>" + nStop + " 次</td>" +
+        "<td>" + r.nStopBlocked + " 次</td></tr>";
     }
     document.getElementById("stopTable").innerHTML = sHtml;
     document.getElementById("stopNote").innerHTML =
+      "表内所有档位都已含 <b>398 乖离 +" + Math.round(BIAS_MAX * 100) + "% 改空仓</b> 这条位置过滤（同一策略，只改止损线）。" +
       "止损线越紧、收益越高（单调），但实盘按盘中价触发会比收盘价回测更疼 —— −4% 是收益最优档，" +
       "若担心盘中噪音被扫损，可放宽到 <b>−5% ~ −6%</b>，代价是让出部分全窗口收益。" +
-      "卡玛 = 年化 ÷ |最大回撤|；「近一年」自 2025-10-16 起；「止损触发」为全窗口累计触发笔数。";
+      "卡玛 = 年化 ÷ |最大回撤|；「近一年」自 2025-10-16 起；「止损触发」为全窗口累计触发笔数，「其中改空仓」为因 398 乖离过大而未换仓的次数。";
   } catch (e) {
     document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
   }
