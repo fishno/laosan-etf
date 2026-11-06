@@ -1,5 +1,5 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v6';   // v6: 2026-11-04 回滚 dd4（实测实盘口径下变差），恢复 398 五日-2%
+const CACHE = 'laosan-d3-v7';   // v7: 2026-11-06 hybrid 加「398 乖离>4% 改空仓」（止损换仓前的位置检查）
 
 const SHELL = [
   './',
