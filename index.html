@@ -124,8 +124,6 @@
     .rsi-box{flex:1;background:var(--inner);border-radius:10px;padding:12px;text-align:center}
     .rsi-box .label{font-size:11px;color:var(--muted)}
     .rsi-box .value{font-size:22px;font-weight:700;margin-top:4px}
-    .rsi-box .bar{height:4px;border-radius:2px;margin-top:6px;background:#333;overflow:hidden}
-    .rsi-box .bar-fill{height:100%;border-radius:2px}
     .rsi-diff{display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:8px;gap:6px;flex-wrap:wrap}
     .rsi-diff .arrow{font-size:16px}
     .position-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;
@@ -1084,16 +1082,12 @@ async function updateData() {
 
       // ---- 指标盒 ----
       const s = cfg.series, v = s[N - 1], th = cfg.threshold, isRsi = cfg.kind === "rsi";
-      const barW = isRsi ? Math.max(0, Math.min(100, v))
-        : Math.max(0, Math.min(100, Math.abs(v) / (th * 2) * 100));
       const barC = isRsi ? "#38bdf8" : (v > th ? "#ff9800" : "#38bdf8");
       document.getElementById("rsi" + code).innerHTML =
         '<div class="rsi-box"><div class="label">' + cfg.indLabel + '</div>' +
-        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v)) + '</div>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + barW + '%;background:' + barC + '"></div></div></div>' +
+        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v)) + '</div></div>' +
         '<div class="rsi-box"><div class="label">' + cfg.thLabel + '</div>' +
-        '<div class="value" style="color:#4caf50">' + cfg.thText + '</div>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + (isRsi ? th : 50) + '%;background:#4caf50"></div></div></div>';
+        '<div class="value" style="color:#4caf50">' + cfg.thText + '</div></div>';
 
       // ---- 指标说明两行 ----
       const hit = isRsi ? (v < th) : (v > th);
