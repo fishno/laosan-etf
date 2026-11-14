@@ -186,7 +186,8 @@
     <div id="navChart" class="chart"></div>
   </section>
 
-  <section id="stopscan" class="card">
+  <!-- 止损档位扫描面板：2026-11-14 按需隐藏（不占版面）。恢复方法：删掉本行下面的 style="display:none" 并把脚本里的 SHOW_STOPSCAN 改成 true -->
+  <section id="stopscan" class="card" style="display:none">
     <h2><span class="dot"></span>止损档位扫描（同一策略，只改止损线）</h2>
     <div style="overflow-x:auto"><table id="stopTable"></table></div>
     <p class="foot" id="stopNote"></p>
@@ -244,6 +245,8 @@ const BULL_PCT = 0.95;
 //   （旧口径 2022-07 预热给出的 +500.9% / +505.8% 已作废：预热不足导致 250日高与回撤失真）
 const STOP_PCT = 0.04;
 const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
+// 止损档位扫描面板是否渲染（2026-11-14 起默认关闭：面板已隐藏，不再白跑 5 次回测）
+const SHOW_STOPSCAN = false;
 // ★ 止损切工行前的「位置检查」（2026-11-06 新增）
 //   止损信号来自 780 的风险，买入动作落在 398 身上 —— 若 398 当天已远离 MA20（刚创新高、被避险资金顶上去），
 //   就是拿 A 的风险信号在最贵的位置满仓买 B。实测 2026-10-29：398 创历史新高、乖离 +5.3%，5 天后 -4.9%。
@@ -955,6 +958,8 @@ async function updateData() {
       "<div style='overflow-x:auto'><table>" + th + "</table></div></details>";
 
     // ---- ★止损档位扫描（同一策略，只改止损线；复用同一回测引擎）----
+    // 面板已隐藏（SHOW_STOPSCAN=false）→ 整块跳过，省掉 5 次重复回测
+    if (SHOW_STOPSCAN) {
     function segTot(navs, dts, lo) {
       let fi = -1, li = -1;
       for (let i = 0; i < dts.length; i++) { if (dts[i] >= lo) { if (fi < 0) fi = i; li = i; } }
@@ -990,6 +995,7 @@ async function updateData() {
       "止损线越紧、收益越高（单调），但实盘按盘中价触发会比收盘价回测更疼 —— −4% 是收益最优档，" +
       "若担心盘中噪音被扫损，可放宽到 <b>−5% ~ −6%</b>，代价是让出部分全窗口收益。" +
       "卡玛 = 年化 ÷ |最大回撤|；「近一年」自 2025-10-16 起；「止损触发」为全窗口累计触发笔数，「其中改空仓」为因 398 乖离过大而未换仓的次数。";
+    }
   } catch (e) {
     document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
   }
