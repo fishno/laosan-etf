@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老杨的科技银行轮动策略 · D3双卡看板</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;background:#0f1117;color:#e0e0e0;min-height:100vh;padding:16px}
+.header{text-align:center;padding:20px 0;margin-bottom:20px}
+.header h1{font-size:24px;color:#fff;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .sub{color:#888;font-size:13px;margin-top:6px}
+.update-btn{display:inline-block;margin-top:12px;padding:8px 24px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .3s}
+.update-btn:hover{opacity:.85}
+.update-btn:disabled{opacity:.5;cursor:not-allowed}
+.summary-bar{display:flex;justify-content:center;gap:24px;margin-bottom:20px;flex-wrap:wrap}
+.summary-item{background:#1a1d29;border-radius:10px;padding:12px 24px;text-align:center;border:1px solid #2a2d3a}
+.summary-item .label{font-size:12px;color:#888}
+.summary-item .value{font-size:22px;font-weight:700;margin-top:4px}
+.summary-item .value.hold{color:#ff5252}
+.summary-item .value.cash{color:#4caf50}
+.summary-item .value.signal{color:#ffc107}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;max-width:1400px;margin:0 auto}
+.card{background:#1a1d29;border-radius:16px;overflow:hidden;border:1px solid #2a2d3a;transition:border-color .3s}
+.card:hover{border-color:#667eea}
+.card-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a2d3a}
+.card-header .etf-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-header .etf-code{font-size:18px;font-weight:700;color:#fff}
+.card-header .etf-name{font-size:14px;color:#888}
+.card-header .params{background:#2a2d3a;padding:4px 10px;border-radius:8px;font-size:12px;color:#667eea}
+.signal-badge{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
+.signal-badge.red{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
+.signal-badge.green{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+.signal-badge.gray{background:rgba(128,128,128,.15);color:#888;border:1px solid rgba(128,128,128,.3)}
+.signal-badge.orange{background:rgba(255,152,0,.15);color:#FF9800;border:1px solid rgba(255,152,0,.3)}
+.signal-badge.alert{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.card-body{padding:16px 20px}
+.price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.price{font-size:28px;font-weight:700;color:#fff}
+.price-change{font-size:16px;font-weight:600}
+.price-change.up{color:#ff5252}
+.price-change.down{color:#4caf50}
+.price-meta{font-size:12px;color:#666;margin-left:auto}
+.rsi-row{display:flex;gap:12px;margin-bottom:16px}
+.rsi-box{flex:1;background:#14161f;border-radius:10px;padding:12px;text-align:center}
+.rsi-box .label{font-size:11px;color:#888}
+.rsi-box .value{font-size:22px;font-weight:700;margin-top:4px}
+.rsi-box .bar{height:4px;border-radius:2px;margin-top:6px;background:#333;overflow:hidden}
+.rsi-box .bar-fill{height:100%;border-radius:2px}
+.rsi-diff{display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:8px;gap:6px;flex-wrap:wrap}
+.rsi-diff .arrow{font-size:16px}
+.position-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.position-box.holding{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2)}
+.position-box.cash{background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.2)}
+.position-box .pos-label{font-size:13px;color:#888}
+.position-box .pos-status{font-size:16px;font-weight:700}
+.position-box.holding .pos-status{color:#ff5252}
+.position-box.cash .pos-status{color:#4caf50}
+.position-box .pnl{font-size:18px;font-weight:700}
+.position-box .pnl.profit{color:#ff5252}
+.position-box .pnl.loss{color:#4caf50}
+.chart-container{background:#14161f;border-radius:10px;padding:12px;margin-bottom:16px}
+.chart-container canvas{width:100%;height:120px}
+.rsi-chart-container{background:#14161f;border-radius:10px;padding:12px;margin-bottom:16px}
+.rsi-chart-container canvas{width:100%;height:100px}
+.signal-list{font-size:12px}
+.signal-list .title{color:#888;margin-bottom:8px;font-size:13px}
+.signal-list table{width:100%;border-collapse:collapse}
+.signal-list th{text-align:left;color:#666;font-weight:400;padding:4px 8px;border-bottom:1px solid #2a2d3a}
+.signal-list td{padding:6px 8px;border-bottom:1px solid #1e212c}
+.signal-list .buy{color:#ff5252}
+.signal-list .sell{color:#4caf50}
+.signal-list .filtered{color:#FF9800}
+.signal-list .profit{color:#ff5252;font-weight:600}
+.signal-list .loss{color:#4caf50;font-weight:600}
+.trade-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.trade-stats .stat-item{background:#14161f;border-radius:8px;padding:10px 12px;flex:1;text-align:center;min-width:100px}
+.trade-stats .stat-label{display:block;font-size:11px;color:#888;margin-bottom:4px}
+.trade-stats .stat-value{font-size:16px;font-weight:700;color:#fff}
+.update-bar{text-align:center;margin:20px 0}
+.update-time{color:#666;font-size:12px;margin-top:8px}
+.footer{text-align:center;color:#555;font-size:12px;padding:24px 0;max-width:1400px;margin:0 auto;line-height:1.8}
+@media(max-width:500px){.cards{grid-template-columns:1fr}.header h1{font-size:18px}.price{font-size:22px}.trade-stats .stat-item{min-width:80px}}
+
+
+.container{max-width:1320px;margin:0 auto}
+.cards{grid-template-columns:repeat(auto-fit,minmax(400px,1fr));max-width:1320px}
+.card{border-radius:16px}
+.card-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #2a2d3a;gap:10px;flex-wrap:wrap}
+.etf-info{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.etf-code{font-size:15px;font-weight:700;color:#667eea}
+.etf-name{font-size:17px;font-weight:700;color:#fff}
+.params{font-size:12px;color:#888}
+.signal-badge{padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.signal-badge.hold{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.35)}
+.signal-badge.idle{background:rgba(255,255,255,.05);color:#888;border:1px solid #2a2d3a}
+.signal-badge.alert{background:rgba(255,193,7,.15);color:#ffc107;border:1px solid rgba(255,193,7,.35)}
+.card-body{padding:20px}
+.price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.price{font-size:32px;font-weight:700;color:#fff}
+.price-change{font-size:13px;font-weight:600;color:#667eea;background:rgba(102,126,234,.12);padding:2px 10px;border-radius:6px}
+.price-meta{font-size:12px;color:#888}
+.up{color:#ff5252}.down{color:#4caf50}.neutral{color:#888}
+.rsi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-bottom:14px}
+.rsi-box{background:rgba(255,255,255,.03);border:1px solid #2a2d3a;border-radius:10px;padding:10px;text-align:center}
+.rsi-box .label{font-size:11px;color:#888;margin-bottom:4px}
+.rsi-box .value{font-size:20px;font-weight:700}
+.rsi-box .bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:8px;overflow:hidden}
+.rsi-box .bar-fill{height:100%;border-radius:3px}
+.rsi-diff{font-size:13px;color:#aaa;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:8px;margin-bottom:14px;border-left:3px solid #667eea;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rsi-diff .arrow{font-size:14px}
+.metric-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.metric{background:rgba(255,255,255,.03);border:1px solid #2a2d3a;border-radius:8px;padding:10px;text-align:center}
+.metric .ml2{font-size:11px;color:#888;margin-bottom:4px}
+.metric .mv2{font-size:15px;font-weight:600}
+.chart-container{height:130px;margin:10px 0}
+.rsi-chart-container{height:95px;margin:6px 0 14px}
+.chart-container canvas,.rsi-chart-container canvas{width:100%!important;height:100%!important}
+.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.stat2{background:rgba(255,255,255,.03);border:1px solid #2a2d3a;border-radius:8px;padding:10px;text-align:center}
+.stat2 .sl2{font-size:11px;color:#888;margin-bottom:4px}
+.stat2 .sv2{font-size:16px;font-weight:700}
+.signal-list{background:rgba(255,255,255,.02);border-radius:10px;padding:12px}
+.signal-list .title{font-size:12px;color:#888;margin-bottom:8px}
+.sig-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sig-item:last-child{border-bottom:none}
+.sig-date{color:#888;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sig-tag{padding:1px 8px;border-radius:4px;font-size:11px;background:rgba(255,255,255,.06);color:#ccc;white-space:nowrap}
+.sig-tag.buy{background:rgba(255,82,82,.15);color:#ff5252}
+.sig-tag.sell{background:rgba(76,175,80,.15);color:#4caf50}
+.sig-reason{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.section{background:#1a1d29;border:1px solid #2a2d3a;border-radius:16px;padding:20px;margin:20px auto;max-width:1320px}
+.section h2{font-size:16px;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section h2::before{content:'';width:4px;height:18px;background:linear-gradient(180deg,#667eea,#764ba2);border-radius:2px}
+.monthly-wrap{position:relative}
+.monthly-hint{font-size:11px;color:#777;margin-bottom:6px}
+.monthly-chart{display:flex;align-items:stretch;gap:0;height:320px;background:rgba(255,255,255,.02);border:1px solid #2a2d3a;border-radius:8px;padding:16px 12px 8px}
+.monthly-col{flex:1;display:flex;flex-direction:column;min-width:0}
+.up-half{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;overflow:hidden}
+.down-half{flex:1;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:hidden}
+.monthly-bar{width:34%;max-width:20px;min-width:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:600;border-radius:2px;position:relative;transition:opacity .15s}
+.monthly-col:hover .monthly-bar{opacity:.8}
+.monthly-bar.up{background:linear-gradient(180deg,#ff5f57,#d83a30);border-radius:2px 2px 0 0}
+.monthly-bar.down{background:linear-gradient(0deg,#4caf50,#2e7d32);border-radius:0 0 2px 2px}
+.monthly-bar.empty{visibility:hidden}
+.monthly-bar .mv{position:absolute;left:50%;transform:translateX(-50%);font-size:8px;font-weight:600;white-space:nowrap;color:#bbb}
+.monthly-bar.up .mv{top:-13px}
+.monthly-bar.down .mv{bottom:-13px}
+.monthly-bar .mv .up{color:#ff5252}
+.monthly-bar .mv .down{color:#4caf50}
+.action-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#1a1d29;border:1px solid #2a2d3a;border-radius:12px;padding:12px 20px;margin:0 auto 20px;max-width:1320px}
+.ab-label{font-size:12px;color:#888;background:rgba(255,255,255,.05);padding:3px 10px;border-radius:6px;white-space:nowrap}
+.ab-action{font-size:16px;font-weight:700;color:#fff}
+.ab-reason{font-size:13px;color:#aaa;flex:1;min-width:180px}
+.ab-conf{font-size:12px;font-weight:600;padding:3px 12px;border-radius:6px;white-space:nowrap}
+.ab-conf.hi{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+.ab-conf.mid{background:rgba(255,193,7,.15);color:#ffc107;border:1px solid rgba(255,193,7,.3)}
+.ab-conf.low{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
+.price .chg{font-size:13px;font-weight:600;margin-left:8px}
+.monthly-zero{height:1px;background:rgba(255,255,255,.18);margin:0}
+.monthly-labels{display:flex;gap:3px;margin-top:6px;padding:0 10px}
+.monthly-labels .ml{flex:1;text-align:center;font-size:9px;color:#777;overflow:hidden;white-space:nowrap}
+.perf-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.perf-item{background:rgba(255,255,255,.03);border:1px solid #2a2d3a;border-radius:10px;padding:12px;text-align:center}
+.perf-item .label{font-size:11px;color:#888;margin-bottom:4px}
+.perf-item .value{font-size:18px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:rgba(255,255,255,.03);padding:10px 12px;text-align:left;font-weight:600;color:#888;border-bottom:1px solid #2a2d3a}
+td{padding:10px 12px;border-bottom:1px solid #2a2d3a;color:#ccc}
+tr:hover{background:rgba(255,255,255,.02)}
+.rules{font-size:14px;color:#ccc}.rules li{margin-bottom:8px;padding-left:8px;list-style:none}.rules strong{color:#667eea}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-hold{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
+.badge-cash{background:rgba(255,255,255,.05);color:#888;border:1px solid #2a2d3a}
+.disclaimer{font-size:12px;color:#777;text-align:center;padding:20px;line-height:1.8;max-width:1320px;margin:0 auto}
+.toast{position:fixed;top:16px;right:16px;padding:10px 20px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideIn .3s ease}
+.toast-success{background:#4caf50}.toast-error{background:#ff5252}.toast-info{background:#667eea}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@media(max-width:600px){.cards{grid-template-columns:1fr}.stats-strip{grid-template-columns:1fr 1fr}.rt-prices{grid-template-columns:1fr}.price{font-size:26px}}
+
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="header">
+    <h1>老杨的科技银行轮动策略 · D3双卡看板</h1>
+    <div class="sub">科创创业50ETF + 工商银行 轮动 · RSI6&lt;25抄底 · 250日回撤切换 · 前复权数据 · 回测窗口2023起</div>
+    <div id="updateTime" style="color:#888;font-size:12px;margin-top:8px">数据加载中...</div>
+    <button class="update-btn" id="updateBtn" onclick="fetchLatestData()">手动更新数据</button>
+  </div>
+
+  <div class="summary-bar" id="summaryBar"></div>
+
+  <div class="action-bar" id="actionBar"><span class="ab-label">尾盘信号</span><span class="ab-reason">正在获取...</span></div>
+
+  <div class="cards" id="cardsGrid"></div>
+
+  <div class="section">
+    <h2>月度收益率（红涨绿跌，0 轴双向柱）</h2>
+    <div class="monthly-hint" id="monthlyHint"></div>
+    <div class="monthly-wrap">
+      <div class="monthly-chart" id="monthlyChart"></div>
+      <div class="monthly-labels" id="monthlyLabels"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>回测绩效 (2023 ~ 最新)</h2>
+    <div class="perf-row" id="perfGrid"></div>
+    <div id="benchLine" style="font-size:12px;color:#888;margin-top:10px">对比基准：买入持有计算中...</div>
+  </div>
+
+  <div class="section">
+    <h2>净值走势</h2>
+    <div class="chart-container" style="height:280px"><canvas id="equityChart"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>交易记录</h2>
+    <div style="overflow-x:auto">
+      <table id="tradesTable"><thead><tr><th>序号</th><th>日期</th><th>操作</th><th>原因</th><th>买入价</th><th>卖出价</th><th>策略净值</th><th>累计收益率</th><th>持仓</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>策略规则</h2>
+    <ul class="rules">
+      <li><strong>默认持仓：</strong>无信号时持有159780(科创创业50ETF)</li>
+      <li><strong>切换银行(sw)：</strong>780250日回撤&gt;10% <strong>且</strong> 398五日涨幅从负转正(边缘触发) → 买入601398</li>
+      <li><strong>空仓避险(sc)：</strong>780250日回撤&gt;12% <strong>且</strong> 398五日涨幅从正转负(边缘触发) → 空仓</li>
+      <li><strong>抄底回场(bk)：</strong>Wilder RSI6从&gt;25转为&lt;25(边缘触发) → 买入780</li>
+      <li><strong>银行止损(d398)：</strong>持有398时，398五日跌幅从&gt;-2%转为&lt;-2%(边缘触发) → 空仓</li>
+      <li><strong>趋势回场(aMA)：</strong>空仓时，780收盘价从跌破MA20转为站上MA20(边缘触发) → 买入780</li>
+      <li style="color:#888;font-size:13px">※ 所有信号均为边缘触发。持有398时仅RSI6信号可回场780。</li>
+      <li style="color:#667eea;font-size:13px"><strong>14:50尾盘信号：</strong>每个交易日14:50-14:57自动获取实时价格代理收盘价，提前判断当日信号。信号窗口内每30秒自动刷新。</li>
+    </ul>
+  </div>
+
+  <div class="disclaimer">⚠️ 本页面基于历史数据回测，历史表现不代表未来收益。策略参数存在过拟合风险。回测未考虑滑点和冲击成本。<br>14:50尾盘信号使用实时价格代理收盘价，实际收盘价可能存在偏差，仅供参考。<br>本页面不构成投资建议，投资者应独立判断，自行承担投资风险。数据来源：腾讯行情(浏览器直连)，前复权。<br>佣金按万一计（未单独计股票印花税）。</div>
+</div>
+<script>
+var __name = function(target, value) { try { Object.defineProperty(target, "name", { value: value, configurable: true }); } catch (e) {} return target; };
+
+var START_DATE = "2023-01-01";
+// ===== 浏览器直连数据层(替代 Worker API, 用户真实IP不被风控) =====
+async function fetchTencentKline(code, beg = "2022-01-01") {
+  const end = new Date().toISOString().slice(0, 10);
+  const segs = [];
+  // ★ 双通道：主 proxy.finance 直连 → 失败自动切 Cloudflare Worker 反代 web.ifzq（2026-11-14）
+  //   原因：web.ifzq 按来源 IP 判断，浏览器直连报 Failed to fetch，只能借 Worker 出网。
+  const WORKER_BASE = "https://laosan.sanyan.ccwu.cc";
+  const push = async (b, e) => {
+    const urls = [
+      `https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get?param=${code},day,${b},${e},600,qfq`,
+      WORKER_BASE + "/proxy?url=" + encodeURIComponent(`https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${b},${e},600,qfq`)
+    ];
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { headers: { "Referer": "https://gu.qq.com/" } });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const json = await resp.json();
+        const d = json && json.data && json.data[code];
+        const arr = d && (d.qfqday || d.day);
+        if (!arr || !arr.length) throw new Error("无数据 " + b);
+        segs.push(...arr);
+        return;
+      } catch (err) { lastErr = err; }
+    }
+    throw new Error("腾讯K线获取失败 " + b + "：" + (lastErr && lastErr.message));
+  };
+  await push(beg, "2023-12-31");
+  await push("2024-01-01", "2025-12-31");
+  await push("2026-01-01", end);
+  const map = new Map();
+  for (const k of segs) map.set(k[0], k);
+  return [...map.keys()].sort().map(dd => { const k = map.get(dd); return { date: k[0], open: +k[1], close: +k[2], high: +k[3], low: +k[4] }; });
+}
+async function getMergedData() {
+  const [d780, d398] = await Promise.all([fetchTencentKline("sz159780"), fetchTencentKline("sh601398")]);
+  const map398 = {};
+  d398.forEach(d => map398[d.date] = d.close);
+  const merged = [];
+  for (const d of d780) if (map398[d.date] !== void 0) merged.push({ d: d.date, o: d.open, c: d.close, h: d.high, l: d.low, b: map398[d.date] });
+  return merged;
+}
+async function fetchRealtimeEM(secid, refPrice) {
+  try {
+    const params = new URLSearchParams({ secid, fields: "f43,f44,f45,f46,f57,f58,f170", _: Date.now().toString() });
+    const resp = await fetch(`https://push2.eastmoney.com/api/qt/stock/get?${params}`, { headers: { "Referer": "https://quote.eastmoney.com/" } });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data || !data.data) return null;
+    const d = data.data;
+    const c100 = d.f43 / 100, c1000 = d.f43 / 1e3;
+    let unit = 100;
+    if (refPrice && refPrice > 0) { const r100 = Math.abs(c100 - refPrice) / refPrice; const r1000 = Math.abs(c1000 - refPrice) / refPrice; unit = r1000 < r100 ? 1e3 : 100; }
+    const price = d.f43 / unit, high = d.f44 / unit, low = d.f45 / unit, open = d.f46 / unit;
+    const changePct = d.f170 !== void 0 ? d.f170 / 100 : 0;
+    const prevClose = price / (1 + changePct / 100);
+    return { price: +price.toFixed(4), high: +high.toFixed(4), low: +low.toFixed(4), open: +open.toFixed(4), prevClose: +prevClose.toFixed(4), code: d.f57, name: d.f58, changePct: +changePct.toFixed(2), changeAmt: +(price - prevClose).toFixed(4) };
+  } catch (e) { return null; }
+}
+async function fetchTencentQuotes() {
+  // 腾讯分时接口(与K线同域 web.ifzq.gtimg.cn, 浏览器可用; 东财实时被浏览器拦截时的兜底)
+  const out = {};
+  try {
+    for (const [code, key] of [["sz159780", "q780"], ["sh601398", "q398"]]) {
+      const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
+      const resp = await fetch(url, { headers: { "Referer": "https://gu.qq.com/" } });
+      if (!resp.ok) return null;
+      const json = await resp.json();
+      const node = json && json.data && json.data[code];
+      const arr = node && node.qt && node.qt[code];
+      if (!arr || arr.length <= 30 || parseFloat(arr[3]) <= 0) return null;
+      const price = parseFloat(arr[3]);
+      const prevClose = parseFloat(arr[4]) || price;
+      out[key] = { price: +price.toFixed(4), high: +price.toFixed(4), low: +price.toFixed(4), open: +parseFloat(arr[5] || price).toFixed(4), prevClose: +prevClose.toFixed(4), code, name: "", changePct: +((price / prevClose - 1) * 100).toFixed(2), changeAmt: +(price - prevClose).toFixed(4) };
+    }
+    if (!out.q780 || !out.q398) return null;
+    return out;
+  } catch (e) { return null; }
+}
+async function getMergedDataWithProxy() {
+  const merged = await getMergedData();
+  if (!merged || !merged.length) return { merged: [], proxy: null };
+  const lastIdx = merged.length - 1, last = merged[lastIdx];
+  let [q780, q398] = await Promise.all([fetchRealtimeEM("0.159780", last.c), fetchRealtimeEM("1.601398", last.b)]);
+  let src = "eastmoney";
+  if (!q780 || !q398) { const tq = await fetchTencentQuotes(); if (tq && tq.q780 && tq.q398) { q780 = tq.q780; q398 = tq.q398; src = "tencent"; } }
+  if (!q780 || !q398) return { merged, proxy: null };
+  const proxyData = merged.map((d, i) => { if (i !== lastIdx) return d; return { ...d, c: q780.price, h: Math.max(d.h, q780.high, q780.price), l: Math.min(d.l, q780.low, q780.price), b: q398.price }; });
+  return { merged, proxy: { q780, q398, proxyData, today: last.d, histClose780: last.c, histClose398: last.b, src } };
+}
+async function computeSignal() {
+  const { merged, proxy } = await getMergedDataWithProxy();
+  const data = proxy ? proxy.proxyData : merged;
+  const result = backtest(data);
+  if (!result) throw new Error("回测失败");
+  result._raw = data;
+  return result;
+}
+async function computePulse() {
+  const result = await computeSignal();
+  return { lastData: result.lastData, lastTrade: result.lastTrade || null, indicators: result.indicators, performance: result.performance, yearlyReturns: result.yearlyReturns, records: result.records.slice(-1), currentPosition: result.currentPosition, ts: Date.now() };
+}
+async function computeRealSignal() {
+  const marketState = getMarketState();
+  const proxyInfo = await getMergedDataWithProxy();
+  const realtimeSignal = analyzeProxySignal(proxyInfo);
+  return { marketState, realtimeSignal };
+}
+
+function getMarketState() {
+  const now = /* @__PURE__ */ new Date();
+  const beijingMs = now.getTime() + (now.getTimezoneOffset() + 8 * 60) * 6e4;
+  const beijing = new Date(beijingMs);
+  const hour = beijing.getHours();
+  const minute = beijing.getMinutes();
+  const day = beijing.getDay();
+  const timeMin = hour * 60 + minute;
+  const isWeekday = day >= 1 && day <= 5;
+  const isMarketOpen = isWeekday && (timeMin >= 570 && timeMin <= 690 || timeMin >= 780 && timeMin <= 900);
+  const isSignalWindow = isWeekday && timeMin >= 890 && timeMin <= 897;
+  const isAfterClose = isWeekday && timeMin > 900;
+  const isBeforeOpen = isWeekday && timeMin < 570;
+  let phase = "closed";
+  if (isSignalWindow) phase = "signal";
+  else if (isMarketOpen) phase = "trading";
+  else if (isAfterClose) phase = "after";
+  else if (isBeforeOpen) phase = "before";
+  return {
+    beijingTime: beijing.toISOString().replace("T", " ").slice(0, 19),
+    beijingHour: hour,
+    beijingMinute: minute,
+    timeMin,
+    timeStr: `${hour}:${minute.toString().padStart(2, "0")}`,
+    isWeekday,
+    isMarketOpen,
+    isSignalWindow,
+    isAfterClose,
+    isBeforeOpen,
+    phase
+  };
+}
+__name(getMarketState, "getMarketState");
+function calcRSI(p, n) {
+  const r = new Array(p.length).fill(null);
+  if (p.length < n + 1) return r;
+  let g = 0, l = 0;
+  for (let i = 1; i <= n; i++) {
+    const c = p[i] - p[i - 1];
+    if (c >= 0) g += c;
+    else l -= c;
+  }
+  let ag = g / n, al = l / n;
+  r[n] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  for (let i = n + 1; i < p.length; i++) {
+    const c = p[i] - p[i - 1];
+    ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
+    al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
+    r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return r;
+}
+__name(calcRSI, "calcRSI");
+function calcMA(p, n) {
+  const m = new Array(p.length).fill(null);
+  let s = 0;
+  for (let i = 0; i < p.length; i++) {
+    s += p[i];
+    if (i >= n) s -= p[i - n];
+    if (i >= n - 1) m[i] = s / n;
+  }
+  return m;
+}
+__name(calcMA, "calcMA");
+function calcDD(p, n) {
+  const W = n || 250, d = new Array(p.length).fill(0);
+  for (let i2 = 0; i2 < p.length; i2++) {
+    let mx = p[i2];
+    for (let j = Math.max(0, i2 - W + 1); j <= i2; j++) { if (p[j] > mx) mx = p[j]; }
+    d[i2] = (p[i2] - mx) / mx;
+  }
+  return d;
+}
+__name(calcDD, "calcDD");
+function reasonText(from, to, s, dd, r5v, rsi) {
+  const ddPct = (-dd * 100).toFixed(1);
+  if (from === "780" && to === "398") return `780回撤${ddPct}%且398转强,切银行`;
+  if (from === "780" && to === "CASH") return `780回撤${ddPct}%且398走弱,避险`;
+  if (from === "398" && to === "780") return `RSI6=${rsi.toFixed(1)}<25抄底`;
+  if (from === "398" && to === "CASH") return `398五日${(r5v * 100).toFixed(1)}%止损`;
+  if (from === "CASH" && to === "780") return s.bk ? `RSI6=${rsi.toFixed(1)}<25抄底` : "MA20收复回补";
+  if (from === "CASH" && to === "398") return `398转强切银行`;
+  return "信号触发";
+}
+__name(reasonText, "reasonText");
+function backtest(RAW_DATA) {
+  const dates = RAW_DATA.map((d) => d.d);
+  const c780 = RAW_DATA.map((d) => d.c);
+  const c398 = RAW_DATA.map((d) => d.b);
+  const b0 = 0;
+  const S = Math.max(b0, dates.findIndex((d) => d >= START_DATE));
+  const endIdx = dates.length - 1;
+  if (S < 0 || endIdx < S) return null;
+  const sl = c780.slice(b0);
+  const rsi6 = calcRSI(sl, 6);
+  const ma20 = calcMA(sl, 20);
+  const dds = calcDD(sl);
+  const r5 = new Array(sl.length).fill(null);
+  for (let i = 5; i < sl.length; i++) r5[i] = (c398[b0 + i] - c398[b0 + i - 5]) / c398[b0 + i - 5];
+  const RATE = 1e-4;
+  const CASH_YIELD = 0.018;   // 空仓期国债逆回购 1.8% 年化逐日计息(2026-11-14)
+  let h = "CASH", wallet = 1e5, shares = 0;
+  let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
+  const trades = [];
+  const records = [];
+  const NAV = new Array(dates.length).fill(null);
+  const pxOf = /* @__PURE__ */ __name((i) => h === "780" ? c780[i] : h === "398" ? c398[i] : 0, "pxOf");
+  for (let i = S; i <= endIdx; i++) {
+    const j = i - b0;
+    const s = {
+      sw: dds[j] < -0.1 && r5[j] !== null && r5[j] > 0,
+      sc: dds[j] < -0.12 && r5[j] !== null && r5[j] <= 0,
+      bk: rsi6[j] !== null && rsi6[j] < 25,
+      d398: r5[j] !== null && r5[j] < -0.02,
+      aMA: ma20[j] !== null && c780[i] > ma20[j]
+    };
+    let h2 = h;
+    if (h === "780") {
+      if (s.sw && !p.sw) h2 = "398";
+      else if (s.sc && !p.sc) h2 = "CASH";
+    } else if (h === "398") {
+      if (s.bk && !p.bk) h2 = "780";
+      else if (s.d398 && !p.d398) h2 = "CASH";
+    } else {
+      if (s.bk && !p.bk) h2 = "780";
+      else if (s.aMA && !p.aMA) h2 = "780";
+      else if (s.sw && !p.sw) h2 = "398";
+    }
+    if (h2 !== h) {
+      if (h !== "CASH") {
+        const sp = pxOf(i);
+        const comm = sp * shares * RATE;
+        wallet += sp * shares - comm;
+        shares = 0;
+      }
+      if (h2 !== "CASH") {
+        const bp = h2 === "780" ? c780[i] : c398[i];
+        const sh = Math.floor(wallet / (bp * (1 + RATE)) / 100) * 100;
+        const comm = bp * sh * RATE;
+        wallet -= bp * sh + comm;
+        shares = sh;
+      }
+      const newPx = h2 === "780" ? c780[i] : h2 === "398" ? c398[i] : 0;
+      trades.push({
+        idx: i,
+        date: dates[i],
+        action: h + "\u2192" + h2,
+        reason: reasonText(h, h2, s, dds[j], r5[j], rsi6[j]),
+        price: h2 === "CASH" ? null : h2 === "780" ? c780[i] : c398[i],
+        priceSold: h === "CASH" ? null : h === "780" ? c780[i] : c398[i],
+        value: wallet + shares * newPx,
+        position: h2
+      });
+      h = h2;
+    }
+    p = s;
+    if (h === "CASH") wallet *= (1 + CASH_YIELD / 252);   // 空仓期计息
+    NAV[i] = wallet + shares * pxOf(i);
+    records.push({ idx: i, date: dates[i], total: NAV[i], position: h });
+  }
+  if (trades.length) {
+    trades[trades.length - 1].value = records[records.length - 1].total;
+  }
+  const totalRet = (records[records.length - 1].total / 1e5 - 1) * 100;
+  const dailyRets = [];
+  for (let i = 1; i < records.length; i++) dailyRets.push(records[i].total / records[i - 1].total - 1);
+  const avgRet = dailyRets.length ? dailyRets.reduce((a, b) => a + b, 0) / dailyRets.length : 0;
+  const stdRet = dailyRets.length ? Math.sqrt(dailyRets.reduce((a, b) => a + (b - avgRet) ** 2, 0) / dailyRets.length) : 0;
+  const sharpe = stdRet > 0 ? avgRet / stdRet * Math.sqrt(252) : 0;
+  let cummax = records[0].total, maxDD = 0;
+  for (const r of records) {
+    if (r.total > cummax) cummax = r.total;
+    const dd = (r.total - cummax) / cummax;
+    if (dd < maxDD) maxDD = dd;
+  }
+  const annualRet = (Math.pow(1 + totalRet / 100, 252 / records.length) - 1) * 100;
+  const calmar = maxDD !== 0 ? annualRet / Math.abs(maxDD * 100) : 0;
+  const lastJ = endIdx - b0;
+  const ddPos = dds[lastJ] < 0 ? -dds[lastJ] : 0;
+  const bh780 = c780[endIdx] / c780[S] - 1;
+  const bh398 = c398[endIdx] / c398[S] - 1;
+  const dd780 = calcDD(c780.slice(S, endIdx + 1));
+  const bh780MaxDD = Math.min(...dd780);
+  const dd398 = calcDD(c398.slice(S, endIdx + 1));
+  const bh601MaxDD = Math.min(...dd398);
+  const yrMap = {};
+  for (const r of records) {
+    const y = r.date.slice(0, 4);
+    if (!yrMap[y]) yrMap[y] = { first: r.total };
+    yrMap[y].last = r.total;
+  }
+  const yrKeys = Object.keys(yrMap).sort();
+  const lastYr = yrKeys[yrKeys.length - 1];
+  const yearlyReturns = yrKeys.map((y) => ({
+    year: y === lastYr ? y + "年至今" : y + "年",
+    ret: (yrMap[y].last / yrMap[y].first - 1) * 100
+  }));
+  return {
+    records,
+    trades,
+    yearlyReturns,
+    lastData: RAW_DATA[endIdx],
+    indicators: {
+      rsi6: rsi6[lastJ],
+      drawdown: ddPos,
+      ret5_398: r5[lastJ],
+      ma20: ma20[lastJ],
+      aboveMA20: ma20[lastJ] !== null && c780[endIdx] > ma20[lastJ],
+      close780: c780[endIdx]
+    },
+    performance: { totalRet, annualRet, sharpe, calmar, maxDD: maxDD * 100, tradeCount: trades.length, finalValue: records[records.length - 1].total, days: records.length, bh780, bh398, bh780MaxDD, bh601MaxDD },
+    currentPosition: records[records.length - 1].position,
+    lastTrade: trades[trades.length - 1] || null
+  };
+}
+__name(backtest, "backtest");
+function analyzeProxySignal(proxyInfo) {
+  if (!proxyInfo || !proxyInfo.proxy) return { available: false };
+  const { merged, proxy } = proxyInfo;
+  const { q780, q398, proxyData, today, histClose780, histClose398 } = proxy;
+  const histBt = backtest(merged);
+  const proxyBt = backtest(proxyData);
+  if (!histBt || !proxyBt) return { available: false };
+  const lastIdx = merged.length - 1;
+  const histLT = histBt.trades[histBt.trades.length - 1];
+  const proxyLT = proxyBt.trades[proxyBt.trades.length - 1];
+  const histSignalToday = histLT && histLT.idx === lastIdx && histLT.reason !== "策略启动";
+  const proxySignalToday = proxyLT && proxyLT.idx === lastIdx && proxyLT.reason !== "策略启动";
+  const histPosition = histBt.currentPosition;
+  const proxyPosition = proxyBt.currentPosition;
+  const signalChanged = histPosition !== proxyPosition;
+  const proxyInd = proxyBt.indicators;
+  const sens = {
+    ret5_398: {
+      value: proxyInd.ret5_398,
+      threshold: 0,
+      distance: proxyInd.ret5_398 !== null ? Math.abs(proxyInd.ret5_398) : null,
+      status: proxyInd.ret5_398 !== null && Math.abs(proxyInd.ret5_398) < 5e-3 ? "warning" : "safe",
+      desc: proxyInd.ret5_398 > 0 ? "正收益(银行走强)" : proxyInd.ret5_398 < -0.02 ? "已跌破止损线" : "负收益(银行走弱)"
+    },
+    rsi6: {
+      value: proxyInd.rsi6,
+      threshold: 25,
+      distance: proxyInd.rsi6 - 25,
+      status: proxyInd.rsi6 < 30 ? "warning" : "safe",
+      desc: proxyInd.rsi6 < 25 ? "已触发抄底" : `距抄底阈值${(proxyInd.rsi6 - 25).toFixed(1)}`
+    },
+    ma20: {
+      value: proxyInd.close780,
+      threshold: proxyInd.ma20,
+      distance: proxyInd.ma20 ? (proxyInd.close780 - proxyInd.ma20) / proxyInd.ma20 : null,
+      status: proxyInd.ma20 && Math.abs(proxyInd.close780 - proxyInd.ma20) / proxyInd.ma20 < 5e-3 ? "warning" : "safe",
+      desc: proxyInd.aboveMA20 ? "站上MA20" : "跌破MA20"
+    },
+    drawdown: {
+      value: proxyInd.drawdown,
+      threshold10: 0.1,
+      threshold12: 0.12,
+      status: proxyInd.drawdown > 0.08 ? "warning" : "safe",
+      desc: `250日回撤${(proxyInd.drawdown * 100).toFixed(1)}%`
+    }
+  };
+  let action, reason, confidence, note;
+  if (proxySignalToday) {
+    action = `${proxyLT.action}`;
+    reason = proxyLT.reason;
+    confidence = "high";
+    note = "14:50实时价格已触发交易信号,建议尾盘立即执行";
+  } else if (signalChanged) {
+    action = `${histPosition} \u2192 ${proxyPosition}`;
+    reason = "实时价格改变了持仓状态";
+    confidence = "medium";
+    note = "信号因实时价格发生变化,建议关注并准备执行";
+  } else {
+    action = `持有 ${proxyPosition === "780" ? "159780" : proxyPosition === "398" ? "601398" : "空仓"}`;
+    reason = "无信号触发,维持当前持仓";
+    const warnings = Object.values(sens).filter((s) => s.status === "warning");
+    if (warnings.length > 0) {
+      confidence = "medium";
+      note = `部分指标接近触发阈值(${warnings.map((w) => w.desc).join("; ")}),建议持续关注`;
+    } else {
+      confidence = "high";
+      note = "所有指标距离触发条件较远,信号稳定";
+    }
+  }
+  return {
+    available: true,
+    today,
+    realtime: { q780, q398 },
+    proxy: {
+      histClose780,
+      histClose398,
+      proxyClose780: q780.price,
+      proxyClose398: q398.price,
+      priceDiff780: +(q780.price - histClose780).toFixed(4),
+      priceDiff398: +(q398.price - histClose398).toFixed(4),
+      priceDiffPct780: +((q780.price - histClose780) / histClose780 * 100).toFixed(2),
+      priceDiffPct398: +((q398.price - histClose398) / histClose398 * 100).toFixed(2),
+      src: proxy.src || "eastmoney"
+    },
+    histPosition,
+    proxyPosition,
+    signalChanged,
+    proxySignal: proxySignalToday ? proxyLT : null,
+    indicators: proxyInd,
+    sensitivity: sens,
+    execution: { action, reason, confidence, note }
+  };
+}
+__name(analyzeProxySignal, "analyzeProxySignal");
+
+let btResult=null;
+function showToast(msg,type='info'){const t=document.createElement('div');t.className='toast toast-'+type;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+function fmt(v,d=1){return v===null||v===undefined||isNaN(v)?'-':v.toFixed(d)}
+function cnAction(a){return a.replace(/CASH/g,'空仓')}
+
+
+// ============ 渲染层: laosan 双卡风格 + 月度收益率柱状图 ============
+function pct2(v, d) {
+  return (v === null || v === undefined || isNaN(v)) ? '-' : (v >= 0 ? '+' : '') + v.toFixed(d === undefined ? 1 : d) + '%';
+}
+
+function renderSummary(bt) {
+  const last = bt.records[bt.records.length - 1];
+  const pos = last.position;
+  const holding = pos !== 'CASH' ? 1 : 0;
+  const lastTrade = bt.lastTrade;
+  const todaySig = lastTrade && bt.lastData && lastTrade.date === bt.lastData.d ? '今日' : '—';
+  document.getElementById('summaryBar').innerHTML =
+    '<div class="summary-item"><div class="label">跟踪标的</div><div class="value">2</div></div>' +
+    '<div class="summary-item"><div class="label">持仓中</div><div class="value hold">' + holding + '</div></div>' +
+    '<div class="summary-item"><div class="label">空仓中</div><div class="value cash">' + (1 - holding) + '</div></div>' +
+    '<div class="summary-item"><div class="label">今日信号</div><div class="value signal">' + todaySig + '</div></div>';
+}
+
+// laosan 风格迷你价格图（持仓段红底色）
+function drawMiniChart(id, prices, positions) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  const x = c.getContext('2d'), dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * dpr; c.height = r.height * dpr; x.scale(dpr, dpr);
+  const w = r.width, h = r.height, p = { l: 4, r: 4, t: 8, b: 8 }, cw = w - p.l - p.r, ch = h - p.t - p.b;
+  x.clearRect(0, 0, w, h);
+  if (!prices || prices.length < 2) return;
+  const mn = Math.min.apply(null, prices), mx = Math.max.apply(null, prices), rg = mx - mn || 1;
+  if (positions) {
+    for (let i = 0; i < positions.length - 1; i++) {
+      if (positions[i] === 1) {
+        const x1 = p.l + (i / (prices.length - 1)) * cw, x2 = p.l + ((i + 1) / (prices.length - 1)) * cw;
+        x.fillStyle = 'rgba(255,82,82,0.10)'; x.fillRect(x1, p.t, x2 - x1, ch);
+      }
+    }
+  }
+  x.strokeStyle = '#667eea'; x.lineWidth = 1.5; x.beginPath();
+  prices.forEach(function (pr, i) {
+    const px = p.l + (i / (prices.length - 1)) * cw, py = p.t + ch - ((pr - mn) / rg) * ch;
+    if (i === 0) x.moveTo(px, py); else x.lineTo(px, py);
+  });
+  x.stroke();
+  x.lineTo(p.l + cw, p.t + ch); x.lineTo(p.l, p.t + ch); x.closePath();
+  const g = x.createLinearGradient(0, p.t, 0, p.t + ch);
+  g.addColorStop(0, 'rgba(102,126,234,0.18)'); g.addColorStop(1, 'rgba(102,126,234,0)');
+  x.fillStyle = g; x.fill();
+  const lx = p.l + cw, ly = p.t + ch - ((prices[prices.length - 1] - mn) / rg) * ch;
+  x.fillStyle = '#667eea'; x.beginPath(); x.arc(lx, ly, 3, 0, Math.PI * 2); x.fill();
+}
+
+// RSI 走势图 + 阈值线
+function drawRsiChart(id, rsiArr, th) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  const x = c.getContext('2d'), dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * dpr; c.height = r.height * dpr; x.scale(dpr, dpr);
+  const w = r.width, h = r.height, p = { l: 4, r: 4, t: 8, b: 8 }, cw = w - p.l - p.r, ch = h - p.t - p.b;
+  x.clearRect(0, 0, w, h);
+  x.strokeStyle = 'rgba(128,128,128,0.3)'; x.lineWidth = 1; x.setLineDash([3, 3]);
+  const yTh = p.t + ch - (th / 100) * ch;
+  x.beginPath(); x.moveTo(p.l, yTh); x.lineTo(p.l + cw, yTh); x.stroke();
+  x.setLineDash([]);
+  x.fillStyle = 'rgba(128,128,128,0.6)'; x.font = '10px sans-serif'; x.textAlign = 'left';
+  x.fillText('阈' + th, p.l + 4, yTh - 3);
+  if (!rsiArr || rsiArr.length < 2) return;
+  x.strokeStyle = '#2196F3'; x.lineWidth = 1.2; x.beginPath(); let started = false;
+  rsiArr.forEach(function (v, i) {
+    if (v === null || v === undefined || isNaN(v)) { started = false; return; }
+    const px = p.l + (i / (rsiArr.length - 1)) * cw, py = p.t + ch - (v / 100) * ch;
+    if (!started) { x.moveTo(px, py); started = true; } else x.lineTo(px, py);
+  });
+  x.stroke();
+}
+
+function renderCards(bt) {
+  const ind = bt.indicators, pos = bt.currentPosition, ld = bt.lastData;
+  const raw = bt._raw || [];
+  const closes780 = raw.map(d => d.c);
+  const closes398 = raw.map(d => d.b);
+  const holdArr = bt.records.map(r => r.position);
+  const hold780 = holdArr.map(p => p === '780' ? 1 : 0);
+  const hold398 = holdArr.map(p => p === '398' ? 1 : 0);
+
+  // ---- 780 卡 ----
+  const isHold780 = pos === '780';
+  const badge780 = isHold780 ? '<span class="signal-badge hold">持有中</span>' : '<span class="signal-badge idle">未持有</span>';
+  const rsi6 = ind.rsi6;
+  const rsiColor = rsi6 < 25 ? '#4caf50' : (rsi6 < 30 ? '#ffc107' : '#2196F3');
+  const ddPct = ind.drawdown ? ind.drawdown * 100 : 0;
+  const ddTxt = ind.drawdown ? ddPct.toFixed(1) + '%' : '-';
+  const ddZone = ind.drawdown > 0.12 ? '避险区' : (ind.drawdown > 0.10 ? '切银行区' : '安全');
+  const maTxt = ind.aboveMA20 ? '<span class="up">站上MA20</span>' : '<span class="down">跌破MA20</span>';
+  const recent = (bt.trades || []).slice(-6).reverse().map(t => {
+    let tag;
+    if (t.action.indexOf('→780') >= 0) tag = '<span class="sig-tag buy">买780</span>';
+    else if (t.action.indexOf('780→') >= 0) tag = '<span class="sig-tag sell">卖780</span>';
+    else tag = '<span class="sig-tag">' + cnAction(t.action) + '</span>';
+    return '<div class="sig-item"><span class="sig-date">' + t.date + '</span>' + tag + '<span class="sig-reason">' + t.reason + '</span></div>';
+  }).join('');
+
+  let html780 = '<div class="card">' +
+    '<div class="card-header"><div class="etf-info"><span class="etf-code">159780</span><span class="etf-name">科创创业50ETF</span><span class="params">RSI6&lt;25抄底 · 250日回撤避险 · MA20趋势</span></div>' + badge780 + '</div>' +
+    '<div class="card-body">' +
+    '<div class="price-row"><span class="price" id="px_780">' + ld.c.toFixed(3) + '</span><span class="price-change">策略引擎</span><span class="price-meta">收盘价 · 前复权</span></div>' +
+    '<div class="rsi-row">' +
+    '<div class="rsi-box"><div class="label">RSI6</div><div class="value" style="color:' + rsiColor + '">' + fmt(rsi6) + '</div><div class="bar"><div class="bar-fill" style="width:' + Math.min(100, rsi6 || 0) + '%;background:' + rsiColor + '"></div></div></div>' +
+    '<div class="rsi-box"><div class="label">抄底阈值</div><div class="value" style="color:#4caf50">&lt;25</div><div class="bar"><div class="bar-fill" style="width:25%;background:#4caf50"></div></div></div>' +
+    '<div class="rsi-box"><div class="label">250日回撤</div><div class="value" style="color:' + (ind.drawdown > 0.10 ? '#ff5252' : '#888') + '">' + ddTxt + '</div><div class="bar"><div class="bar-fill" style="width:' + Math.min(100, ddPct) + '%;background:' + (ind.drawdown > 0.10 ? '#ff5252' : '#888') + '"></div></div></div>' +
+    '</div>' +
+    '<div class="rsi-diff"><span class="arrow">' + (rsi6 < 25 ? '🔻' : '⏸️') + '</span><span>RSI6 <strong>' + fmt(rsi6) + '</strong> / 抄底阈值 <strong>25</strong></span><span style="color:#666;margin-left:8px">' + (rsi6 < 25 ? '低于阈值，抄底区间！' : '高于阈值，继续等待') + '</span></div>' +
+    '<div class="metric-strip">' +
+    '<div class="metric"><div class="ml2">回撤区间</div><div class="mv2" style="color:' + (ind.drawdown > 0.10 ? '#ff5252' : '#888') + '">' + ddZone + '</div></div>' +
+    '<div class="metric"><div class="ml2">vs MA20 (' + fmt(ind.ma20, 3) + ')</div><div class="mv2">' + maTxt + '</div></div>' +
+    '</div>' +
+    '<div class="chart-container"><canvas id="mini_780"></canvas></div>' +
+    '<div class="rsi-chart-container"><canvas id="rsi_780"></canvas></div>' +
+    '<div class="stats-strip">' +
+    '<div class="stat2"><div class="sl2">策略净值</div><div class="sv2 up">' + (bt.records[bt.records.length - 1].total / 10000).toFixed(2) + '万</div></div>' +
+    '<div class="stat2"><div class="sl2">累计收益</div><div class="sv2 up">' + pct2(bt.performance.totalRet) + '</div></div>' +
+    '<div class="stat2"><div class="sl2">最大回撤</div><div class="sv2 down">' + bt.performance.maxDD.toFixed(1) + '%</div></div>' +
+    '<div class="stat2"><div class="sl2">当前持仓</div><div class="sv2">' + (pos === '780' ? '<span class="up">780</span>' : pos === '398' ? '<span class="up">398</span>' : '<span class="neutral">空仓</span>') + '</div></div>' +
+    '</div>' +
+    '<div class="signal-list"><div class="title">近期信号（最近6笔）</div>' + (recent || '<div class="sig-item"><span class="sig-reason">暂无交易</span></div>') + '</div>' +
+    '</div></div>';
+
+  // ---- 398 卡 ----
+  const isHold398 = pos === '398';
+  const badge398 = isHold398 ? '<span class="signal-badge hold">持有中</span>' : '<span class="signal-badge idle">未持有</span>';
+  const r5 = ind.ret5_398;
+  const r5pct = (r5 !== null && r5 !== undefined) ? (r5 * 100).toFixed(2) + '%' : '-';
+  const r5Color = r5 > 0 ? '#ff5252' : (r5 < -0.02 ? '#4caf50' : '#888');
+  const r5Status = r5 > 0 ? '走强' : (r5 < -0.02 ? '已破止损' : '震荡');
+  const swOk = ind.drawdown > 0.10 && r5 > 0;
+  const d398Ok = r5 < -0.02;
+  let sig398Txt;
+  if (swOk) sig398Txt = '✅ 满足切银行条件：780回撤' + ddPct.toFixed(1) + '% 且 398五日转强';
+  else if (d398Ok) sig398Txt = '🔻 398五日跌破-2%止损线，持有则清仓';
+  else if (ind.drawdown > 0.10) sig398Txt = '780回撤' + ddPct.toFixed(1) + '% 进入切换区，等398五日转强';
+  else sig398Txt = '等待信号触发（780回撤>10%且398转强 → 切398）';
+
+  // 398 卡的近期信号(过滤 398 相关动作)
+  const recent398 = (bt.trades || []).filter(t => t.action.indexOf('398') >= 0).slice(-6).reverse().map(t => {
+    let tag;
+    if (t.action.indexOf('→398') >= 0) tag = '<span class="sig-tag buy">买398</span>';
+    else if (t.action.indexOf('398→') >= 0) tag = '<span class="sig-tag sell">卖398</span>';
+    else tag = '<span class="sig-tag">' + cnAction(t.action) + '</span>';
+    return '<div class="sig-item"><span class="sig-date">' + t.date + '</span>' + tag + '<span class="sig-reason">' + t.reason + '</span></div>';
+  }).join('');
+  const bars5 = [1, 2, 3, 4, 5].map(function (n) {
+    return '<div class="bar-cell" style="height:' + (n * 8) + 'px"></div>';
+  }).join('');
+
+  let html398 = '<div class="card">' +
+    '<div class="card-header"><div class="etf-info"><span class="etf-code">601398</span><span class="etf-name">工商银行</span><span class="params">五日涨幅边缘触发 · 止损-2% · 切换避险</span></div>' + badge398 + '</div>' +
+    '<div class="card-body">' +
+    '<div class="price-row"><span class="price" id="px_398">' + ld.b.toFixed(3) + '</span><span class="price-change">防守标的</span><span class="price-meta">收盘价 · 前复权</span></div>' +
+    '<div class="rsi-row">' +
+    '<div class="rsi-box"><div class="label">五日涨跌</div><div class="value" style="color:' + r5Color + '">' + r5pct + '</div><div class="bar"><div class="bar-fill" style="width:' + Math.min(100, Math.abs(r5 || 0) / 0.05 * 100) + '%;background:' + r5Color + '"></div></div></div>' +
+    '<div class="rsi-box"><div class="label">止损阈值</div><div class="value" style="color:#4caf50">-2.0%</div><div class="bar"><div class="bar-fill" style="width:40%;background:#4caf50"></div></div></div>' +
+    '<div class="rsi-box"><div class="label">五日状态</div><div class="value" style="color:' + (swOk ? '#ff5252' : r5Color) + '">' + r5Status + '</div><div class="bar"><div class="bar-fill" style="width:' + (r5 > 0 ? 66 : r5 < -0.02 ? 100 : 30) + '%;background:' + (r5 > 0 ? '#ff5252' : r5 < -0.02 ? '#4caf50' : '#888') + '"></div></div></div>' +
+    '</div>' +
+    '<div class="rsi-diff"><span class="arrow">' + (r5 > 0 ? '🔺' : '🔻') + '</span><span>五日涨跌 <strong>' + r5pct + '</strong> / 止损线 <strong>-2%</strong></span><span style="color:#666;margin-left:8px">' + sig398Txt + '</span></div>' +
+    '<div class="metric-strip">' +
+    '<div class="metric"><div class="ml2">切换条件(780回撤&gt;10%)</div><div class="mv2" style="color:' + (ind.drawdown > 0.10 ? '#ff5252' : '#888') + '">' + (ind.drawdown > 0.10 ? '满足' : '未满足') + '</div></div>' +
+    '<div class="metric"><div class="ml2">止损信号(五日&lt;-2%)</div><div class="mv2" style="color:' + (d398Ok ? '#4caf50' : '#888') + '">' + (d398Ok ? '已触发' : '未触发') + '</div></div>' +
+    '</div>' +
+    '<div class="chart-container"><canvas id="mini_398"></canvas></div>' +
+    '<div class="rsi-chart-container"><canvas id="r5_398"></canvas></div>' +
+    '<div class="stats-strip">' +
+    '<div class="stat2"><div class="sl2">买入持有收益</div><div class="sv2 up">' + pct2(bt.performance.bh398 * 100) + '</div></div>' +
+    '<div class="stat2"><div class="sl2">持有期占比</div><div class="sv2">' + Math.round(hold398.reduce((a, b) => a + b, 0) / holdArr.length * 100) + '%</div></div>' +
+    '<div class="stat2"><div class="sl2">最大回撤(买持)</div><div class="sv2 down">' + (bt.performance.bh601MaxDD * 100).toFixed(1) + '%</div></div>' +
+    '<div class="stat2"><div class="sl2">当前状态</div><div class="sv2">' + (isHold398 ? '<span class="up">持有中</span>' : '<span class="neutral">未持有</span>') + '</div></div>' +
+    '</div>' +
+    '<div class="signal-list"><div class="title">近期 398 相关信号（最近 6 笔）</div>' + (recent398 || '<div class="sig-item"><span class="sig-reason">暂无 398 相关交易</span></div>') + '</div>' +
+    '</div></div>';
+
+  document.getElementById('cardsGrid').innerHTML = html780 + html398;
+
+  // 迷你图/指标图统一取近 120 个交易日
+  const N = 120;
+  const c780w = closes780.slice(-N), c398w = closes398.slice(-N);
+  const h780w = hold780.slice(-N), h398w = hold398.slice(-N);
+  drawMiniChart('mini_780', c780w, h780w);
+  drawMiniChart('mini_398', c398w, h398w);
+
+  // 780: RSI6 走势(阈值 25)
+  const rsiArr = calcRSI(closes780, 6).slice(-N);
+  drawRsiChart('rsi_780', rsiArr, 25);
+
+  // 398: 五日涨跌走势(阈值 -2% 止损线)
+  const r5Arr = closes398.map(function (v, i) {
+    return i >= 5 ? (v / closes398[i - 5] - 1) * 100 : null;
+  }).slice(-N);
+  drawLineChart('r5_398', r5Arr, -2, '止损-2%');
+}
+
+// 通用折线图(动态范围 + 阈值线), 用于 398 五日涨跌走势
+function drawLineChart(id, arr, th, thLabel) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  const x = c.getContext('2d'), dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * dpr; c.height = r.height * dpr; x.scale(dpr, dpr);
+  const w = r.width, h = r.height, p = { l: 4, r: 4, t: 10, b: 8 }, cw = w - p.l - p.r, ch = h - p.t - p.b;
+  x.clearRect(0, 0, w, h);
+  if (!arr || arr.length < 2) return;
+  const vals = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
+  if (vals.length < 2) return;
+  let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  if (th !== null && th !== undefined) { mn = Math.min(mn, th); mx = Math.max(mx, th); }
+  const pad = (mx - mn) * 0.15 || 1;
+  mn -= pad; mx += pad;
+  const rg = mx - mn || 1;
+  const yOf = function (v) { return p.t + ch - ((v - mn) / rg) * ch; };
+  // 0 轴
+  if (mn < 0 && mx > 0) {
+    x.strokeStyle = 'rgba(255,255,255,0.12)'; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(p.l, yOf(0)); x.lineTo(p.l + cw, yOf(0)); x.stroke();
+  }
+  // 阈值线
+  if (th !== null && th !== undefined) {
+    x.strokeStyle = 'rgba(128,128,128,0.4)'; x.lineWidth = 1; x.setLineDash([3, 3]);
+    x.beginPath(); x.moveTo(p.l, yOf(th)); x.lineTo(p.l + cw, yOf(th)); x.stroke();
+    x.setLineDash([]);
+    x.fillStyle = 'rgba(160,160,160,0.75)'; x.font = '9px sans-serif'; x.textAlign = 'left';
+    x.fillText(thLabel || '', p.l + 3, yOf(th) - 3);
+  }
+  // 曲线
+  x.strokeStyle = '#FF9800'; x.lineWidth = 1.2; x.beginPath();
+  let started = false;
+  arr.forEach(function (v, i) {
+    if (v === null || v === undefined || isNaN(v)) { started = false; return; }
+    const px = p.l + (i / (arr.length - 1)) * cw, py = yOf(v);
+    if (!started) { x.moveTo(px, py); started = true; } else x.lineTo(px, py);
+  });
+  x.stroke();
+}
+
+// ---- 月度收益率柱状图(双向 0 轴: 正红涨向上 / 负绿跌向下) ----
+// 口径与 GitHub 版(fishno.github.io/laosan-etf)一致: 月末净值/月初净值-1, 从 2024-01 起
+function renderMonthly(bt) {
+  const records = bt.records;
+  const mm = {};
+  for (const r of records) {
+    const k = r.date.slice(0, 7);
+    if (!mm[k]) mm[k] = { first: r.total, last: r.total };
+    mm[k].last = r.total;
+  }
+  const keys = Object.keys(mm).sort();
+  const all = keys.map(function (k) {
+    return { month: k, ret: (mm[k].last / mm[k].first - 1) * 100 };
+  });
+  // 显示 2024-01 起全部月份
+  const data = all.filter(d => d.month >= '2024-01');
+  const maxAbs = Math.max(5, Math.max.apply(null, data.map(d => Math.abs(d.ret))));
+  const cols = data.map(function (d) {
+    const hPct = (Math.abs(d.ret) / maxAbs * 50).toFixed(1);  // 50% = 0 轴到顶/底
+    if (d.ret >= 0) {
+      return '<div class="monthly-col">' +
+        '<div class="up-half"><div class="monthly-bar up" style="height:' + hPct + '%"><span class="mv">' + (d.ret >= 0 ? '+' : '') + d.ret.toFixed(2) + '%</span></div></div>' +
+        '<div class="monthly-zero"></div>' +
+        '<div class="down-half"><div class="monthly-bar down empty"></div></div>' +
+        '</div>';
+    } else {
+      return '<div class="monthly-col">' +
+        '<div class="up-half"><div class="monthly-bar up empty"></div></div>' +
+        '<div class="monthly-zero"></div>' +
+        '<div class="down-half"><div class="monthly-bar down" style="height:' + hPct + '%"><span class="mv">' + d.ret.toFixed(2) + '%</span></div></div>' +
+        '</div>';
+    }
+  }).join('');
+  const labels = data.map(d => '<div class="ml" title="' + d.month + '">' + d.month.slice(5) + '</div>').join('');
+  document.getElementById('monthlyChart').innerHTML = cols;
+  document.getElementById('monthlyLabels').innerHTML = labels;
+  document.getElementById('monthlyHint').textContent = '2024-01 起(共 ' + data.length + ' 月) | 月末净值/月初净值-1 · 与 fishno.github.io/laosan-etf 同口径';
+}
+
+function renderPerf(bt) {
+  const p = bt.performance;
+  document.getElementById('perfGrid').innerHTML =
+    '<div class="perf-item"><div class="label">总收益</div><div class="value up">+' + p.totalRet.toFixed(1) + '%</div></div>' +
+    '<div class="perf-item"><div class="label">年化收益</div><div class="value up">+' + p.annualRet.toFixed(1) + '%</div></div>' +
+    '<div class="perf-item"><div class="label">夏普比率</div><div class="value">' + p.sharpe.toFixed(2) + '</div></div>' +
+    '<div class="perf-item"><div class="label">卡尔玛比率</div><div class="value">' + p.calmar.toFixed(2) + '</div></div>' +
+    '<div class="perf-item"><div class="label">最大回撤</div><div class="value down">' + p.maxDD.toFixed(1) + '%</div></div>' +
+    '<div class="perf-item"><div class="label">交易次数</div><div class="value">' + p.tradeCount + '</div></div>' +
+    '<div class="perf-item"><div class="label">期末资产</div><div class="value">' + (p.finalValue / 10000).toFixed(2) + '万</div></div>' +
+    '<div class="perf-item"><div class="label">回测天数</div><div class="value">' + p.days + '</div></div>';
+  const bl = document.getElementById('benchLine');
+  if (bl && p.bh780 !== undefined) {
+    bl.textContent = '对比基准：买入持有780 总收益' + (p.bh780 * 100).toFixed(1) + '% / 最大回撤' + (p.bh780MaxDD * 100).toFixed(1) + '% / 买入持有398 总收益' + (p.bh398 * 100).toFixed(1) + '%';
+  }
+}
+
+function renderEquity(bt) {
+  const canvas = document.getElementById('equityChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr; canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const pad = { l: 50, r: 20, t: 20, b: 30 };
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const records = bt.records;
+  const eqV = records.map(r => r.total);
+  const eqMin = Math.min.apply(null, eqV) * 0.95, eqMax = Math.max.apply(null, eqV) * 1.05;
+  function xP(i) { return pad.l + (i / (records.length - 1)) * plotW; }
+  function yP(v) { return pad.t + (1 - (v - eqMin) / (eqMax - eqMin)) * plotH; }
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, yP(100000)); ctx.lineTo(W - pad.r, yP(100000)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  records.forEach(function (r, i) { const x = xP(i), y = yP(r.total); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.stroke();
+  ctx.lineTo(W - pad.r, H - pad.b); ctx.lineTo(pad.l, H - pad.b); ctx.closePath();
+  ctx.fillStyle = 'rgba(139,92,246,0.08)'; ctx.fill();
+  bt.trades.forEach(function (t) {
+    const ri = records.findIndex(r => r.idx === t.idx);
+    if (ri < 0) return;
+    const x = xP(ri), y = yP(records[ri].total);
+    if (t.action.indexOf('→780') >= 0) { ctx.fillStyle = '#f85149'; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x - 5, y + 4); ctx.lineTo(x + 5, y + 4); ctx.closePath(); ctx.fill(); }
+    else if (t.action.indexOf('780→') >= 0) { ctx.fillStyle = '#3fb950'; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x - 5, y - 4); ctx.lineTo(x + 5, y - 4); ctx.closePath(); ctx.fill(); }
+  });
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b); ctx.stroke();
+  ctx.fillStyle = '#8b949e'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const v = eqMin + (eqMax - eqMin) * i / 4, y = yP(v);
+    ctx.fillText((v / 10000).toFixed(1) + '万', pad.l - 6, y + 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+  }
+  ctx.textAlign = 'center';
+  [0, Math.floor(records.length / 4), Math.floor(records.length / 2), Math.floor(records.length * 3 / 4), records.length - 1].forEach(function (i) {
+    if (i >= records.length) return;
+    ctx.fillText(records[i].date.slice(0, 7), xP(i), H - pad.b + 16);
+  });
+  ctx.fillStyle = '#8b5cf6'; ctx.fillRect(pad.l + 10, pad.t + 6, 16, 3);
+  ctx.fillStyle = '#8b949e'; ctx.textAlign = 'left'; ctx.font = '12px sans-serif';
+  ctx.fillText('科技银行轮动净值', pad.l + 30, pad.t + 12);
+  ctx.fillStyle = '#f85149'; ctx.beginPath(); ctx.moveTo(pad.l + 130, pad.t + 4); ctx.lineTo(pad.l + 124, pad.t + 14); ctx.lineTo(pad.l + 136, pad.t + 14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8b949e'; ctx.fillText('买入780', pad.l + 142, pad.t + 12);
+  ctx.fillStyle = '#3fb950'; ctx.beginPath(); ctx.moveTo(pad.l + 200, pad.t + 14); ctx.lineTo(pad.l + 194, pad.t + 4); ctx.lineTo(pad.l + 206, pad.t + 4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8b949e'; ctx.fillText('卖出780', pad.l + 212, pad.t + 12);
+}
+
+function renderTrades(bt) {
+  const tbody = document.querySelector('#tradesTable tbody');
+  tbody.innerHTML = '';
+  const visible = (bt.trades || []).filter(t => t.date >= '2024-01-01');
+  visible.forEach(function (t, i) {
+    const pb = t.position === '780' ? '<span class="badge badge-hold">780</span>' : t.position === '398' ? '<span class="badge badge-hold">398</span>' : '<span class="badge badge-cash">空仓</span>';
+    const cumRet = (t.value / 100000 - 1) * 100;
+    const cumClass = cumRet >= 0 ? 'up' : 'down';
+    const cumStr = (cumRet >= 0 ? '+' : '') + cumRet.toFixed(1) + '%';
+    tbody.innerHTML += '<tr><td>' + (i + 1) + '</td><td>' + t.date + '</td><td><strong>' + cnAction(t.action) + '</strong></td><td>' + t.reason + '</td><td>' + (t.price ? t.price.toFixed(3) : '-') + '</td><td>' + (t.priceSold ? t.priceSold.toFixed(3) : '-') + '</td><td>' + t.value.toFixed(0) + '</td><td class="' + cumClass + '">' + cumStr + '</td><td>' + pb + '</td></tr>';
+  });
+}
+
+function renderAll(bt) {
+  if (!bt) return;
+  const ld = bt.lastData;
+  document.getElementById('updateTime').textContent = '数据更新时间：' + ld.d + ' · 780收盘 ' + ld.c + ' · 398收盘 ' + ld.b + ' · 浏览器直连腾讯行情';
+  renderSummary(bt);
+  renderCards(bt);
+  renderMonthly(bt);
+  renderPerf(bt);
+  renderEquity(bt);
+  renderTrades(bt);
+}
+
+// 数据加载入口
+async function fetchLatestData(silent) {
+  const btn = document.getElementById('updateBtn');
+  if (!silent) { btn.disabled = true; btn.classList.add('loading'); btn.textContent = '更新中...'; }
+  if (!silent) showToast('正在获取最新数据...', 'info');
+  try {
+    btResult = await computeSignal();
+    btResult.records = btResult.records || [];
+    btResult.trades = btResult.trades || [];
+    renderAll(btResult);
+    if (!silent) showToast('数据更新成功 · 最新: ' + (btResult.lastData ? btResult.lastData.d : '-'), 'success');
+  } catch (e) {
+    console.error(e);
+    if (!silent) showToast('数据更新失败: ' + e.message, 'error');
+    const el = document.getElementById('updateTime');
+    if (el) el.textContent = '数据加载失败: ' + e.message;
+  } finally {
+    if (!silent) { btn.disabled = false; btn.classList.remove('loading'); btn.textContent = '手动更新数据'; }
+  }
+}
+
+fetchLatestData();
+
+async function pollPulse() {
+  try {
+    const p = await computeSignal();
+    btResult = p;
+    renderSummary(p); renderCards(p); renderMonthly(p); renderPerf(p);
+    const el = document.getElementById('updateTime');
+    if (el) el.textContent = '数据更新时间：' + p.lastData.d + ' · 780收盘 ' + p.lastData.c + ' · 398收盘 ' + p.lastData.b + ' · 实时轮询';
+  } catch (e) { }
+}
+setInterval(function () { if (getMarketState().isMarketOpen) pollPulse(); }, 15000);
+
+let rtTimer = null;
+
+// 尾盘实时信号: 合并为顶部建议条 + 双卡实时价(不再需要独立面板)
+async function fetchRealtimeSignal(retried) {
+  const bar = document.getElementById('actionBar');
+  try {
+    const data = await computeRealSignal();
+    if (data.realtimeSignal && !data.realtimeSignal.available && !retried) {
+      if (bar) bar.innerHTML = '<span class="ab-label">尾盘信号</span><span class="ab-reason">实时行情获取中，正在重试...</span>';
+      setTimeout(() => fetchRealtimeSignal(true), 1500);
+      return;
+    }
+    renderRealtimeSignal(data);
+    if (data.marketState && data.marketState.isSignalWindow) {
+      showToast('信号窗口活跃，已自动刷新', 'info');
+    }
+  } catch (e) {
+    console.error(e);
+    if (bar) bar.innerHTML = '<span class="ab-label">尾盘信号</span><span class="ab-reason" style="color:#ff8787">获取失败: ' + e.message + '</span>';
+  }
+}
+
+function renderRealtimeSignal(data) {
+  const ms = data.marketState;
+  const rt = data.realtimeSignal;
+  const bar = document.getElementById('actionBar');
+  const phaseMap = { signal: '信号窗口', trading: '交易中', before: '盘前', after: '盘后', closed: '休市' };
+  if (!bar) return;
+  if (!rt || !rt.available) {
+    let hint = '当前非交易时段，无法获取实时信号';
+    if (ms.phase === 'before') hint = '盘前等待开盘，9:30 后可获取实时信号';
+    bar.innerHTML = '<span class="ab-label">' + (phaseMap[ms.phase] || '休市') + '</span><span class="ab-reason">' + hint + '</span>';
+    return;
+  }
+  const ex = rt.execution;
+  const confCls = ex.confidence === 'high' ? 'hi' : ex.confidence === 'medium' ? 'mid' : 'low';
+  const confTxt = ex.confidence === 'high' ? '高' : ex.confidence === 'medium' ? '中' : '低';
+  let html = '<span class="ab-label">' + (phaseMap[ms.phase] || '') + ' ' + ms.timeStr + '</span>';
+  html += '<span class="ab-action">' + ex.action + '</span>';
+  html += '<span class="ab-reason">' + ex.reason + '</span>';
+  html += '<span class="ab-conf ' + confCls + '">置信度 ' + confTxt + '</span>';
+  if (rt.signalChanged) html += '<span class="ab-conf low" style="margin-left:6px">信号已变化</span>';
+  bar.innerHTML = html;
+
+  // 双卡实时价(替换收盘价)
+  const setPx = function (id, q) {
+    const el = document.getElementById(id);
+    if (el && q) {
+      const cls = q.changePct >= 0 ? 'up' : 'down';
+      const sign = q.changePct >= 0 ? '+' : '';
+      el.innerHTML = q.price.toFixed(3) + '<span class="chg ' + cls + '">' + sign + q.changePct.toFixed(2) + '%</span>';
+    }
+  };
+  setPx('px_780', rt.realtime.q780);
+  setPx('px_398', rt.realtime.q398);
+
+  if (ms.isSignalWindow && !rtTimer) {
+    rtTimer = setInterval(fetchRealtimeSignal, 30000);
+  } else if (!ms.isMarketOpen && rtTimer) {
+    clearInterval(rtTimer);
+    rtTimer = null;
+  }
+}
+
+setTimeout(fetchRealtimeSignal, 2000);
+
+</script>
+</body>
+</html>

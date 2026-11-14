@@ -269,8 +269,8 @@
         </div>
         <div class="metric-card neutral">
           <div class="m-label">卡尔玛比率</div>
-          <div class="m-value">7.21</div>
-          <div class="m-sub">收益/回撤</div>
+          <div class="m-value">1.52</div>
+          <div class="m-sub">年化/回撤</div>
         </div>
       </div>
 
@@ -976,7 +976,9 @@ async function computeData(wantDebug) {
       const sStd = Math.sqrt(sVar);
       sharpe = sStd > 0 ? Math.round((sMean / sStd) * Math.sqrt(252) * 100) / 100 : 0;
     }
-    const calmar = maxDD !== 0 ? Math.round((totalReturn / Math.abs(maxDD)) * 100) / 100 : 0;
+    // 卡玛比率 = 年化收益 ÷ |最大回撤|（标准定义；旧版误用总收益，数值会虚高一倍以上）
+    const cagr = navValues.length > 1 ? (Math.pow(finalValue / 100000, 252 / navValues.length) - 1) * 100 : 0;
+    const calmar = maxDD !== 0 ? Math.round((cagr / Math.abs(maxDD)) * 100) / 100 : 0;
     const totalComm = tradeLog.reduce((a, t) => a + (t.comm || 0), 0);
     // 买入持有780基准(窗口起点)
     const bhReturn = (c780[N - 1] / c780[S] - 1) * 100;
@@ -1129,7 +1131,7 @@ async function handleDiag() {
             btCards[2].querySelector(".m-value").textContent = bt.sharpe.toFixed(2);
             btCards[2].querySelector(".m-sub").textContent = "年化";
             btCards[3].querySelector(".m-value").textContent = bt.calmar.toFixed(2);
-            btCards[3].querySelector(".m-sub").textContent = "收益/回撤";
+            btCards[3].querySelector(".m-sub").textContent = "年化/回撤";
             btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
             var cashN = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
             btCards[4].querySelector(".m-sub").textContent = "\u542b\u5efa\u4ed3+" + cashN + "\u6b21\u7a7a\u4ed3\uff08\u5171" + (bt.cashDays || 0) + "\u5929\u8ba1\u606f\uff09";

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>杨老三的轮动策略D3 · 手机版</title>
+  <style>
+    :root {
+      --bg: #fdf6ee;
+      --panel: #fffaf4;
+      --ink: #2b2018;
+      --muted: #8a7765;
+      --rule: #efe2d4;
+      --accent: #d9772e;
+      --accent2: #b45309;
+      --danger: #c0392b;
+      --up: #d63031;   /* 盈利/涨 = 红 */
+      --down: #1f9d55; /* 回撤/跌 = 绿 */
+      --green: #c2772b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      color: var(--ink); background: var(--bg); line-height: 1.6;
+      padding: 0 12px calc(24px + env(safe-area-inset-bottom));
+    }
+
+    /* 顶栏 */
+    nav.topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--panel); border-bottom: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px; margin: 0 -12px 12px;
+      backdrop-filter: blur(6px);
+    }
+    nav.topbar .logo { font-weight: 800; font-size: 1.02rem; color: var(--accent); }
+    nav.topbar .nav-right { display: flex; align-items: center; gap: 8px; }
+    nav.topbar .update-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 6px 13px; font-size: 0.78rem; font-weight: 700; }
+    nav.topbar .update-btn:disabled { background: var(--muted); }
+    nav.topbar .update-time { font-size: 0.68rem; color: var(--muted); font-family: Consolas, monospace; }
+
+    /* 卡片 */
+    section.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    h2 { font-size: 1.02rem; font-weight: 800; margin-bottom: 10px; color: var(--ink); }
+    p { margin-bottom: 0.6rem; font-size: 0.85rem; }
+    p:last-child { margin-bottom: 0; }
+    strong { font-weight: 700; }
+    mark.key { background: none; color: var(--accent); font-weight: 600; }
+
+    /* 信号横幅 */
+    .signal-banner {
+      border-radius: 16px; padding: 16px; margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%);
+      border: 2px solid var(--accent);
+      display: flex; align-items: center; gap: 13px;
+    }
+    .signal-banner .signal-icon {
+      width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 800;
+    }
+    .signal-banner .signal-content { flex: 1; min-width: 0; }
+    .signal-banner .signal-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 2px; }
+    .signal-banner .signal-action { font-size: 1.05rem; font-weight: 800; color: var(--ink); margin-bottom: 3px; }
+    .signal-banner .signal-detail { font-size: 0.74rem; color: var(--muted); line-height: 1.45; }
+
+    /* 指标 / 指标网格 默认2列（手机） */
+    .indicators { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+    .ind-card { border-radius: 11px; padding: 11px 8px; text-align: center; border: 1px solid var(--rule); background: #fbf4ec; }
+    .ind-card.green { background: #fdefdc; border-color: #f3d9b0; }
+    .ind-card.red { background: #fbeae8; border-color: #f5c5bf; }
+    .ind-card.neutral { background: #fbf4ec; }
+    .ind-card .ind-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+    .ind-card .ind-value { font-family: Consolas, monospace; font-size: 1.12rem; font-weight: 800; color: var(--ink); }
+    .ind-card.green .ind-value { color: var(--green); }
+    .ind-card.red .ind-value { color: var(--danger); }
+    .ind-card .ind-status { font-size: 0.64rem; margin-top: 2px; font-weight: 600; color: var(--muted); }
+    .ind-card.green .ind-status { color: var(--green); }
+    .ind-card.red .ind-status { color: var(--danger); }
+
+    /* 回测指标 默认2列 */
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+    .metric-card { border-radius: 11px; padding: 11px 8px; text-align: center; background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%); border: 1px solid #f3d9b0; }
+    .metric-card.danger { background: linear-gradient(135deg, #fbeae8 0%, #fbe0dc 100%); border-color: #f5c5bf; }
+    .metric-card.neutral { background: linear-gradient(135deg, #fbf4ec 0%, #f6ede0 100%); border-color: var(--rule); }
+    .metric-card .m-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+    .metric-card .m-value { font-family: Consolas, monospace; font-size: 1.18rem; font-weight: 800; color: var(--accent); }
+    .metric-card.danger .m-value { color: var(--danger); }
+    .metric-card.neutral .m-value { color: var(--ink); }
+    .metric-card .m-sub { font-size: 0.64rem; color: var(--muted); margin-top: 2px; }
+
+    /* 策略卡片 */
+    .strategy-card { background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%); border: 2px solid var(--accent); border-radius: 12px; padding: 12px; margin: 10px 0; }
+    .strategy-card .s-label { font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+    .strategy-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+    .rule-box { background: var(--panel); border-radius: 9px; padding: 9px 6px; text-align: center; border: 1px solid var(--rule); }
+    .rule-box .r-action { font-size: 0.66rem; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+    .rule-box .r-value { font-family: Consolas, monospace; font-size: 0.92rem; font-weight: 800; color: var(--accent); }
+    .rule-box.sell .r-value { color: var(--accent2); }
+
+    /* 图表 */
+    .chart-figure { margin: 8px 0; }
+    .chart-figure figcaption { font-size: 0.8rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+    .chart-figure .chart-container { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 6px; }
+    .chart-container > div { width: 100%; }
+
+    /* 表格 */
+    .table-wrap { overflow-x: auto; border-radius: 9px; border: 1px solid var(--rule); margin: 8px 0; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.74rem; min-width: 540px; }
+    th { background: var(--accent); color: #fff; font-weight: 700; text-align: left; padding: 6px 8px; white-space: nowrap; }
+    td { padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+    tbody tr:nth-child(even) { background: #fbf4ec; }
+    tbody tr:last-child td { border-bottom: none; }
+    td .pos { color: var(--green); font-weight: 600; }
+    td .neg { color: var(--danger); font-weight: 600; }
+    td .mono { font-family: Consolas, monospace; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 5px; font-weight: 700; font-size: 0.7rem; }
+    .badge.green { background: rgba(217,119,46,0.1); color: var(--accent); }
+    .badge.orange { background: rgba(180,83,9,0.1); color: var(--accent2); }
+
+    /* callout */
+    .callout { background: #fff5e8; border: 1px solid #f3d9b0; border-left: 4px solid var(--accent); border-radius: 9px; padding: 11px 13px; margin: 10px 0; }
+    .callout-title { font-weight: 700; margin-bottom: 5px; font-size: 0.85rem; }
+    .callout ul { padding-left: 1.1rem; }
+    .callout li { margin-bottom: 4px; font-size: 0.78rem; }
+
+    /* 页脚 */
+    footer { padding: 6px 4px; }
+    footer .disclaimer { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 13px; font-size: 0.72rem; color: var(--muted); line-height: 1.6; }
+    footer .disclaimer strong { color: var(--ink); }
+
+    .loading { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 20px 0; }
+    .err-tip { background: #fbeae8; border: 1px solid #f5c5bf; border-radius: 9px; padding: 11px; font-size: 0.78rem; color: var(--danger); }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <div class="logo">杨老三的轮动策略D3</div>
+    <div class="nav-right">
+      <span class="update-time" id="update-time">加载中…</span>
+      <button id="update-btn" onclick="updateData()" class="update-btn">刷新</button>
+    </div>
+  </nav>
+
+  <article class="page">
+    <!-- 当前操作信号 -->
+    <section id="signal" class="signal-banner">
+      <div class="signal-icon" id="signal-icon">持</div>
+      <div class="signal-content">
+        <div class="signal-label">当前操作建议</div>
+        <div class="signal-action" id="signal-action">计算中…</div>
+        <div class="signal-detail" id="signal-detail">正在拉取腾讯行情实时计算…</div>
+      </div>
+    </section>
+
+    <!-- 当前持仓收益 -->
+    <section id="holdreturn" class="card">
+      <h2>当前持仓收益（最近一笔交易）</h2>
+      <div class="metrics-grid">
+        <div class="metric-card" id="last-trade-card">
+          <div class="m-label">最近一笔交易收益率</div>
+          <div class="m-value" id="last-trade-return">--</div>
+          <div class="m-sub" id="last-trade-sub">等待数据…</div>
+        </div>
+        <div class="metric-card neutral" id="last-trade-entry">
+          <div class="m-label">持仓信息</div>
+          <div class="m-value" id="last-trade-code" style="font-size:1rem;">--</div>
+          <div class="m-sub" id="last-trade-entrysub">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 回测表现 -->
+    <section id="backtest" class="card">
+      <h2>回测表现（2023-01-01 至今）</h2>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="m-label">总收益率</div><div class="m-value">--</div><div class="m-sub">10万→</div></div>
+        <div class="metric-card danger"><div class="m-label">最大回撤</div><div class="m-value">--</div><div class="m-sub">--</div></div>
+        <div class="metric-card"><div class="m-label">夏普比率</div><div class="m-value">--</div><div class="m-sub">年化</div></div>
+        <div class="metric-card neutral"><div class="m-label">卡尔玛比率</div><div class="m-value">--</div><div class="m-sub">年化/回撤</div></div>
+        <div class="metric-card neutral"><div class="m-label">操作次数</div><div class="m-value">--</div><div class="m-sub">含空仓</div></div>
+        <div class="metric-card neutral"><div class="m-label">总佣金</div><div class="m-value">--</div><div class="m-sub">元</div></div>
+        <div class="metric-card"><div class="m-label">超额收益</div><div class="m-value">--</div><div class="m-sub">vs买入持有780</div></div>
+        <div class="metric-card danger"><div class="m-label">回撤改善</div><div class="m-value">--</div><div class="m-sub">vs 780</div></div>
+      </div>
+      <div class="chart-figure">
+        <figcaption>累计净值曲线（橙=持780，深棕=持398，灰=空仓）</figcaption>
+        <div class="chart-container"><div id="chart-nav" style="height:260px;"></div></div>
+      </div>
+    </section>
+
+    <!-- 月度收益 -->
+    <section id="monthly" class="card">
+      <h2>月度收益（近一年）</h2>
+      <div class="chart-figure">
+        <figcaption>月度收益率 · 最近 12 个月</figcaption>
+        <div class="chart-container"><div id="chart-monthly" style="height:220px;"></div></div>
+      </div>
+    </section>
+
+    <!-- 年度战绩 -->
+    <section id="yearly" class="card">
+      <h2>年度战绩</h2>
+      <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">自 2023-01-01 起 · 相对沪深300</p>
+      <div class="table-wrap">
+        <table id="yearly-table">
+          <thead><tr><th>年份</th><th>策略收益</th><th>沪深300</th><th>跑赢大盘</th></tr></thead>
+          <tbody id="yearly-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 实时指标 -->
+    <section id="indicators" class="card">
+      <h2>实时指标监控</h2>
+      <div class="indicators">
+        <div class="ind-card neutral"><div class="ind-label">780 收盘价</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+        <div class="ind-card neutral"><div class="ind-label">RSI6（780/398）</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+        <div class="ind-card neutral"><div class="ind-label">MA20</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+        <div class="ind-card neutral"><div class="ind-label">780 回撤</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+        <div class="ind-card neutral"><div class="ind-label">398 五日涨幅</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+        <div class="ind-card neutral"><div class="ind-label">398 收盘价</div><div class="ind-value">--</div><div class="ind-status">--</div></div>
+      </div>
+      <div class="callout">
+        <div class="callout-title">信号判断逻辑</div>
+        <ul>
+          <li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → <strong>不触发</strong></li>
+          <li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → <strong>不触发</strong></li>
+          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
+          <li><strong>当前状态：</strong><mark class="key">持有780</mark> → 持有 159780 科创创业50ETF</li>
+        </ul>
+      </div>
+      <h3 style="font-size:0.92rem;font-weight:800;margin:14px 0 6px;">近10个交易日明细</h3>
+      <div class="table-wrap">
+        <table class="recent-table">
+          <thead><tr><th>日期</th><th>780</th><th>398</th><th>780RSI6</th><th>398RSI6</th><th>MA20</th><th>回撤</th><th>站MA20</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 策略规则 -->
+    <section id="strategy" class="card">
+      <h2>策略D3 规则</h2>
+      <p>科技银行轮动策略是一个<mark class="key">回撤保护型轮动策略</mark>，在科创创业50ETF（159780）和工商银行（601398）之间智能切换，<mark class="key">极端行情可空仓避险</mark>。</p>
+      <div class="strategy-card">
+        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25或MA20恢复回780</div>
+        <div class="strategy-rules">
+          <div class="rule-box sell"><div class="r-action">780 → 398（避险）</div><div class="r-value">回撤>10%<br>且398五日涨>0</div></div>
+          <div class="rule-box sell"><div class="r-action">→ 空仓（双跌）</div><div class="r-value">回撤>12%<br>且398五日≤0%</div></div>
+          <div class="rule-box"><div class="r-action">空仓 → 780（抢底）</div><div class="r-value">RSI6<25<br>或重回MA20</div></div>
+          <div class="rule-box"><div class="r-action">398 → 780（反弹）</div><div class="r-value">RSI6 < 25</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 交易记录 -->
+    <section id="trades" class="card">
+      <h2>交易记录</h2>
+      <p id="trades-note">加载中…</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>日期</th><th>操作</th><th>触发原因</th><th>佣金</th><th>净值</th><th>累计盈利率</th><th>持仓</th></tr></thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </article>
+
+  <footer>
+    <div class="disclaimer">
+      <p><strong>风险提示：</strong>本页面基于历史数据回测，历史表现不代表未来收益。ETF价格受宏观、政策、情绪等多重因素影响，策略参数存在过拟合风险，极端行情RSI可能误判，回测未考虑滑点。本页面不构成投资建议，投资者应独立判断。</p>
+      <p style="margin-top:6px;"><strong>数据来源：</strong>腾讯财经（proxy.finance.qq.com，前复权，主源）+ 东方财富（备用）。159780/601398日K线，RSI/MA自2024-01-01全量预热。佣金按万1费率。</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.1/echarts.min.js"></script>
+  <script>
+  // === 配色 ===
+  var accent = '#d9772e', accent2 = '#b45309', danger = '#c0392b', green = '#c2772b', ink = '#2b2018', muted = '#8a7765', rule = '#efe2d4', up = '#d63031', down = '#1f9d55';
+
+  // === 图表实例（按需初始化） ===
+  var c1 = null, c2 = null;
+  function initCharts(d) {
+    if (c1 || typeof echarts === 'undefined') return;
+    c1 = echarts.init(document.getElementById('chart-monthly'), null, { renderer: 'canvas' });
+    c2 = echarts.init(document.getElementById('chart-nav'), null, { renderer: 'canvas' });
+    // 月度收益
+    c1.setOption({
+      animation: false,
+      tooltip: { trigger: 'axis', appendToBody: true, axisPointer: { type: 'shadow' }, formatter: function (p) { var v = p[0].value; return p[0].name + '<br/>收益: <span style="color:' + (v >= 0 ? up : down) + ';font-weight:700;">' + (v >= 0 ? '+' : '') + v + '%</span>'; } },
+      grid: { left: '8%', right: '5%', top: '10%', bottom: '16%' },
+      xAxis: { type: 'category', data: d.monthlyReturns.map(function (m) { return m.month; }), axisLabel: { color: ink, fontSize: 10, fontWeight: 600, interval: Math.floor(d.monthlyReturns.length / 6) }, axisLine: { lineStyle: { color: rule } }, axisTick: { show: false } },
+      yAxis: { type: 'value', axisLabel: { color: muted, fontSize: 10, formatter: '{value}%' }, splitLine: { lineStyle: { color: rule, type: 'dashed' } }, axisLine: { show: false } },
+      series: [{ type: 'bar', barWidth: '55%', data: d.monthlyReturns.map(function (m) { return m.return; }), itemStyle: { color: function (p) { return p.value >= 0 ? up : down; }, borderRadius: [4, 4, 0, 0] }, label: { show: true, position: 'top', color: ink, fontSize: 10, fontWeight: 700, formatter: function (p) { return (p.value >= 0 ? '+' : '') + p.value + '%'; } }, markLine: { silent: true, symbol: 'none', lineStyle: { color: muted, type: 'dashed', width: 1 }, data: [{ yAxis: 0 }] } }]
+    });
+    // 净值曲线
+    var navMarkAreas = [], navSegStart = 0;
+    for (var ni = 1; ni <= d.nav.holdings.length; ni++) {
+      if (ni === d.nav.holdings.length || d.nav.holdings[ni] !== d.nav.holdings[navSegStart]) {
+        var nh = d.nav.holdings[navSegStart];
+        var nbg = nh === '780' ? 'rgba(217,119,46,0.16)' : (nh === '398' ? 'rgba(180,83,9,0.08)' : 'rgba(138,119,101,0.12)');
+        navMarkAreas.push([{ xAxis: d.nav.dates[navSegStart], itemStyle: { color: nbg } }, { xAxis: d.nav.dates[ni - 1] }]);
+        navSegStart = ni;
+      }
+    }
+    c2.setOption({
+      animation: false,
+      tooltip: { trigger: 'axis', appendToBody: true, formatter: function (p) { var idx = p[0].dataIndex; var h = d.nav.holdings[idx]; var ret = ((d.nav.values[idx] - 100000) / 100000 * 100).toFixed(2); var hc = h === '780' ? accent : (h === '398' ? accent2 : '#8a7765'); var hl = h === 'CASH' ? '空仓' : h; return p[0].axisValue + '<br/>净值: <b>' + p[0].value.toLocaleString() + '</b>元<br/>收益: <span style="color:' + (ret >= 0 ? up : down) + ';font-weight:700;">' + (ret >= 0 ? '+' : '') + ret + '%</span><br/>持仓: <span style="color:' + hc + ';font-weight:700;">' + hl + '</span>'; } },
+      grid: { left: '12%', right: '5%', top: '10%', bottom: '16%' },
+      xAxis: { type: 'category', data: d.nav.dates, axisLabel: { color: muted, fontSize: 9, interval: Math.floor(d.nav.dates.length / 6) }, axisLine: { lineStyle: { color: rule } }, axisTick: { show: false } },
+      yAxis: { type: 'value', name: '净值', axisLabel: { color: muted, fontSize: 10, formatter: function (v) { return (v / 10000).toFixed(0) + '万'; } }, splitLine: { lineStyle: { color: rule, type: 'dashed' } }, axisLine: { show: false } },
+      series: [{ type: 'line', data: d.nav.values, smooth: 0.1, symbol: 'none', lineStyle: { color: accent, width: 2 }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(217,119,46,0.15)' }, { offset: 1, color: 'rgba(217,119,46,0)' }] } }, markArea: { silent: true, data: navMarkAreas }, markPoint: { symbol: 'pin', symbolSize: 40, data: [{ coord: [d.nav.dates[d.nav.dates.length - 1], d.nav.values[d.nav.values.length - 1]], value: '终值', itemStyle: { color: accent }, label: { color: '#fff', fontSize: 9 } }] } }]
+    });
+    window.addEventListener('resize', function () { c1.resize(); c2.resize(); });
+  }
+
+  // ============================================================
+  // 数据获取: 腾讯前复权(主) + 东方财富前复权(备)
+  // ============================================================
+  const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+  const DATA_BEG = "2022-07-01";
+  const WINDOW_START = "2023-01-01";
+  // 空仓期计息(2026-11-14 新增)：闲置资金做国债逆回购, 1.8% 年化逐日计息, 与 index/hybrid 同口径
+  const CASH_YIELD = 0.018;
+
+  async function fetchTx(code) {
+    const end = new Date().toISOString().slice(0, 10);
+    const SEGS = [["2022-07-01", "2023-12-31"], ["2024-01-01", "2025-06-30"], ["2025-07-01", end]];
+    const map = {};
+    for (const [b, e] of SEGS) {
+      const url = `https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get?param=${code},day,${b},${e},800,qfq`;
+      const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const d = json && json.data && json.data[code];
+      const arr = d && (d.qfqday || d.day);
+      if (!arr || !arr.length) continue;
+      for (const k of arr) map[k[0]] = { date: k[0], close: parseFloat(k[2]) };
+    }
+    const out = Object.keys(map).sort().map(k => map[k]);
+    if (!out.length) throw new Error("empty");
+    return out;
+  }
+
+  async function fetchEm(secid) {
+    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}` +
+      `&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1` +
+      `&beg=${DATA_BEG.replace(/-/g, "")}&end=20991231`;
+    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://quote.eastmoney.com/" } });
+    if (!res.ok) throw new Error("东财源 HTTP " + res.status);
+    const json = await res.json();
+    const klines = json && json.data && json.data.klines;
+    if (!klines || !klines.length) throw new Error("东财源无K线数据");
+    return klines.map(k => { const p = k.split(","); return { date: p[0], close: parseFloat(p[2]) }; });
+  }
+
+  // ★ 第二源：Cloudflare Worker 反代 web.ifzq（2026-11-14 接入，浏览器直连会 Failed to fetch）
+  const WORKER_BASE = "https://laosan.sanyan.ccwu.cc";
+  async function fetchWorker(code) {
+    const map = new Map();
+    let cur = new Date().toISOString().slice(0, 10), guard = 0;
+    while (guard++ < 12) {
+      const inner = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${DATA_BEG},${cur},640,qfq`;
+      const res = await fetch(WORKER_BASE + "/proxy?url=" + encodeURIComponent(inner));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const json = await res.json();
+      const d = json && json.data && json.data[code];
+      const arr = d && (d.qfqday || d.day);
+      if (!arr || !arr.length) break;
+      for (const k of arr) { const c = parseFloat(k[2]); if (k[0] && isFinite(c) && c > 0) map.set(k[0], c); }
+      const first = [...map.keys()].sort()[0];
+      if (!first || first <= DATA_BEG || arr.length < 100) break;
+      cur = dayShift(first, -1);
+    }
+    if (!map.size) throw new Error("无K线数据");
+    return [...map.keys()].sort().map(k => ({ date: k, close: map.get(k) }));
+  }
+
+  async function getKlines(code, secid, label) {
+    const errors = [];
+    try { return await fetchTx(code); } catch (e) { errors.push("腾讯: " + e.message); }
+    try { return await fetchWorker(code); } catch (e) { errors.push("Worker: " + e.message); }
+    try { return await fetchEm(secid); } catch (e) { errors.push("东财: " + e.message); }
+    throw new Error(label + " 三源获取失败 [" + errors.join(" | ") + "]");
+  }
+
+  async function fetchRealtime(code) {
+    const errors = [];
+    try {
+      const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
+      const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+      if (res.ok) {
+        const json = await res.json();
+        const node = json && json.data && json.data[code];
+        const arr = node && node.qt && node.qt[code];
+        if (arr && arr.length > 30 && parseFloat(arr[3]) > 0) {
+          return { price: parseFloat(arr[3]), volume: parseFloat(arr[6]) || 0, time: arr[30] || "", source: "分时" };
+        }
+        errors.push("分时: 无快照");
+      } else { errors.push("分时: HTTP " + res.status); }
+    } catch (e) { errors.push("分时: " + e.message); }
+    try {
+      const url = `https://qt.gtimg.cn/q=${code}`;
+      const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const text = await res.text();
+      const m = text.match(/v_\w+="([^"]*)"/);
+      if (!m) throw new Error("无行情数据");
+      const f = m[1].split("~");
+      if (parseFloat(f[3]) > 0) return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+      throw new Error("现价为0");
+    } catch (e) { errors.push("实时: " + e.message); }
+    throw new Error("实时行情获取失败 [" + errors.join(" | ") + "]");
+  }
+
+  function realtimeDate(ts) { return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8); }
+  function isWeekday(dateStr) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const day = dt.getUTCDay();
+    return day >= 1 && day <= 5;
+  }
+  function augmentDaily(klines, rt) {
+    if (!rt || !rt.price || !rt.time) return klines;
+    const last = klines[klines.length - 1];
+    const rtDate = realtimeDate(rt.time);
+    if (rtDate > last.date && isWeekday(rtDate) && rt.volume > 0) return [...klines, { date: rtDate, close: rt.price }];
+    return klines;
+  }
+
+  function calcRSI(p, n) {
+    const r = new Array(p.length).fill(null);
+    if (p.length < n + 1) return r;
+    let g = 0, l = 0;
+    for (let i = 1; i <= n; i++) { const c = p[i] - p[i - 1]; if (c >= 0) g += c; else l -= c; }
+    let ag = g / n, al = l / n;
+    r[n] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+    for (let i = n + 1; i < p.length; i++) {
+      const c = p[i] - p[i - 1];
+      ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
+      al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
+      r[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+    }
+    return r;
+  }
+  function calcMA(p, n) {
+    const m = new Array(p.length).fill(null);
+    let s = 0;
+    for (let i = 0; i < p.length; i++) { s += p[i]; if (i >= n) s -= p[i - n]; if (i >= n - 1) m[i] = s / n; }
+    return m;
+  }
+  function calcDD(p, n) {
+    const W = n || 250, d = new Array(p.length).fill(0);
+    for (let i2 = 0; i2 < p.length; i2++) {
+      let mx = p[i2];
+      for (let j = Math.max(0, i2 - W + 1); j <= i2; j++) { if (p[j] > mx) mx = p[j]; }
+      d[i2] = (p[i2] - mx) / mx;
+    }
+    return d;
+  }
+
+  async function computeData(wantDebug) {
+    try {
+      const [d780raw, d398raw, d300raw] = await Promise.all([
+        getKlines("sz159780", "0.159780", "159780"),
+        getKlines("sh601398", "0.601398", "601398"),
+        getKlines("sh000300", "1.000300", "沪深300"),
+      ]);
+      let d780 = d780raw, d398 = d398raw;
+      let intraday = false;
+      const rtDiag = { rtOk: false, rtErr: null, augment780: false, augment398: false };
+      try {
+        const [rt780, rt398] = await Promise.all([fetchRealtime("sz159780"), fetchRealtime("sh601398")]);
+        const a780 = augmentDaily(d780raw, rt780);
+        const a398 = augmentDaily(d398raw, rt398);
+        if (a780.length !== d780raw.length) { intraday = true; rtDiag.augment780 = true; }
+        if (a398.length !== d398raw.length) { intraday = true; rtDiag.augment398 = true; }
+        rtDiag.rtOk = true;
+        rtDiag.rt780 = { src: rt780.source, price: rt780.price, time: rt780.time };
+        rtDiag.rt398 = { src: rt398.source, price: rt398.price, time: rt398.time };
+        d780 = a780; d398 = a398;
+      } catch (e) { rtDiag.rtErr = e.message || String(e); }
+
+      const m780 = new Map(d780.map(x => [x.date, x.close]));
+      const m398 = new Map(d398.map(x => [x.date, x.close]));
+      const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
+      if (dates.length < 60) throw new Error("对齐后交易日不足: " + dates.length);
+      const c780 = dates.map(dd => m780.get(dd));
+      const c398 = dates.map(dd => m398.get(dd));
+      const N = dates.length;
+
+      const rsi6 = calcRSI(c780, 6);
+      const rsi6398 = calcRSI(c398, 6);
+      const ma20 = calcMA(c780, 20);
+      const dd = calcDD(c780);
+      const r5 = new Array(N).fill(null);
+      for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+
+      let S = dates.findIndex(d => d >= WINDOW_START);
+      if (S < 0) S = Math.max(0, N - 60);
+
+      const sig = i => ({
+        sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
+        sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
+        bk: rsi6[i] !== null && rsi6[i] < 25,
+        d398: r5[i] !== null && r5[i] < -0.02,
+        aMA: ma20[i] !== null && c780[i] > ma20[i],
+      });
+
+      let h = "CASH";
+      let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
+      let entryDate = null, entryPrice = null, entryCode = null;
+      const tradeReason = (from, to, s, r5i, ddi) => {
+        const ddPct = (ddi * 100).toFixed(1);
+        const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
+        if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
+        if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
+        if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
+        if (from === "780" && to === "CASH") return s.sc ? ("780回撤" + ddPct + "%, 398五日" + r5Pct + "%, 双跌避险") : "离场";
+        if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
+        if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
+        return "状态切换";
+      };
+      const tradeLog = [];
+      const wallet = { cash: 100000, shares: 0, code: "CASH" };
+      const navDates = [], navValues = [], navHoldings = [], navDD = [];
+      let navPeak = 100000;
+      for (let i = S; i < N; i++) {
+        const s = sig(i);
+        let h2 = h;
+        if (h === "780") { if (s.sw && !p.sw) h2 = "398"; else if (s.sc && !p.sc) h2 = "CASH"; }
+        else if (h === "398") { if (s.bk && !p.bk) h2 = "780"; else if (s.d398 && !p.d398) h2 = "CASH"; }
+        else { if (s.bk && !p.bk) h2 = "780"; else if (s.aMA && !p.aMA) h2 = "780"; else if (s.sw && !p.sw) h2 = "398"; }
+        if (h2 !== h) {
+          let comm = 0, sellPx = null, buyPx = null;
+          if (h !== "CASH") {
+            sellPx = h === "780" ? c780[i] : c398[i];
+            const gross = wallet.shares * sellPx;
+            const c = gross * 0.0001;
+            comm += c;
+            wallet.cash += gross - c;
+            wallet.shares = 0; wallet.code = "CASH";
+          }
+          if (h2 !== "CASH") {
+            buyPx = h2 === "780" ? c780[i] : c398[i];
+            const investable = wallet.cash * 0.9999;
+            const c = wallet.cash * 0.0001;
+            comm += c;
+            const sh = Math.floor(investable / buyPx / 100) * 100;
+            wallet.shares = sh;
+            wallet.cash = wallet.cash - sh * buyPx - c;
+            wallet.code = h2;
+          }
+          const value = wallet.cash + wallet.shares * (h2 === "780" ? c780[i] : c398[i]);
+          tradeLog.push({
+            date: dates[i], action: h + "→" + h2, reason: tradeReason(h, h2, s, r5[i], dd[i]),
+            comm: Math.round(comm * 10) / 10, value: Math.round(value), shares: wallet.shares,
+            etf: h2, price: buyPx != null ? Math.round(buyPx * 1000) / 1000 : null,
+            priceSold: sellPx != null ? Math.round(sellPx * 1000) / 1000 : null,
+          });
+          if (h2 === "780") { entryCode = "780"; entryDate = dates[i]; entryPrice = c780[i]; }
+          else if (h2 === "398") { entryCode = "398"; entryDate = dates[i]; entryPrice = c398[i]; }
+          else { entryCode = null; entryDate = null; entryPrice = null; }
+          h = h2;
+        }
+        p = s;
+        // 空仓期计息: 整仓现金时按逆回购 1.8% 年化逐日滚动
+        if (h === "CASH" && CASH_YIELD > 0) wallet.cash *= (1 + CASH_YIELD / 252);
+        const curVal = wallet.cash + wallet.shares * (h === "780" ? c780[i] : (h === "398" ? c398[i] : 0));
+        navDates.push(dates[i]); navValues.push(Math.round(curVal)); navHoldings.push(h);
+        if (curVal > navPeak) navPeak = curVal;
+        navDD.push(Math.round((curVal - navPeak) / navPeak * 10000) / 100);
+      }
+
+      const li = N - 1;
+      const s = sig(li);
+      const pv = sig(li - 1);
+      let action = "HOLD", actionText = "", actionDetail = "";
+      if (h === "780") {
+        if (s.sw && !pv.sw) { action = "SWITCH_398"; actionText = "切换至 601398 工商银行"; actionDetail = "780回撤" + (dd[li] * 100).toFixed(1) + "%, 398五日涨" + (r5[li] * 100).toFixed(1) + "%"; }
+        else if (s.sc && !pv.sc) { action = "GO_CASH"; actionText = "空仓避险"; actionDetail = "780回撤" + (dd[li] * 100).toFixed(1) + "%, 398五日" + (r5[li] * 100).toFixed(1) + "%, 双跌避险"; }
+        else { action = "HOLD_780"; actionText = "持有 159780 科创创业50ETF"; actionDetail = "买入于" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-"); }
+      } else if (h === "398") {
+        if (s.bk && !pv.bk) { action = "SWITCH_780"; actionText = "切回 159780 科创创业50ETF"; actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, 超卖反弹"; }
+        else if (s.d398 && !pv.d398) { action = "GO_CASH"; actionText = "空仓止损"; actionDetail = "398五日" + (r5[li] * 100).toFixed(1) + "%, 止损离场"; }
+        else { action = "HOLD_398"; actionText = "持有 601398 工商银行"; actionDetail = "买入于" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-"); }
+      } else {
+        if (s.bk && !pv.bk) { action = "BUY_780"; actionText = "买入 159780 科创创业50ETF"; actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, 极度超卖抢底"; }
+        else if (s.aMA && !pv.aMA) { action = "BUY_780"; actionText = "买入 159780 科创创业50ETF"; actionDetail = "780重回MA20上方, 趋势恢复"; }
+        else if (s.sw && !pv.sw) { action = "BUY_398"; actionText = "买入 601398 工商银行"; actionDetail = "398转强, 五日涨" + (r5[li] * 100).toFixed(1) + "%"; }
+        else { action = "HOLD_CASH"; actionText = "空仓等待"; actionDetail = "等待RSI<25或MA20恢复 | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-"); }
+      }
+
+      const recent = [];
+      for (let i = Math.max(0, N - 10); i < N; i++) {
+        recent.push({
+          date: dates[i], close780: Math.round(c780[i] * 1000) / 1000, close398: Math.round(c398[i] * 1000) / 1000,
+          rsi6: rsi6[i] !== null ? Math.round(rsi6[i] * 10) / 10 : null, rsi6398: rsi6398[i] !== null ? Math.round(rsi6398[i] * 10) / 10 : null,
+          ma20: ma20[i] !== null ? Math.round(ma20[i] * 1000) / 1000 : null,
+          drawdown: Math.round(dd[i] * 10000) / 100, aboveMA20: ma20[i] !== null && c780[i] > ma20[i],
+        });
+      }
+
+      const finalValue = navValues[navValues.length - 1];
+      const totalReturn = (finalValue / 100000 - 1) * 100;
+      let maxDD = 0, maxDDIdx = 0;
+      for (let i = 0; i < navDD.length; i++) { if (navDD[i] < maxDD) { maxDD = navDD[i]; maxDDIdx = i; } }
+      let sharpe = 0;
+      if (navValues.length > 2) {
+        let sMean = 0; const dRets = [];
+        for (let i = 1; i < navValues.length; i++) { const r = navValues[i] / navValues[i - 1] - 1; dRets.push(r); sMean += r; }
+        sMean /= dRets.length;
+        let sVar = 0; for (let i = 0; i < dRets.length; i++) sVar += (dRets[i] - sMean) * (dRets[i] - sMean);
+        sVar /= dRets.length;
+        const sStd = Math.sqrt(sVar);
+        sharpe = sStd > 0 ? Math.round((sMean / sStd) * Math.sqrt(252) * 100) / 100 : 0;
+      }
+      // 卡玛比率 = 年化收益 ÷ |最大回撤|（标准定义；旧版误用总收益，数值会虚高一倍以上）
+      const cagr = navValues.length > 1 ? (Math.pow(finalValue / 100000, 252 / navValues.length) - 1) * 100 : 0;
+      const calmar = maxDD !== 0 ? Math.round((cagr / Math.abs(maxDD)) * 100) / 100 : 0;
+      const totalComm = tradeLog.reduce((a, t) => a + (t.comm || 0), 0);
+      const bhReturn = (c780[N - 1] / c780[S] - 1) * 100;
+      const bhDDArr = calcDD(c780.slice(S));
+      let bhMaxDD = 0; for (let i = 0; i < bhDDArr.length; i++) if (bhDDArr[i] < bhMaxDD) bhMaxDD = bhDDArr[i];
+      bhMaxDD *= 100;
+      const excessReturn = totalReturn - bhReturn;
+      const ddImprove = Math.abs(bhMaxDD) - Math.abs(maxDD);
+      const bh780DD = []; let bhPeak = c780[S];
+      for (let i = S; i < N; i++) { if (c780[i] > bhPeak) bhPeak = c780[i]; bh780DD.push(Math.round((c780[i] - bhPeak) / bhPeak * 10000) / 100); }
+      const monthMap = {};
+      for (let i = 0; i < navDates.length; i++) { const mk = navDates[i].slice(0, 7); if (!monthMap[mk]) monthMap[mk] = { first: navValues[i], last: navValues[i] }; monthMap[mk].last = navValues[i]; }
+      const monthlyAll = Object.keys(monthMap).sort().map(mk => ({ month: mk, return: Math.round((monthMap[mk].last / monthMap[mk].first - 1) * 10000) / 100 }));
+      const monthlyReturns = monthlyAll.slice(-12);
+      const yrMap = {};
+      for (let i = 0; i < navDates.length; i++) { const yk = navDates[i].slice(0, 4); if (!yrMap[yk]) yrMap[yk] = { first: navValues[i], last: navValues[i] }; yrMap[yk].last = navValues[i]; }
+      const yearlyReturns = Object.keys(yrMap).sort().map(yk => ({ year: yk, return: Math.round((yrMap[yk].last / yrMap[yk].first - 1) * 10000) / 100 }));
+      const hs300Yearly = [];
+      try {
+        const hm = {};
+        for (const b of (d300raw || [])) { if (b.date < dates[S]) continue; const yk = b.date.slice(0, 4); if (!hm[yk]) hm[yk] = { first: b.close, last: b.close }; hm[yk].last = b.close; }
+        for (const yk of Object.keys(hm).sort()) hs300Yearly.push({ year: yk, return: Math.round((hm[yk].last / hm[yk].first - 1) * 10000) / 100 });
+      } catch (e) { }
+
+      const result = {
+        success: true, date: dates[li], holding: h,
+        close780: Math.round(c780[li] * 1000) / 1000, close398: Math.round(c398[li] * 1000) / 1000,
+        rsi6: rsi6[li] !== null ? Math.round(rsi6[li] * 10) / 10 : null, rsi6398: rsi6398[li] !== null ? Math.round(rsi6398[li] * 10) / 10 : null,
+        entryDate: entryDate, entryPrice: entryPrice != null ? Math.round(entryPrice * 10000) / 10000 : null, entryCode: entryCode,
+        lastTradeReturn: entryCode != null ? Math.round((((entryCode === "780" ? c780[li] : c398[li]) - entryPrice) / entryPrice) * 10000) / 100 : null,
+        lastTradeEntryDate: entryDate, lastTradeEntryPrice: entryPrice != null ? Math.round(entryPrice * 10000) / 10000 : null, lastTradeCode: entryCode,
+        ma20: ma20[li] !== null ? Math.round(ma20[li] * 1000) / 1000 : null,
+        drawdown: Math.round(dd[li] * 10000) / 100,
+        ret5d398: r5[li] !== null ? Math.round(r5[li] * 10000) / 100 : null,
+        aboveMA20: ma20[li] !== null && c780[li] > ma20[li],
+        switchTo398Signal: s.sw, goCashSignal: s.sc, buyBackSignal: s.bk, drop398Signal: s.d398, maRecoverSignal: s.aMA,
+        action: action, actionText: actionText, actionDetail: actionDetail,
+        recentDays: recent, intraday: intraday, rtDiag: rtDiag,
+        nav: { dates: navDates, values: navValues, holdings: navHoldings, dd: navDD, bhDD: bh780DD },
+        backtest: {
+          totalReturn: Math.round(totalReturn * 100) / 100, maxDD: Math.round(maxDD * 100) / 100, maxDDDate: navDates[maxDDIdx],
+          sharpe: sharpe, calmar: calmar, tradeCount: tradeLog.length, totalComm: Math.round(totalComm * 100) / 100,
+          excessReturn: Math.round(excessReturn * 100) / 100, bhMaxDD: Math.round(bhMaxDD * 100) / 100,
+          bhReturn: Math.round(bhReturn * 100) / 100, ddImprove: Math.round(ddImprove * 100) / 100, finalValue: finalValue,
+        },
+        monthlyReturns: monthlyReturns, yearlyReturns: yearlyReturns, hs300Yearly: hs300Yearly,
+        windowStart: dates[S], trades: tradeLog,
+      };
+      return result;
+    } catch (err) { throw new Error(err.message); }
+  }
+
+  // === 更新（移动端） ===
+  async function updateData() {
+    var btn = document.getElementById("update-btn");
+    btn.textContent = "刷新中…"; btn.disabled = true;
+    try {
+      if (typeof echarts === 'undefined') {
+        // 图表库加载失败，仍尝试刷新文字数据
+      }
+      var data = await computeData(true);
+      if (data.success) {
+        if (typeof echarts !== 'undefined') initCharts(data);
+        var bt = data.backtest;
+        if (bt) {
+          var btCards = document.querySelectorAll("#backtest .metrics-grid .metric-card");
+          if (btCards.length >= 8) {
+            btCards[0].querySelector(".m-value").textContent = (bt.totalReturn >= 0 ? "+" : "") + bt.totalReturn.toFixed(2) + "%";
+            btCards[0].querySelector(".m-sub").textContent = "10万→" + bt.finalValue.toLocaleString();
+            btCards[1].querySelector(".m-value").textContent = bt.maxDD.toFixed(2) + "%";
+            btCards[1].querySelector(".m-sub").textContent = bt.maxDDDate;
+            btCards[2].querySelector(".m-value").textContent = bt.sharpe.toFixed(2);
+            btCards[3].querySelector(".m-value").textContent = bt.calmar.toFixed(2);
+            btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
+            var cashN = data.trades.filter(function (t) { return t.etf === "CASH"; }).length;
+            btCards[4].querySelector(".m-sub").textContent = "含建仓+" + cashN + "次空仓";
+            btCards[5].querySelector(".m-value").textContent = bt.totalComm.toFixed(2);
+            btCards[6].querySelector(".m-value").textContent = (bt.excessReturn >= 0 ? "+" : "") + bt.excessReturn.toFixed(2) + "%";
+            btCards[6].querySelector(".m-sub").textContent = "vs买入持有780(" + (bt.bhReturn >= 0 ? "+" : "") + bt.bhReturn.toFixed(2) + "%)";
+            btCards[7].querySelector(".m-value").textContent = (bt.ddImprove >= 0 ? "+" : "") + bt.ddImprove.toFixed(2) + "%";
+            btCards[7].querySelector(".m-sub").textContent = "vs 780的" + bt.bhMaxDD.toFixed(2) + "%";
+          }
+          var btTitle = document.querySelector("#backtest h2");
+          if (btTitle) btTitle.textContent = "回测表现（2023-01-01 至 " + data.date + "）";
+          var yb = document.getElementById("yearly-body");
+          if (yb && data.yearlyReturns && data.yearlyReturns.length) {
+            yb.innerHTML = ""; var hsMap = {};
+            (data.hs300Yearly || []).forEach(function (x) { hsMap[x.year] = x.return; });
+            data.yearlyReturns.forEach(function (y) {
+              var hs = hsMap[y.year]; var extra = (hs === undefined) ? null : (y.return - hs);
+              var tr = document.createElement("tr");
+              tr.innerHTML = '<td class="mono">' + y.year + ' 年</td>' +
+                '<td class="mono" style="color:' + (y.return >= 0 ? up : down) + ';font-weight:600;">' + (y.return >= 0 ? '+' : '') + y.return.toFixed(2) + '%</td>' +
+                '<td class="mono">' + (hs === undefined ? '-' : ((hs >= 0 ? '+' : '') + hs.toFixed(2) + '%')) + '</td>' +
+                '<td class="mono" style="color:' + (extra === null ? muted : (extra >= 0 ? up : down)) + ';font-weight:600;">' +
+                (extra === null ? '-' : ((extra >= 0 ? '跑赢 ' : '跑输 ') + Math.abs(extra).toFixed(2) + 'pp')) + '</td>';
+              yb.appendChild(tr);
+            });
+          }
+        }
+        document.getElementById("update-time").textContent = "数据: " + data.date + (data.intraday ? "（盘中实时）" : "");
+        document.getElementById("signal-action").textContent = data.actionText;
+        document.getElementById("signal-detail").textContent = data.actionDetail;
+        var icon = document.getElementById("signal-icon");
+        var act = data.action;
+        if (act === "HOLD_398" || act === "HOLD_780") { icon.textContent = "持"; icon.style.background = "#d9772e"; }
+        else if (act === "HOLD_CASH" || act === "GO_CASH") { icon.textContent = "空"; icon.style.background = "#8a7765"; }
+        else if (act === "SWITCH_398" || act === "SWITCH_780") { icon.textContent = "换"; icon.style.background = "#b45309"; }
+        else if (act === "BUY_780" || act === "BUY_398") { icon.textContent = "买"; icon.style.background = "#d9772e"; }
+        else { icon.textContent = "持"; icon.style.background = "#d9772e"; }
+        var cards = document.querySelectorAll(".ind-card");
+        if (cards.length >= 6) {
+          cards[0].querySelector(".ind-value").textContent = data.close780;
+          cards[0].querySelector(".ind-status").textContent = data.aboveMA20 ? "站上MA20" : "跌破MA20";
+          cards[0].className = "ind-card " + (data.aboveMA20 ? "green" : "red");
+          cards[1].querySelector(".ind-value").textContent = "780 " + data.rsi6 + " · 398 " + data.rsi6398;
+          var z780 = data.rsi6 < 25 ? "极度超卖" : data.rsi6 < 30 ? "超卖" : data.rsi6 > 70 ? "超买" : "中性";
+          var z398 = data.rsi6398 < 25 ? "极度超卖" : data.rsi6398 < 30 ? "超卖" : data.rsi6398 > 70 ? "超买" : "中性";
+          cards[1].querySelector(".ind-status").textContent = "780:" + z780 + " · 398:" + z398;
+          cards[1].className = "ind-card " + ((data.rsi6 < 25 || data.rsi6398 < 25) ? "green" : "neutral");
+          cards[2].querySelector(".ind-value").textContent = data.ma20;
+          cards[2].querySelector(".ind-status").textContent = data.aboveMA20 ? "780 > MA20" : "780 < MA20";
+          cards[2].className = "ind-card " + (data.aboveMA20 ? "green" : "red");
+          cards[3].querySelector(".ind-value").textContent = data.drawdown + "%";
+          cards[3].querySelector(".ind-status").textContent = Math.abs(data.drawdown) > 12 ? ">12%双跌避险" : (Math.abs(data.drawdown) > 10 ? ">10%阈值" : "<10%安全");
+          cards[3].className = "ind-card neutral";
+          cards[3].querySelector(".ind-value").style.color = down;
+          cards[4].querySelector(".ind-value").textContent = (data.ret5d398 >= 0 ? "+" : "") + data.ret5d398 + "%";
+          cards[4].querySelector(".ind-status").textContent = data.ret5d398 > 0 ? "为正，触发切换" : (data.ret5d398 < -2 ? "跌<-2%，止损" : "为负，不触发");
+          cards[4].className = "ind-card " + (data.ret5d398 > 0 ? "green" : (data.ret5d398 < -2 ? "red" : "neutral"));
+          cards[5].querySelector(".ind-value").textContent = data.close398;
+          var holdLabel = data.holding === '780' ? '持有780' : (data.holding === '398' ? '持有398' : '空仓');
+          cards[5].querySelector(".ind-status").textContent = holdLabel;
+        }
+        var mr = data.monthlyReturns || [];
+        if (mr.length > 0 && c1) {
+          c1.setOption({ xAxis: { data: mr.map(function (m) { return m.month; }) }, series: [{ data: mr.map(function (m) { return m.return; }) }] });
+        }
+        var nav = data.nav;
+        if (nav && nav.dates && nav.dates.length > 0 && c2) {
+          var navMarkAreas = [], navSegStart = 0;
+          for (var ni = 1; ni <= nav.holdings.length; ni++) {
+            if (ni === nav.holdings.length || nav.holdings[ni] !== nav.holdings[navSegStart]) {
+              var nh = nav.holdings[navSegStart];
+              var nbg = nh === '780' ? 'rgba(217,119,46,0.16)' : (nh === '398' ? 'rgba(180,83,9,0.08)' : 'rgba(138,119,101,0.12)');
+              navMarkAreas.push([{ xAxis: nav.dates[navSegStart], itemStyle: { color: nbg } }, { xAxis: nav.dates[ni - 1] }]);
+              navSegStart = ni;
+            }
+          }
+          var lastVal = nav.values[nav.values.length - 1];
+          var lastDate = nav.dates[nav.dates.length - 1];
+          c2.setOption({
+            xAxis: { data: nav.dates },
+            series: [{ data: nav.values, markArea: { data: navMarkAreas }, markPoint: { data: [{ coord: [lastDate, lastVal], value: '终值', itemStyle: { color: accent }, label: { color: '#fff', fontSize: 9 } }] } }]
+          });
+        }
+        var tbody = document.querySelector(".recent-table tbody");
+        if (tbody) {
+          tbody.innerHTML = "";
+          data.recentDays.forEach(function (d, idx) {
+            var isLast = idx === data.recentDays.length - 1;
+            var tr = document.createElement("tr");
+            if (isLast) tr.style.background = "#fff5e8";
+            tr.innerHTML = '<td class="mono">' + d.date + '</td>' +
+              '<td class="mono">' + d.close780 + '</td>' +
+              '<td class="mono">' + d.close398 + '</td>' +
+              '<td class="mono' + (d.rsi6 !== null && d.rsi6 < 25 ? ' pos' : '') + '">' + (d.rsi6 !== null ? d.rsi6 : '-') + '</td>' +
+              '<td class="mono' + (d.rsi6398 !== null && d.rsi6398 < 25 ? ' pos' : '') + '">' + (d.rsi6398 !== null ? d.rsi6398 : '-') + '</td>' +
+              '<td class="mono">' + (d.ma20 !== null ? d.ma20 : '-') + '</td>' +
+              '<td class="neg mono">' + d.drawdown + '%</td>' +
+              '<td class="' + (d.aboveMA20 ? 'pos' : 'neg') + '">' + (d.aboveMA20 ? '是' : '否') + '</td>';
+            tbody.appendChild(tr);
+          });
+        }
+        var logic = document.querySelector(".callout ul");
+        if (logic) {
+          var sw = data.switchTo398Signal ? '<strong style="color:#c2772b;">触发</strong>' : '<strong>不触发</strong>';
+          var ca = data.goCashSignal ? '<strong style="color:#c0392b;">触发</strong>' : '<strong>不触发</strong>';
+          var bk = data.buyBackSignal ? '<strong style="color:#c2772b;">触发</strong>' : '<strong>不触发</strong>';
+          logic.innerHTML = '<li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → ' + sw + '</li>' +
+            '<li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → ' + ca + '</li>' +
+            '<li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → ' + bk + '</li>' +
+            '<li><strong>当前状态：</strong><mark class="key">' + (data.holding === '780' ? '持有780' : data.holding === '398' ? '持有398' : '空仓') + '</mark> → ' + data.actionText + (data.entryDate ? ' （买入于' + data.entryDate + (data.entryPrice != null ? ' @ ' + data.entryPrice : '') + '）' : '') + '</li>' +
+            '<li style="color:#8a8377;font-size:0.86em;">回撤口径：距过去250个交易日最高点的跌幅（与牛市开关同窗），非从数据起点累计</li>';
+        }
+        var ltrEl = document.getElementById("last-trade-return");
+        var ltsEl = document.getElementById("last-trade-sub");
+        var ltcEl = document.getElementById("last-trade-code");
+        var lteEl = document.getElementById("last-trade-entrysub");
+        if (data.lastTradeReturn != null) {
+          var ret = data.lastTradeReturn;
+          ltrEl.textContent = (ret >= 0 ? "+" : "") + ret.toFixed(2) + "%";
+          ltrEl.style.color = ret >= 0 ? up : down;
+          ltcEl.textContent = (data.lastTradeCode === "780" ? "持有780" : "持有398");
+          ltsEl.textContent = (ret >= 0 ? "盈利 " : "回撤 ") + "买入于 " + data.lastTradeEntryDate + " @ " + (data.lastTradeEntryPrice != null ? data.lastTradeEntryPrice.toFixed(4) : "-");
+          lteEl.textContent = (data.lastTradeCode === "780" ? "159780" : "601398") + " | 当前价 " + (data.lastTradeCode === "780" ? data.close780 : data.close398);
+        } else {
+          ltrEl.textContent = "空仓"; ltrEl.style.color = "#8a7765"; ltcEl.textContent = "空仓";
+          ltsEl.textContent = "当前空仓，无持仓收益"; lteEl.textContent = "—";
+        }
+        var tb2 = document.getElementById("trades-body");
+        if (data.trades && data.trades.length > 0) {
+          var shown = data.trades.slice(-30);
+          tb2.innerHTML = "";
+          shown.forEach(function (tt, idx) {
+            var parts = tt.action.split("→"); var to = parts[1];
+            var isCash = to === "CASH";
+            var badgeClass = isCash ? "" : (to === "780" ? "green" : "orange");
+            var holdLabel = isCash ? "空仓" : to;
+            var color = isCash ? "#8a7765" : (to === "398" ? accent2 : accent);
+            var tr = document.createElement("tr");
+            var isLast = idx === shown.length - 1;
+            var value = tt.value;
+            if (isLast && data.holding !== "CASH" && data.nav && data.nav.values && data.nav.values.length > 0) value = data.nav.values[data.nav.values.length - 1];
+            var cum = (value / 100000 - 1) * 100;
+            var actionLabel = tt.action;
+            if (actionLabel === "CASH→780") actionLabel = "建仓780";
+            else if (actionLabel === "CASH→398") actionLabel = "建仓398";
+            else actionLabel = actionLabel.replace("→CASH", "→清仓");
+            tr.innerHTML = '<td class="mono">' + (idx + 1) + '</td><td class="mono">' + tt.date + '</td><td><span style="color:' + color + ';font-weight:600;">' + actionLabel + '</span></td><td style="font-size:0.74rem;">' + (tt.reason || "") + '</td><td class="mono">' + (tt.comm != null ? tt.comm.toFixed(2) : "-") + '</td><td class="mono">' + value.toLocaleString() + '</td><td class="mono" style="color:' + (cum >= 0 ? up : down) + ';font-weight:600;">' + (cum >= 0 ? '+' : '') + cum.toFixed(2) + '%</td><td>' + (isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.72rem;">空仓</span>' : '<span class="badge ' + badgeClass + '">' + holdLabel + '</span>') + '</td>';
+            if (isLast) tr.style.background = "#fff5e8";
+            tb2.appendChild(tr);
+          });
+          var tnote2 = document.querySelector("#trades p");
+          if (tnote2) {
+            var cashCnt = data.trades.filter(function (t) { return t.etf === "CASH"; }).length;
+            tnote2.innerHTML = "2023-01-01 至今共 " + data.backtest.tradeCount + " 次操作（含初始建仓、" + cashCnt + " 次空仓避险），总佣金 " + data.backtest.totalComm.toFixed(2) + " 元。下表为最近 " + shown.length + " 笔。";
+          }
+        }
+        btn.textContent = "已更新 ✓";
+        setTimeout(function () { btn.textContent = "刷新"; }, 2000);
+      } else {
+        document.getElementById("update-time").textContent = "更新失败";
+        btn.textContent = "刷新";
+      }
+    } catch (e) {
+      document.getElementById("update-time").textContent = "拉取失败";
+      btn.textContent = "重试";
+      var sig = document.getElementById("signal-detail");
+      if (sig) sig.textContent = "行情拉取失败：" + e.message + "（微信里请确认网络，或稍后点刷新）";
+    }
+    btn.disabled = false;
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateData);
+  } else {
+    updateData();
+  }
+  </script>
+</body>
+</html>
