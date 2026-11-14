@@ -139,19 +139,11 @@
     .position-box .pnl.loss{color:#4caf50}
     .mini-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:12px;height:135px}
     .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:16px;height:110px}
-    .trade-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .trade-stats{display:flex;gap:10px;flex-wrap:wrap}
     .trade-stats .stat-item{background:var(--inner);border-radius:8px;padding:10px 12px;
       flex:1;text-align:center;min-width:88px}
     .trade-stats .stat-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
     .trade-stats .stat-value{font-size:16px;font-weight:700;color:#fff}
-    .signal-list{font-size:12px}
-    .signal-list .title{color:var(--muted);margin-bottom:8px;font-size:13px}
-    .signal-list th{text-align:left;color:#666;font-weight:400;padding:4px 8px;border-bottom:1px solid var(--rule)}
-    .signal-list td{padding:6px 8px;border-bottom:1px solid #1e212c;text-align:left}
-    .signal-list .buy{color:#ff5252}
-    .signal-list .sell{color:#4caf50}
-    .signal-list .profit{color:#ff5252;font-weight:600}
-    .signal-list .loss{color:#4caf50;font-weight:600}
     @media(max-width:640px){.rsi-row{flex-direction:column}}
 
     /* === 个股面板并排 === */
@@ -233,7 +225,6 @@
       <div class="mini-chart" id="chart159780"></div>
       <div class="ind-chart" id="ind159780"></div>
       <div class="trade-stats" id="stats159780"></div>
-      <div class="signal-list"><div class="title">近期信号</div><div style="overflow-x:auto"><table id="sig159780"></table></div></div>
     </div>
   </section>
 
@@ -255,7 +246,6 @@
       <div class="mini-chart" id="chart601398"></div>
       <div class="ind-chart" id="ind601398"></div>
       <div class="trade-stats" id="stats601398"></div>
-      <div class="signal-list"><div class="title">近期信号</div><div style="overflow-x:auto"><table id="sig601398"></table></div></div>
     </div>
   </section>
   </div>
@@ -1146,21 +1136,6 @@ async function updateData() {
           closed.length + '次 (' + wins + '胜' + (closed.length - wins) + '负)</span></div>' +
         '<div class="stat-item"><span class="stat-label">场均收益</span><span class="stat-value" style="color:' +
           (avg >= 0 ? "#ff5252" : "#4caf50") + '">' + fmtPct(avg) + '</span></div>';
-
-      // ---- 近期信号 ----
-      const nm = { "780": "159780", "398": "601398" };
-      let sh = "<tr><th>日期</th><th>类型</th><th>价格</th><th>收益率</th></tr>";
-      evs.slice().reverse().slice(0, 8).forEach(e => {
-        const isBuy = e.side === "buy";
-        const type = isBuy ? ("往" + (k === "780" ? "780" : "398") + " · 买入")
-                           : (e.stop ? "止损卖出" : "信号卖出");
-        sh += "<tr><td>" + e.d.slice(5) + "</td>" +
-          '<td class="' + (isBuy ? "buy" : "sell") + '">' + type + "</td>" +
-          "<td>" + (e.px === null ? "-" : e.px.toFixed(3)) + "</td>" +
-          "<td>" + (e.ret === null ? "" : '<span class="' + (e.ret >= 0 ? "profit" : "loss") + '">' +
-            fmtPct(e.ret) + "</span>") + "</td></tr>";
-      });
-      document.getElementById("sig" + code).innerHTML = sh;
 
       // ---- 价格迷你图（近120日）----
       const M = 120, cs = closes.slice(-M), ds = dates.slice(-M);
