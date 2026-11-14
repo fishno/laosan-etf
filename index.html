@@ -965,7 +965,7 @@ async function updateData() {
       yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
       series: [{
         type: "bar", barMaxWidth: 22,
-        label: { show: true, position: "top", fontSize: 9, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
+        label: { show: true, position: "top", fontSize: 9, color: "#fff", textBorderWidth: 0, textShadowBlur: 0, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
         data: monthly24.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#ff5252" : "#4caf50" } }))
       }]
     });
