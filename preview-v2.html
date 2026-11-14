@@ -99,6 +99,62 @@
   details[open] summary{margin-bottom:10px}
   .load{text-align:center;padding:60px;color:var(--muted)}
   @media(max-width:640px){.chart{height:300px}table{font-size:12px}}
+
+    /* === 个股面板（对齐参照站卡片结构） === */
+    .etf-card{padding:0 !important;overflow:hidden}
+    .card-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;
+      border-bottom:1px solid var(--rule);gap:12px;flex-wrap:wrap}
+    .card-header .etf-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .card-header .etf-code{font-size:18px;font-weight:700;color:#fff}
+    .card-header .etf-name{font-size:14px;color:var(--muted)}
+    .card-header .params{background:var(--rule);padding:4px 10px;border-radius:8px;font-size:12px;color:var(--accent)}
+    .signal-badge{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
+    .signal-badge.red{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
+    .signal-badge.green{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+    .signal-badge.gray{background:rgba(128,128,128,.15);color:#8a90a2;border:1px solid rgba(128,128,128,.3)}
+    .signal-badge.orange{background:rgba(255,152,0,.15);color:#ff9800;border:1px solid rgba(255,152,0,.3)}
+    .card-body{padding:16px 20px}
+    .price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .price-row .price{font-size:26px;font-weight:700;color:#fff}
+    .price-change{font-size:16px;font-weight:600}
+    .price-change.up{color:#ff5252}
+    .price-change.down{color:#4caf50}
+    .price-meta{font-size:12px;color:#666;margin-left:auto}
+    .rsi-row{display:flex;gap:12px;margin-bottom:16px}
+    .rsi-box{flex:1;background:var(--inner);border-radius:10px;padding:12px;text-align:center}
+    .rsi-box .label{font-size:11px;color:var(--muted)}
+    .rsi-box .value{font-size:22px;font-weight:700;margin-top:4px}
+    .rsi-box .bar{height:4px;border-radius:2px;margin-top:6px;background:#333;overflow:hidden}
+    .rsi-box .bar-fill{height:100%;border-radius:2px}
+    .rsi-diff{display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:8px;gap:6px;flex-wrap:wrap}
+    .rsi-diff .arrow{font-size:16px}
+    .position-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;
+      justify-content:space-between;align-items:center;gap:12px}
+    .position-box.holding{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2)}
+    .position-box.cash{background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.2)}
+    .position-box .pos-label{font-size:13px;color:var(--muted)}
+    .position-box .pos-status{font-size:16px;font-weight:700}
+    .position-box.holding .pos-status{color:#ff5252}
+    .position-box.cash .pos-status{color:#4caf50}
+    .position-box .pnl{font-size:18px;font-weight:700;white-space:nowrap}
+    .position-box .pnl.profit{color:#ff5252}
+    .position-box .pnl.loss{color:#4caf50}
+    .mini-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:12px;height:135px}
+    .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:16px;height:110px}
+    .trade-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .trade-stats .stat-item{background:var(--inner);border-radius:8px;padding:10px 12px;
+      flex:1;text-align:center;min-width:88px}
+    .trade-stats .stat-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+    .trade-stats .stat-value{font-size:16px;font-weight:700;color:#fff}
+    .signal-list{font-size:12px}
+    .signal-list .title{color:var(--muted);margin-bottom:8px;font-size:13px}
+    .signal-list th{text-align:left;color:#666;font-weight:400;padding:4px 8px;border-bottom:1px solid var(--rule)}
+    .signal-list td{padding:6px 8px;border-bottom:1px solid #1e212c;text-align:left}
+    .signal-list .buy{color:#ff5252}
+    .signal-list .sell{color:#4caf50}
+    .signal-list .profit{color:#ff5252;font-weight:600}
+    .signal-list .loss{color:#4caf50;font-weight:600}
+    @media(max-width:640px){.rsi-row{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -1042,7 +1098,7 @@ async function updateData() {
           ' <strong style="color:' + barC + '">' + fmtPct(v) + '</strong> / 阈值 <strong>+' + (th * 100) + '%</strong></span>' +
           '<span style="color:#666">' + (hit ? "高于阈值，止损后不切工行" : "低于阈值，可正常换仓") + '</span>';
 
-      document.getElementById("diffB" + code).innerHTML = cfg.second(N);
+      document.getElementById("diffB" + code).innerHTML = cfg.second(N - 1);
 
       // ---- 持仓盒 ----
       const pb = document.getElementById("pos" + code);
@@ -1143,7 +1199,7 @@ async function updateData() {
       key: "780", code: "159780", kind: "rsi", series: rsi6,
       indLabel: "RSI6", thLabel: "抄底阈值", thText: "<25", threshold: 25,
       second: i => {
-        const d = (c780[i - 1] / rh250[i - 1] - 1) * 100;
+        const d = (c780[i] / rh250[i] - 1) * 100;
         return '<span class="arrow">' + (d < -5 ? "⚠️" : "✅") + '</span><span>距250日高点 <strong style="color:' +
           (d < -5 ? "#ff9800" : "#4caf50") + '">' + d.toFixed(2) + '%</strong></span>' +
           '<span style="color:#666">触发线 −5%，跌破则牛市开关 OFF</span>';
