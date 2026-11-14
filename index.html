@@ -155,6 +155,11 @@
     .signal-list .profit{color:#ff5252;font-weight:600}
     .signal-list .loss{color:#4caf50;font-weight:600}
     @media(max-width:640px){.rsi-row{flex-direction:column}}
+
+    /* === 个股面板并排 === */
+    .etf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start}
+    .etf-grid>.card{margin-bottom:0}
+    @media(max-width:820px){.etf-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -211,6 +216,7 @@
   
 
 
+  <div class="etf-grid">
   <section class="card etf-card" id="card159780">
     <div class="card-header">
       <div class="etf-info"><span class="etf-code">159780</span><span class="etf-name">科创创业50ETF</span><span class="params">D3 主仓 · RSI6&lt;25 抄底</span></div>
@@ -254,6 +260,7 @@
       <div class="signal-list"><div class="title">近期信号</div><div style="overflow-x:auto"><table id="sig601398"></table></div></div>
     </div>
   </section>
+  </div>
 
   <section id="backtest" class="card">
     <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金，空仓计息 1.8%）</h2>
