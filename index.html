@@ -438,6 +438,7 @@
       <ul style="padding-left:1.2rem;font-size:0.9rem;line-height:1.8;">
         <li><strong>边缘检测：</strong>信号仅在状态从"未触发"变为"触发"时执行交易，避免阈值附近反复切换</li>
         <li><strong>空仓避险：</strong>780回撤>12%且398同步走弱时空仓离场，避免"两ETF同跌"的双杀局面</li>
+        <li><strong>回撤口径：</strong>本页所有"780回撤"均指<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的历史最高点 —— 后者会随回测起点漂移，2023 年以来有八成交易日的读数都低于 −12%，风控会长期处于"恒触发"的失效状态</li>
         <li><strong>双重回场：</strong>空仓后RSI6<25极度超卖或780重回MA20上方均可回场，不错过反弹机会</li>
         <li><strong>目标质量检查：</strong>切换至398前需确认398五日涨幅>0，过滤弱势标的</li>
         <li><strong>398离场口径：</strong>398 五日跌幅 ≤ −2% → 空仓（<b>2026-11-04 曾试「距20日最高价回撤≥4%」，实盘口径回测 2023-26 少赚 96pct，已回滚</b>）</li>
@@ -730,15 +731,16 @@ function calcMA(p, n) {
   return m;
 }
 
-function calcDD(p) { // 全历史高点回撤(2024-01-01起)
-  const d = new Array(p.length).fill(0);
-  let mx = p[0];
-  for (let i = 0; i < p.length; i++) {
-    if (p[i] > mx) mx = p[i];
-    d[i] = (p[i] - mx) / mx;
+function calcDD(p, n) {
+  const W = n || 250, d = new Array(p.length).fill(0);
+  for (let i2 = 0; i2 < p.length; i2++) {
+    let mx = p[i2];
+    for (let j = Math.max(0, i2 - W + 1); j <= i2; j++) { if (p[j] > mx) mx = p[j]; }
+    d[i2] = (p[i2] - mx) / mx;
   }
   return d;
 }
+// 注意：回撤为滚动 250 日窗口（与牛市开关同窗），不再从数据起点累计
 
 // ============================================================
 // /api/data — D3策略实时信号 (策略逻辑与回测逐行对齐, 未做任何改动)
