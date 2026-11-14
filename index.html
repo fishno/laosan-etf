@@ -1,345 +1,571 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#667eea">
-<title>杨老三的混合策略 — 成本止损版</title>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<style>
-  :root{
-    --bg:#0f1117; --bg2:#1a1d29; --inner:#14161f;
-    --ink:#e0e0e0; --muted:#8a90a2; --rule:#2a2d3a;
-    --accent:#667eea; --accent-light:rgba(102,126,234,.14); --accent2:#9db0ff;
-    --danger:#ff5252; --danger-light:rgba(255,82,82,.12);
-    --up:#ff5252; --down:#4caf50; --warn:#ff9800;
-    --font:-apple-system,'PingFang SC','Noto Sans CJK SC','Microsoft YaHei',sans-serif;
-    --max:1000px;
-    --grad:linear-gradient(135deg,#667eea,#764ba2);
-    --line:#232634;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:radial-gradient(1100px 480px at 50% -8%,rgba(102,126,234,.10),transparent 62%),var(--bg);
-    color:var(--ink);font-family:var(--font);line-height:1.6}
-  header{position:sticky;top:0;z-index:10;background:rgba(15,17,23,.84);
-    border-bottom:1px solid var(--rule);backdrop-filter:blur(10px)}
-  .bar{max-width:var(--max);margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .logo{font-size:17px;font-weight:700;background:var(--grad);-webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;background-clip:text}
-  .tag{font-size:12px;color:var(--muted)}
-  nav{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap}
-  nav a{font-size:13px;color:var(--muted);text-decoration:none;padding:2px 0;
-    border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
-  nav a:hover{color:var(--accent);border-color:var(--accent)}
-  .refresh{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:7px 16px;
-    font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);margin-left:8px;
-    box-shadow:0 4px 14px rgba(102,126,234,.28);transition:opacity .25s}
-  .refresh:hover{opacity:.85}
-  .wrap{max-width:var(--max);margin:0 auto;padding:20px}
-  .card{background:var(--bg2);border:1px solid var(--rule);border-radius:16px;
-    padding:18px 20px;margin-bottom:16px;transition:border-color .3s,box-shadow .3s}
-  .card:hover{border-color:rgba(102,126,234,.42);box-shadow:0 6px 26px rgba(0,0,0,.28)}
-  .card h2{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:#fff}
-  .card h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--grad);
-    display:inline-block;box-shadow:0 0 10px rgba(102,126,234,.75)}
-  .grid{display:grid;gap:14px}
-  .g2{grid-template-columns:1fr 1fr}
-  .g3{grid-template-columns:repeat(3,1fr)}
-  .g4{grid-template-columns:repeat(4,1fr)}
-  .g5{grid-template-columns:repeat(5,1fr)}
-  @media(max-width:720px){.g3{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,1fr)}
-    .g5{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
-  .m{background:var(--inner);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .m-label{font-size:12px;color:var(--muted);margin-bottom:4px}
-  .m-value{font-size:22px;font-weight:700;color:#fff}
-  .m-sub{font-size:12px;color:var(--muted);margin-top:2px}
-  #backtest .m{padding:10px 12px}
-  #backtest .m-label{font-size:10px;margin-bottom:2px}
-  #backtest .m-value{font-size:16px}
-  #backtest .m-sub{font-size:10px}
-  #backtest .grid.g4{gap:6px}
-  .badge{display:inline-block;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:700}
-  .b-on{background:rgba(102,126,234,.18);color:#a5b4fc;border:1px solid rgba(102,126,234,.35)}
-  .b-off{background:rgba(255,82,82,.15);color:#ff8b8b;border:1px solid rgba(255,82,82,.32)}
-  .b-hold{background:rgba(76,175,80,.16);color:#6ee787;border:1px solid rgba(76,175,80,.32)}
-  .b-green{background:rgba(76,175,80,.16);color:#6ee787;border:1px solid rgba(76,175,80,.32)}
-  .b-amber{background:rgba(255,152,0,.16);color:#ffb74d;border:1px solid rgba(255,152,0,.32)}
-  .b-red{background:rgba(255,82,82,.15);color:#ff8b8b;border:1px solid rgba(255,82,82,.32)}
-  .bear-warn{display:flex;align-items:center;gap:14px;margin-top:14px;border:1px solid var(--line);
-    border-radius:12px;padding:14px 16px;background:var(--inner)}
-  .bear-left{flex-shrink:0}
-  .bear-right{font-size:13px}
-  .bear-detail{color:var(--muted);font-size:12px;margin-top:2px}
-  .disc-list{display:flex;flex-direction:column;gap:8px}
-  .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:var(--inner);
-    border:1px solid var(--line);border-radius:10px;padding:10px 14px}
-  .disc-item b{color:var(--accent2)}
-  .disc-n{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;
-    font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:600;margin-top:1px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-  th:first-child,td:first-child{text-align:left}
-  th{color:var(--muted);font-weight:500;font-size:12px}
-  tbody tr:hover{background:rgba(102,126,234,.05)}
-  .up{color:var(--up)}.down{color:var(--down)}
-  .rt-row{background:rgba(102,126,234,.10)}
-  .rt-row td{font-weight:700;border-bottom:2px solid var(--accent)}
-  .rt-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:10px;
-    font-weight:600;background:var(--grad);color:#fff;vertical-align:1px}
-  .chart{width:100%;height:400px}
-  .rule-box{background:rgba(102,126,234,.08);border-left:3px solid var(--accent);border-radius:10px;
-    padding:12px 16px;font-size:13px;margin-bottom:12px;line-height:1.85}
-  .rule-box b{color:var(--accent2)}
-  ul{padding-left:20px;font-size:13px}
-  li{margin-bottom:5px}
-  .warn{background:var(--danger-light);border-left:4px solid var(--danger);padding:10px 14px;
-    border-radius:8px;font-size:12px;margin-top:10px}
-  .foot{color:var(--muted);font-size:12px;padding:6px 0 20px}
-  details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent2);padding:4px 0}
-  details[open] summary{margin-bottom:10px}
-  .load{text-align:center;padding:60px;color:var(--muted)}
-  @media(max-width:640px){.chart{height:300px}table{font-size:12px}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#d9772e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="轮动D3">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>老杨的科技银行轮动策略 — 实时操作面板</title>
+  <style>
+    :root {
+      --bg: #fdf6ee;
+      --bg2: #fffaf4;
+      --ink: #2b2018;
+      --muted: #8a7765;
+      --rule: #efe2d4;
+      --accent: #d9772e;
+      --accent-light: #fbe6d4;
+      --accent2: #b45309;
+      --danger: #c0392b;
+      --danger-light: #fbeae8;
+      --up: #d63031;   /* 盈利/涨 = 红 */
+      --down: #1f9d55; /* 回撤/跌 = 绿 */
+      --green: #c2772b;
+      --green-light: #fdefdc;
+      --font: 'InstrumentSans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      --font-mono: 'GeistMono', 'Consolas', monospace;
+      --max: 1000px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.7; padding: 0 0 3rem; }
 
-    /* === 个股面板（对齐参照站卡片结构） === */
-    .etf-card{padding:0 !important;overflow:hidden}
-    .card-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;
-      border-bottom:1px solid var(--rule);gap:12px;flex-wrap:wrap}
-    .card-header .etf-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .card-header .etf-code{font-size:18px;font-weight:700;color:#fff}
-    .card-header .etf-name{font-size:14px;color:var(--muted)}
-    .card-header .params{background:var(--rule);padding:4px 10px;border-radius:8px;font-size:12px;color:var(--accent)}
-    .signal-badge{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
-    .signal-badge.red{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
-    .signal-badge.green{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
-    .signal-badge.gray{background:rgba(128,128,128,.15);color:#8a90a2;border:1px solid rgba(128,128,128,.3)}
-    .signal-badge.orange{background:rgba(255,152,0,.15);color:#ff9800;border:1px solid rgba(255,152,0,.3)}
-    .card-body{padding:16px 20px}
-    .price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-    .price-row .price{font-size:26px;font-weight:700;color:#fff}
-    .price-change{font-size:16px;font-weight:600}
-    .price-change.up{color:#ff5252}
-    .price-change.down{color:#4caf50}
-    .price-meta{font-size:12px;color:#666;margin-left:auto}
-    .rsi-row{display:flex;gap:12px;margin-bottom:16px}
-    .rsi-box{flex:1;background:var(--inner);border-radius:10px;padding:12px;text-align:center}
-    .rsi-box .label{font-size:11px;color:var(--muted)}
-    .rsi-box .value{font-size:22px;font-weight:700;margin-top:4px}
-    .rsi-diff{display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:8px;gap:6px;flex-wrap:wrap}
-    .rsi-diff .arrow{font-size:16px}
-    .position-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;
-      justify-content:space-between;align-items:center;gap:12px}
-    .position-box.holding{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2)}
-    .position-box.cash{background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.2)}
-    .position-box .pos-label{font-size:13px;color:var(--muted)}
-    .position-box .pos-status{font-size:16px;font-weight:700}
-    .position-box.holding .pos-status{color:#ff5252}
-    .position-box.cash .pos-status{color:#4caf50}
-    .position-box .pnl{font-size:18px;font-weight:700;white-space:nowrap}
-    .position-box .pnl.profit{color:#ff5252}
-    .position-box .pnl.loss{color:#4caf50}
-    .mini-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:12px;height:135px}
-    .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;height:110px}
-    @media(max-width:640px){.rsi-row{flex-direction:column}}
+    /* === Top Nav === */
+    nav.topbar {
+      background: var(--bg2); border-bottom: 1px solid var(--rule);
+      padding: 0.75rem 1rem; position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: var(--max); margin: 0 auto;
+    }
+    nav.topbar .logo { font-weight: 700; font-size: 1rem; color: var(--accent); }
+    nav.topbar .nav-links { display: flex; gap: 1.25rem; }
+    nav.topbar .nav-links a {
+      text-decoration: none; color: var(--muted); font-size: 0.85rem; font-weight: 600;
+      transition: color 0.2s;
+    }
+    nav.topbar .nav-links a:hover { color: var(--accent); }
+    nav.topbar .update-time { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); }
+    nav.topbar .update-btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: background 0.2s; font-family: var(--font); }
+    nav.topbar .update-btn:hover { background: #b3621f; }
+    nav.topbar .update-btn:disabled { background: var(--muted); cursor: not-allowed; }
+    nav.topbar .nav-right { display: flex; align-items: center; gap: 0.75rem; }
 
-    /* === 个股面板并排 === */
-    .etf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start}
-    .etf-grid>.card{margin-bottom:0}
-    @media(max-width:820px){.etf-grid{grid-template-columns:1fr}}
-</style>
+    article.page { max-width: var(--max); margin: 0 auto; padding: 1.5rem 1rem 0; }
+
+    /* === Signal Banner === */
+    .signal-banner {
+      border-radius: 14px; padding: 2rem; margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%);
+      border: 2px solid var(--accent);
+      display: flex; align-items: center; gap: 2rem;
+    }
+    .signal-banner .signal-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .signal-banner .signal-content { flex: 1; }
+    .signal-banner .signal-label {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem;
+    }
+    .signal-banner .signal-action {
+      font-size: 1.5rem; font-weight: 700; color: var(--ink); margin-bottom: 0.3rem;
+    }
+    .signal-banner .signal-detail { font-size: 0.9rem; color: var(--muted); }
+
+    /* === Section === */
+    section.card {
+      background: var(--bg2); border: 1px solid var(--rule);
+      border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem;
+    }
+    h2 {
+      font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent); display: inline-block;
+    }
+    h3 { font-size: 1rem; font-weight: 700; margin: 1.25rem 0 0.6rem; }
+    p { margin-bottom: 0.75rem; }
+    p:last-child { margin-bottom: 0; }
+    strong { font-weight: 700; }
+    mark.key { background: none; color: var(--accent); font-weight: 600; }
+    mark.warn { background: none; color: var(--accent2); font-weight: 600; }
+
+    /* === Indicator Grid === */
+    .indicators {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem; margin: 1rem 0;
+    }
+    .ind-card {
+      border-radius: 10px; padding: 1rem; text-align: center;
+      border: 1px solid var(--rule);
+    }
+    .ind-card.green { background: var(--green-light); border-color: #f3d9b0; }
+    .ind-card.red { background: var(--danger-light); border-color: #f5c5bf; }
+    .ind-card.neutral { background: #fbf4ec; }
+    .ind-card .ind-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .ind-card .ind-value {
+      font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700;
+    }
+    .ind-card.green .ind-value { color: var(--green); }
+    .ind-card.red .ind-value { color: var(--danger); }
+    .ind-card.neutral .ind-value { color: var(--ink); }
+    .ind-card .ind-status {
+      font-size: 0.7rem; margin-top: 0.2rem; font-weight: 600;
+    }
+    .ind-card.green .ind-status { color: var(--green); }
+    .ind-card.red .ind-status { color: var(--danger); }
+    .ind-card.neutral .ind-status { color: var(--muted); }
+
+    /* === Metrics Grid === */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1rem 0;
+    }
+    .metric-card {
+      border-radius: 10px; padding: 1rem; text-align: center;
+      background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%);
+      border: 1px solid #f3d9b0;
+    }
+    .metric-card.danger { background: linear-gradient(135deg, #fbeae8 0%, #fbe0dc 100%); border-color: #f5c5bf; }
+    .metric-card.neutral { background: linear-gradient(135deg, #fbf4ec 0%, #f6ede0 100%); border-color: var(--rule); }
+    .metric-card .m-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+    .metric-card .m-value { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    .metric-card.danger .m-value { color: var(--danger); }
+    .metric-card.neutral .m-value { color: var(--ink); }
+    .metric-card .m-sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* === Strategy Card === */
+    .strategy-card {
+      background: linear-gradient(135deg, #fff5e8 0%, #fde9d4 100%);
+      border: 2px solid var(--accent); border-radius: 12px; padding: 1.5rem; margin: 1rem 0;
+    }
+    .strategy-card .s-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem; }
+    .strategy-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+    .rule-box { background: var(--bg2); border-radius: 8px; padding: 0.85rem; text-align: center; border: 1px solid var(--rule); }
+    .rule-box .r-action { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .rule-box .r-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .rule-box.sell .r-value { color: var(--accent2); }
+
+    /* === Charts === */
+    .chart-figure { margin: 1rem 0; }
+    .chart-figure figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink); margin-bottom: 0.5rem; }
+    .chart-figure .chart-container { background: var(--bg2); border: 1px solid var(--rule); border-radius: 8px; padding: 0.75rem; }
+
+    /* === Table === */
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--rule); margin: 0.75rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 580px; }
+    thead { position: sticky; top: 0; z-index: 1; }
+    th { background: var(--accent); color: #fff; font-weight: 700; text-align: left; padding: 0.6rem 0.8rem; white-space: nowrap; }
+    td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--rule); }
+    tbody tr:nth-child(even) { background: #fbf4ec; }
+    tbody tr:last-child td { border-bottom: none; }
+    td .pos { color: var(--green); font-weight: 600; }
+    td .neg { color: var(--danger); font-weight: 600; }
+    td .mono { font-family: var(--font-mono); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; }
+    .badge.green { background: rgba(217,119,46,0.1); color: var(--accent); }
+    .badge.orange { background: rgba(180,83,9,0.1); color: var(--accent2); }
+
+    /* === Callout === */
+    .callout { background: #fff5e8; border: 1px solid #f3d9b0; border-left: 4px solid var(--accent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
+    .callout.warning { background: #fffbeb; border-color: #fde68a; border-left-color: var(--accent2); }
+    .callout.danger { background: #fbeae8; border-color: #f5c5bf; border-left-color: var(--danger); }
+    .callout-title { font-weight: 700; margin-bottom: 0.4rem; font-size: 0.9rem; }
+    .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+    .callout ul { padding-left: 1.2rem; }
+    .callout li { margin-bottom: 0.3rem; font-size: 0.85rem; }
+
+    /* === Recent Days Table === */
+    .recent-table { font-size: 0.8rem; }
+    .recent-table th, .recent-table td { padding: 0.45rem 0.6rem; }
+
+    /* === Footer === */
+    footer { max-width: var(--max); margin: 0 auto; padding: 1rem; }
+    footer .disclaimer {
+      background: var(--bg2); border: 1px solid var(--rule); border-radius: 12px;
+      padding: 1.5rem; font-size: 0.8rem; color: var(--muted);
+    }
+    footer .disclaimer strong { color: var(--ink); }
+
+    @media (max-width: 700px) {
+      .signal-banner { flex-direction: column; text-align: center; gap: 1rem; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .strategy-rules { grid-template-columns: 1fr; }
+      nav.topbar .nav-links { display: none; }
+      nav.topbar .update-time { font-size: 0.7rem; }
+      .indicators { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <div class="bar">
-    <div class="logo">杨老三的混合策略 · 成本止损版</div>
-    <div class="tag">牛市开关 + 跌破成本 4% 止损 · 398 乖离&gt;4% 或 跌破MA60 改空仓</div>
-    <nav>
-      <a href="#signal">信号</a>
-      <a href="#backtest">回测</a>
-      <a href="#monthly">月度</a>
-      <a href="#yearly">年度战绩</a>
-      <a href="#nav">净值</a>
+  <nav class="topbar">
+    <div class="logo">杨老三的轮动策略D3</div>
+    <div class="nav-links">
+      <a href="#signal">当前信号</a>
+      <a href="#indicators">实时指标</a>
+      <a href="#strategy">策略规则</a>
+      <a href="#backtest">回测表现</a>
       <a href="#trades">交易记录</a>
-    </nav>
-    <button class="refresh" onclick="location.reload()">更新数据</button>
-  </div>
-</header>
-
-<div class="wrap">
-  <div class="load" id="loading">正在拉取行情数据…</div>
-  <div id="main" style="display:none">
-
-  <section id="signal" class="card">
-    <h2><span class="dot"></span>当前信号（实时）</h2>
-    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>★趋势过滤（2026-11-14 新增）：</b>切工行前还要看 <b>601398 自身趋势</b>——它<b>收盘跌破自身 MA60</b> 就<b>不换仓、直接空仓</b>。理由：工行若自身在下跌，切过去等于从一个下跌资产换到另一个下跌资产，「借负相关对冲」的前提不成立。回测 MA50~MA80 为平台区（T+1 口径 +429%~+470%），非单点拟合。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b></div>
-    <div class="grid g5">
-      <div class="m"><div class="m-label">牛市开关</div><div><span class="badge" id="bullBadge">--</span></div><div class="m-sub" id="bullSub"></div></div>
-      <div class="m"><div class="m-label">当前持仓</div><div class="m-value" id="holdNow">--</div><div class="m-sub" id="holdSub"></div></div>
-      <div class="m"><div class="m-label">159780 距250日高点</div><div class="m-value" id="distHigh">--</div><div class="m-sub">触发线 = 0.95 × 250日高</div></div>
-      <div class="m"><div class="m-label">★出口监控</div><div class="m-value" id="stopMon">--</div><div class="m-sub" id="stopSub"></div></div>
-      <div class="m"><div class="m-label">当前资产 / 累计收益</div><div class="m-value" id="curNav">--</div><div class="m-sub" id="curRet"></div></div>
     </div>
-    <div class="bear-warn" id="bearWarn">
-      <div class="bear-left"><span class="badge" id="bearBadge">--</span></div>
-      <div class="bear-right">
-        <div id="bearTitle">--</div>
-        <div class="bear-detail" id="bearDetail"></div>
+    <div class="nav-right"><button id="update-btn" onclick="updateData()" class="update-btn">更新数据</button><span class="update-time" id="update-time">数据: 2026-08-14</span></div>
+  </nav>
+
+  <article class="page">
+
+    <!-- === 当前操作信号 === -->
+    <section id="signal" class="signal-banner">
+      <div class="signal-icon" id="signal-icon">买</div>
+      <div class="signal-content">
+        <div class="signal-label">当前操作建议</div>
+        <div class="signal-action" id="signal-action">买入 159780 科创创业50ETF</div>
+        <div class="signal-detail" id="signal-detail">策略D3默认仓位 | 780站上MA20(1.130) | RSI6=58.4中性区 | 398五日涨幅为负(-0.87%)，不满足切换至398的条件</div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="reentry" class="card" style="display:none">
-    <h2><span class="dot"></span>★780 回补监控（未持 159780 时显示）</h2>
-    <div class="rule-box" id="reentryBanner">--</div>
-    <div class="grid g3">
-      <div class="m"><div class="m-label">路径① RSI6 &lt; 25（主力路径，历史占比 74%）</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
-      <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
-      <div class="m"><div class="m-label">路径③ 绕道空仓 → 站上 MA20</div><div class="m-value" id="re3v">--</div><div class="m-sub" id="re3s">--</div></div>
-    </div>
-    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
-  </section>
-
-  
-
-
-  <div class="etf-grid">
-  <section class="card etf-card" id="card159780">
-    <div class="card-header">
-      <div class="etf-info"><span class="etf-code">159780</span><span class="etf-name">科创创业50ETF</span><span class="params">D3 主仓 · RSI6&lt;25 抄底</span></div>
-      <span class="signal-badge gray" id="badge159780">--</span>
-    </div>
-    <div class="card-body">
-      <div class="price-row">
-        <span class="price" id="p159780">--</span>
-        <span class="price-change" id="chg159780">--</span>
-        <span class="price-meta" id="meta159780">--</span>
-      </div>
-      <div class="rsi-row" id="rsi159780"></div>
-      <div class="rsi-diff" id="diff159780"></div>
-      <div class="rsi-diff" id="diffB159780" style="margin-top:4px"></div>
-      <div class="position-box cash" id="pos159780"></div>
-      <div class="mini-chart" id="chart159780"></div>
-      <div class="ind-chart" id="ind159780"></div>
-    </div>
-  </section>
-
-  <section class="card etf-card" id="card601398">
-    <div class="card-header">
-      <div class="etf-info"><span class="etf-code">601398</span><span class="etf-name">工商银行</span><span class="params">D3 避险 · 5日跌&gt;2% 离场 / 乖离&gt;4% 或 跌破MA60 拦截</span></div>
-      <span class="signal-badge gray" id="badge601398">--</span>
-    </div>
-    <div class="card-body">
-      <div class="price-row">
-        <span class="price" id="p601398">--</span>
-        <span class="price-change" id="chg601398">--</span>
-        <span class="price-meta" id="meta601398">--</span>
-      </div>
-      <div class="rsi-row" id="rsi601398"></div>
-      <div class="rsi-diff" id="diff601398"></div>
-      <div class="rsi-diff" id="diffB601398" style="margin-top:4px"></div>
-      <div class="position-box cash" id="pos601398"></div>
-      <div class="mini-chart" id="chart601398"></div>
-      <div class="ind-chart" id="ind601398"></div>
-    </div>
-  </section>
-  </div>
-
-  <section id="backtest" class="card">
-    <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金，空仓计息 1.8%）</h2>
-    <div class="grid g2">
-      <div class="m">
-        <div class="m-label">★混合策略 · 成本止损版（跌破成本 4% 止损 + 398 乖离&gt;4% / 跌破MA60 改空仓）</div>
-        <div class="grid g4" style="gap:8px">
-          <div><div class="m-label">总收益</div><div class="m-value up" id="hyTotal">--</div></div>
-          <div><div class="m-label">年化</div><div class="m-value" id="hyCagr">--</div></div>
-          <div><div class="m-label">最大回撤</div><div class="m-value down" id="hyMdd">--</div></div>
-          <div><div class="m-label">夏普</div><div class="m-value" id="hySharpe">--</div></div>
+    <!-- === 当前持仓收益（最近一笔交易） === -->
+    <section id="holdreturn" class="card">
+      <h2>当前持仓收益（最近一笔交易）</h2>
+      <div class="metrics-grid">
+        <div class="metric-card" id="last-trade-card">
+          <div class="m-label">最近一笔交易收益率</div>
+          <div class="m-value" id="last-trade-return">--</div>
+          <div class="m-sub" id="last-trade-sub">等待数据…</div>
         </div>
-        <div class="m-sub" id="hyExtra"></div>
-      </div>
-      <div class="m">
-        <div class="m-label">实时股价 · 当前持仓最后一笔浮盈</div>
-        <div class="grid g4" style="gap:8px">
-          <div><div class="m-label">159780 现价</div><div class="m-value" id="q780">--</div></div>
-          <div><div class="m-label">601398 现价</div><div class="m-value" id="q398">--</div></div>
-          <div><div class="m-label">当前持仓</div><div class="m-value" id="posNow">--</div></div>
-          <div><div class="m-label">最后一笔浮盈</div><div class="m-value" id="lastPl">--</div></div>
+        <div class="metric-card neutral" id="last-trade-entry">
+          <div class="m-label">买入信息</div>
+          <div class="m-value" id="last-trade-code" style="font-size:1.1rem;">--</div>
+          <div class="m-sub" id="last-trade-entrysub">—</div>
         </div>
-        <div class="m-sub" id="lastDetail"></div>
       </div>
+    </section>
+
+    <!-- === 实时指标 === -->
+    <!-- === 回测表现 === -->
+    <section id="backtest" class="card">
+      <h2>回测表现（2023-01-01 至 2026-08-28）</h2>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="m-label">总收益率</div>
+          <div class="m-value">+134.4%</div>
+          <div class="m-sub">10万→21.37万</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="m-label">最大回撤</div>
+          <div class="m-value">-10.97%</div>
+          <div class="m-sub">10-09至10-14</div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">夏普比率</div>
+          <div class="m-value">2.72</div>
+          <div class="m-sub">年化</div>
+        </div>
+        <div class="metric-card neutral">
+          <div class="m-label">卡尔玛比率</div>
+          <div class="m-value">1.52</div>
+          <div class="m-sub">年化/回撤</div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card neutral">
+          <div class="m-label">操作次数</div>
+          <div class="m-value">14</div>
+          <div class="m-sub">含建仓+3次空仓</div>
+        </div>
+        <div class="metric-card neutral">
+          <div class="m-label">总佣金</div>
+          <div class="m-value">322.60</div>
+          <div class="m-sub">元</div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">超额收益</div>
+          <div class="m-value">+41.02%</div>
+          <div class="m-sub">vs买入持有780</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="m-label">回撤改善</div>
+          <div class="m-value">+13.41%</div>
+          <div class="m-sub">vs 780的-29.18%</div>
+        </div>
+      </div>
+
+
+      <div class="chart-figure">
+        <figcaption>累计净值曲线（橙=持780，深棕=持398，灰=空仓）</figcaption>
+        <div class="chart-container">
+          <div id="chart-nav" style="width:100%;height:400px;"></div>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- === 交易记录 === -->
+    <!-- === 月度收益(近一年) === -->
+    <section id="monthly" class="card">
+      <h2>月度收益（近一年）</h2>
+      <div class="chart-figure">
+        <figcaption>月度收益率 · 最近 12 个月</figcaption>
+        <div class="chart-container">
+          <div id="chart-monthly" style="width:100%;height:340px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === 年度战绩 === -->
+    <section id="yearly" class="card">
+      <h2>年度战绩</h2>
+      <p style="font-size:0.85rem;color:#8a7765;margin-bottom:0.85rem;">自 2023-01-01 起 · 相对沪深300</p>
+      <div class="table-wrap">
+        <table id="yearly-table">
+          <thead>
+            <tr><th>年份</th><th>策略收益</th><th>沪深300</th><th>跑赢大盘</th></tr>
+          </thead>
+          <tbody id="yearly-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="indicators" class="card">
+      <h2>实时指标监控</h2>
+      <p>以下指标基于2026-08-14收盘数据计算，用于判断策略D3的信号状态。</p>
+
+      <div class="indicators">
+        <div class="ind-card green">
+          <div class="ind-label">780 收盘价</div>
+          <div class="ind-value">1.150</div>
+          <div class="ind-status">站上MA20</div>
+        </div>
+        <div class="ind-card neutral">
+          <div class="ind-label">RSI6</div>
+          <div class="ind-value">58.4</div>
+          <div class="ind-status">中性区 (未<30)</div>
+        </div>
+        <div class="ind-card neutral">
+          <div class="ind-label">MA20</div>
+          <div class="ind-value">1.130</div>
+          <div class="ind-status">780 > MA20</div>
+        </div>
+        <div class="ind-card red">
+          <div class="ind-label">780回撤</div>
+          <div class="ind-value">-21.6%</div>
+          <div class="ind-status">>10%阈值</div>
+        </div>
+        <div class="ind-card red">
+          <div class="ind-label">398 五日涨幅</div>
+          <div class="ind-value">-0.87%</div>
+          <div class="ind-status">为负，不触发</div>
+        </div>
+        <div class="ind-card green">
+          <div class="ind-label">398 收盘价</div>
+          <div class="ind-value">1.142</div>
+          <div class="ind-status">弱势调整中</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">信号判断逻辑</div>
+        <ul>
+          <li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → <strong>不触发</strong></li>
+          <li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → <strong>不触发</strong></li>
+          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
+          <li><strong>当前状态：</strong><mark class="key">持有780</mark> → 持有 159780 科创创业50ETF</li>
+        </ul>
+      </div>
+
+      <h3>近10个交易日明细</h3>
+      <div class="table-wrap">
+        <table class="recent-table">
+          <thead>
+            <tr><th>日期</th><th>780收盘</th><th>398收盘</th><th>780 RSI6</th><th>398 RSI6</th><th>MA20</th><th>780回撤</th><th>站上MA20</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">2026-08-03</td><td class="mono">1.041</td><td class="mono">1.192</td><td class="mono">29.5</td><td class="mono">-</td><td class="mono">1.192</td><td class="neg mono">-29.0%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-04</td><td class="mono">1.098</td><td class="mono">1.171</td><td class="mono">45.4</td><td class="mono">-</td><td class="mono">1.181</td><td class="neg mono">-25.2%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-05</td><td class="mono">1.135</td><td class="mono">1.163</td><td class="mono">53.5</td><td class="mono">-</td><td class="mono">1.173</td><td class="neg mono">-22.6%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-06</td><td class="mono">1.124</td><td class="mono">1.161</td><td class="mono">50.8</td><td class="mono">-</td><td class="mono">1.160</td><td class="neg mono">-23.4%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-07</td><td class="mono">1.143</td><td class="mono">1.152</td><td class="mono">55.5</td><td class="mono">-</td><td class="mono">1.152</td><td class="neg mono">-22.1%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-10</td><td class="mono">1.129</td><td class="mono">1.164</td><td class="mono">51.2</td><td class="mono">-</td><td class="mono">1.146</td><td class="neg mono">-23.0%</td><td class="neg">否</td></tr>
+            <tr><td class="mono">2026-08-11</td><td class="mono">1.126</td><td class="mono">1.162</td><td class="mono">50.2</td><td class="mono">-</td><td class="mono">1.137</td><td class="neg mono">-23.2%</td><td class="neg">否</td></tr>
+            <tr style="background:#fff5e8;"><td class="mono">2026-08-12</td><td class="mono">1.143</td><td class="mono">1.156</td><td class="mono">56.0</td><td class="mono">-</td><td class="mono">1.132</td><td class="neg mono">-22.1%</td><td class="pos">是</td></tr>
+            <tr><td class="mono">2026-08-13</td><td class="mono">1.136</td><td class="mono">1.152</td><td class="mono">53.0</td><td class="mono">-</td><td class="mono">1.128</td><td class="neg mono">-22.6%</td><td class="pos">是</td></tr>
+            <tr style="background:#fff5e8;"><td class="mono">2026-08-14</td><td class="mono">1.150</td><td class="mono">1.142</td><td class="mono">58.4</td><td class="mono">1.130</td><td class="neg mono">-21.6%</td><td class="pos">是</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- === 策略规则 === -->
+    <section id="strategy" class="card">
+      <h2>策略D3 规则</h2>
+      <p>科技银行轮动策略是一个<mark class="key">回撤保护型轮动策略</mark>，在科创创业50ETF（159780）和工商银行（601398）之间智能切换，<mark class="warn">极端行情可空仓避险</mark>。</p>
+
+      <div class="strategy-card">
+        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25或MA20恢复回780</div>
+        <div class="strategy-rules">
+          <div class="rule-box sell">
+            <div class="r-action">780 → 398（避险）</div>
+            <div class="r-value">回撤>10%<br>且398五日涨>0</div>
+          </div>
+          <div class="rule-box sell">
+            <div class="r-action">→ 空仓（双跌避险）</div>
+            <div class="r-value">回撤>12%<br>且398五日≤0%</div>
+          </div>
+          <div class="rule-box">
+            <div class="r-action">空仓 → 780（抢底）</div>
+            <div class="r-value">RSI6<25<br>或重回MA20上方</div>
+          </div>
+          <div class="rule-box">
+            <div class="r-action">398 → 780（反弹）</div>
+            <div class="r-value">RSI6 < 25</div>
+          </div>
+          <div class="rule-box sell">
+            <div class="r-action">398 → 空仓（止损）</div>
+            <div class="r-value">距20日高<br>回撤 ≥ 4%</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>关键设计</h3>
+      <ul style="padding-left:1.2rem;font-size:0.9rem;line-height:1.8;">
+        <li><strong>边缘检测：</strong>信号仅在状态从"未触发"变为"触发"时执行交易，避免阈值附近反复切换</li>
+        <li><strong>空仓避险：</strong>780回撤>12%且398同步走弱时空仓离场，避免"两ETF同跌"的双杀局面</li>
+        <li><strong>回撤口径：</strong>本页所有"780回撤"均指<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的历史最高点 —— 后者会随回测起点漂移，2023 年以来有八成交易日的读数都低于 −12%，风控会长期处于"恒触发"的失效状态</li>
+        <li><strong>双重回场：</strong>空仓后RSI6<25极度超卖或780重回MA20上方均可回场，不错过反弹机会</li>
+        <li><strong>目标质量检查：</strong>切换至398前需确认398五日涨幅>0，过滤弱势标的</li>
+        <li><strong>398离场口径：</strong>398 五日跌幅 ≤ −2% → 空仓（<b>2026-11-04 曾试「距20日最高价回撤≥4%」，实盘口径回测 2023-26 少赚 96pct，已回滚</b>）</li>
+        <li><strong>默认仓位：</strong>无信号时持有780，保持对高弹性品种的风险暴露</li>
+      </ul>
+
+      <h3>操作流程</h3>
+      <div class="callout">
+        <ul>
+          <li><strong>每日收盘后：</strong>计算780的RSI6、MA20、回撤，以及398的5日涨幅</li>
+          <li><strong>信号触发日次日：</strong>按收盘价信号操作，开盘或盘中执行买卖</li>
+          <li><strong>切换操作：</strong>卖出当前持仓100%，买入目标ETF（按100股取整）</li>
+          <li><strong>佣金：</strong>银河证券万1费率，最低5元/笔</li>
+          <li><strong>空仓期：</strong>闲置资金做国债逆回购，按 1.8% 年化逐日计息（2026-11-14 起计入回测）</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="trades" class="card">
+      <h2>交易记录</h2>
+      <p id="trades-note">全年14次操作（含初始建仓、3次空仓避险），总佣金322.60元。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>日期</th><th>操作</th><th>触发原因</th><th>佣金</th><th>净值</th><th>累计盈利率</th><th>持仓</th></tr>
+          </thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </article>
+
+  <footer>
+    <div class="disclaimer">
+      <p><strong>风险提示：</strong>本页面基于历史数据回测，历史表现不代表未来收益。ETF价格受宏观经济、行业政策、市场情绪等多重因素影响。策略参数存在过拟合风险，极端行情中RSI可能误判。回测未考虑滑点成本。本页面不构成投资建议，投资者应独立判断。</p>
+      <p style="margin-top:0.5rem;"><strong>数据来源：</strong>腾讯财经（proxy.finance.qq.com，前复权，主源），东方财富（push2his.eastmoney.com，前复权，备用）。159780/601398日K线数据，RSI/MA自2024-01-01全量预热计算。佣金按银河证券万1费率计算。</p>
     </div>
-  </section>
+  </footer>
 
-  <section id="monthly" class="card">
-    <h2><span class="dot"></span>月度收益（近两年，混合策略）</h2>
-    <div id="monthlyChart" class="chart" style="height:280px"></div>
-    <div class="foot" id="monthlyStat"></div>
-  </section>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+  // === Data ===
+  var accent = '#d9772e', accent2 = '#b45309', danger = '#c0392b', green = '#c2772b', ink = '#2b2018', muted = '#8a7765', rule = '#efe2d4', up = '#d63031', down = '#1f9d55';
 
-  <section id="yearly" class="card">
-    <h2><span class="dot"></span>年度战绩（混合 vs 沪深300）</h2>
-    <div style="overflow-x:auto"><table id="yearTable"></table></div>
-  </section>
+  var trades = [{"day":0,"date":"2025-08-15","action":"建仓780","etf":"780","price":0.666,"priceSold":null,"shares":150100,"comm":10,"reason":"780重回MA20上方, 趋势恢复","value":99990},{"day":36,"date":"2025-10-14","action":"780→398","etf":"398","price":7.19,"priceSold":0.845,"shares":17600,"comm":25.4,"reason":"780回撤-10.1%, 398五日涨2.4%","value":126833},{"day":64,"date":"2025-11-21","action":"398→780","etf":"780","price":0.834,"priceSold":7.94,"shares":167800,"comm":28,"reason":"RSI6<25, 超卖反弹","value":140005},{"day":65,"date":"2025-11-24","action":"780→398","etf":"398","price":7.89,"priceSold":0.83,"shares":17600,"comm":27.9,"reason":"780回撤-14.7%, 398五日涨0.4%","value":139305},{"day":71,"date":"2025-12-02","action":"398→清仓","etf":"CASH","price":null,"priceSold":7.78,"shares":0,"comm":13.7,"reason":"398五日-2.7%, 止损离场","value":137356},{"day":73,"date":"2025-12-04","action":"建仓780","etf":"780","price":0.888,"priceSold":null,"shares":154600,"comm":13.7,"reason":"780重回MA20上方, 趋势恢复","value":137342},{"day":213,"date":"2026-07-07","action":"780→398","etf":"398","price":7.26,"priceSold":1.31,"shares":27800,"comm":40.5,"reason":"780回撤-10.7%, 398五日涨2.7%","value":202543},{"day":221,"date":"2026-07-17","action":"398→780","etf":"780","price":1.118,"priceSold":7.57,"shares":188800,"comm":42.2,"reason":"RSI6<25, 超卖反弹","value":211119},{"day":227,"date":"2026-07-27","action":"780→清仓","etf":"CASH","price":null,"priceSold":1.188,"shares":0,"comm":22.4,"reason":"780回撤-19.0%, 398五日-0.1%, 双跌避险","value":224312},{"day":228,"date":"2026-07-28","action":"清仓→398","etf":"398","price":7.97,"priceSold":null,"shares":28100,"comm":22.4,"reason":"398转强, 五日涨5.4%","value":224290},{"day":230,"date":"2026-07-30","action":"398→780","etf":"780","price":1.039,"priceSold":8.15,"shares":220600,"comm":45.8,"reason":"RSI6<25, 超卖反弹","value":229302},{"day":233,"date":"2026-08-04","action":"780→清仓","etf":"CASH","price":null,"priceSold":1.098,"shares":0,"comm":24.2,"reason":"780回撤-25.2%, 398五日-3.9%, 双跌避险","value":242293},{"day":239,"date":"2026-08-12","action":"建仓780","etf":"780","price":1.143,"priceSold":null,"shares":211900,"comm":24.2,"reason":"780重回MA20上方, 趋势恢复","value":242269},{"day":240,"date":"2026-08-13","action":"780→398","etf":"398","price":7.6,"priceSold":1.136,"shares":31600,"comm":48.1,"reason":"780回撤-22.6%, 398五日涨0.4%","value":240737}];
 
-  <section id="nav" class="card">
-    <h2><span class="dot"></span>累计净值曲线（10万起点）</h2>
-    <div id="navChart" class="chart"></div>
-  </section>
+  var monthlyReturns = [{"month":"2025-08","return":23.71},{"month":"2025-09","return":12.98},{"month":"2025-10","return":-5.73},{"month":"2025-11","return":4.52},{"month":"2025-12","return":3.21},{"month":"2026-01","return":5},{"month":"2026-02","return":-2.28},{"month":"2026-03","return":-6.47},{"month":"2026-04","return":23.35},{"month":"2026-05","return":18.19},{"month":"2026-06","return":14.07},{"month":"2026-07","return":4.19},{"month":"2026-08","return":4.12}];
 
+  var allDates = ["2025-08-15","2025-08-18","2025-08-19","2025-08-20","2025-08-21","2025-08-22","2025-08-25","2025-08-26","2025-08-27","2025-08-28","2025-08-29","2025-09-01","2025-09-02","2025-09-03","2025-09-04","2025-09-05","2025-09-08","2025-09-09","2025-09-10","2025-09-11","2025-09-12","2025-09-15","2025-09-16","2025-09-17","2025-09-18","2025-09-19","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-09-26","2025-09-29","2025-09-30","2025-10-09","2025-10-10","2025-10-13","2025-10-14","2025-10-15","2025-10-16","2025-10-17","2025-10-20","2025-10-21","2025-10-22","2025-10-23","2025-10-24","2025-10-27","2025-10-28","2025-10-29","2025-10-30","2025-10-31","2025-11-03","2025-11-04","2025-11-05","2025-11-06","2025-11-07","2025-11-10","2025-11-11","2025-11-12","2025-11-13","2025-11-14","2025-11-17","2025-11-18","2025-11-19","2025-11-20","2025-11-21","2025-11-24","2025-11-25","2025-11-26","2025-11-27","2025-11-28","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-22","2025-12-23","2025-12-24","2025-12-25","2025-12-26","2025-12-29","2025-12-30","2025-12-31","2026-01-05","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-19","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-09","2026-02-10","2026-02-11","2026-02-12","2026-02-13","2026-02-24","2026-02-25","2026-02-26","2026-02-27","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-30","2026-03-31","2026-04-01","2026-04-02","2026-04-03","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-06","2026-05-07","2026-05-08","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-22","2026-06-23","2026-06-24","2026-06-25","2026-06-26","2026-06-29","2026-06-30","2026-07-01","2026-07-02","2026-07-03","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31","2026-08-03","2026-08-04","2026-08-05","2026-08-06","2026-08-07","2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21"];
+
+  var allValues = [99990,102392,102242,103893,103893,110797,115901,113949,114400,122805,123706,127158,123856,124006,115751,123706,122505,120103,121755,129860,128659,128659,130310,132262,131811,131061,133312,134513,137215,140067,137365,139316,139767,141117,133913,133012,126833,126129,129121,128945,128769,129297,131409,132817,132817,134049,135457,132641,132817,131761,133873,137921,138097,137217,136513,137745,138449,138977,139329,140033,138625,139153,139681,140385,140005,139305,141241,138601,138601,137721,137369,137356,137356,137342,138270,143062,144608,144454,141671,142598,139816,136569,142135,138424,139043,142908,143835,144608,144144,143835,143371,145227,142135,146927,147546,148473,147391,148319,149246,145845,147391,148782,149710,148782,145381,149401,150174,148782,147700,149092,148937,146154,149246,145845,146618,143990,141362,140125,145381,146154,143371,145227,143835,145072,146773,148009,145845,145690,141362,139197,142289,142289,139661,144299,144763,142908,142908,144608,140743,143990,142444,144144,140125,140898,143990,141980,141825,140279,136414,139970,136878,136724,137651,146463,145690,150638,152338,155430,154348,158213,161305,162387,161923,165788,164242,162387,164242,160996,164088,168262,173982,177383,175064,182640,184804,191297,187432,185732,185577,187742,190524,185577,191452,200419,201656,199646,205366,198873,191143,199182,203975,203356,194544,189906,194699,190061,189288,188205,198409,200573,205830,213714,216497,208922,213096,222372,214333,218662,226855,219435,207994,203511,202119,202543,205601,202821,204489,210049,209215,209493,206157,211119,213384,233019,224523,221880,218859,224312,224290,223728,229302,236361,229743,242293,242293,242293,242293,242293,242293,242269,240737,239473,239473,242949,247057,246425,246109];
+
+  var allDD = [0,0,-0.15,0,0,0,0,-1.68,-1.3,0,0,0,-2.6,-2.48,-8.97,-2.71,-3.66,-5.55,-4.25,0,-0.92,-0.92,0,0,-0.34,-0.91,0,0,0,0,-1.93,-0.54,-0.21,0,-5.1,-5.74,-10.12,-10.62,-8.5,-8.63,-8.75,-8.38,-6.88,-5.88,-5.88,-5.01,-4.01,-6.01,-5.88,-6.63,-5.13,-2.26,-2.14,-2.76,-3.26,-2.39,-1.89,-1.52,-1.27,-0.77,-1.77,-1.39,-1.02,-0.52,-0.79,-1.28,0,-1.87,-1.87,-2.49,-2.74,-2.75,-2.75,-2.76,-2.1,0,0,-0.11,-2.03,-1.39,-3.31,-5.56,-1.71,-4.28,-3.85,-1.18,-0.53,0,-0.32,-0.53,-0.86,0,-2.13,0,0,0,-0.73,-0.1,0,-2.28,-1.24,-0.31,0,-0.62,-2.89,-0.21,0,-0.93,-1.65,-0.72,-0.82,-2.68,-0.62,-2.88,-2.37,-4.12,-5.87,-6.69,-3.19,-2.68,-4.53,-3.29,-4.22,-3.4,-2.26,-1.44,-2.88,-2.99,-5.87,-7.31,-5.25,-5.25,-7,-3.91,-3.6,-4.84,-4.84,-3.71,-6.28,-4.12,-5.15,-4.02,-6.69,-6.18,-4.12,-5.46,-5.56,-6.59,-9.16,-6.79,-8.85,-8.96,-8.34,-2.47,-2.99,0,0,0,-0.7,0,0,0,-0.29,0,-0.93,-2.05,-0.93,-2.89,-1.03,0,0,0,-1.31,0,0,0,-2.02,-2.91,-2.99,-1.86,-0.4,-2.99,0,0,0,-1,0,-3.16,-6.93,-3.01,-0.68,-0.98,-5.27,-7.53,-5.19,-7.45,-7.83,-8.36,-3.39,-2.33,0,0,0,-3.5,-1.57,0,-3.62,-1.67,0,-3.27,-8.31,-10.29,-10.9,-10.72,-9.37,-10.59,-9.86,-7.41,-7.78,-7.65,-9.12,-6.94,-5.94,0,-3.65,-4.78,-6.08,-3.74,-3.75,-3.99,-1.6,0,-2.8,0,0,0,0,0,0,-0.01,-0.64,-1.16,-1.16,0,0,-0.26,-0.38];
+
+  var allHoldings = ["780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","398","780","398","398","398","398","398","398","CASH","CASH","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","780","398","398","398","398","398","398","398","398","780","780","780","780","780","780","CASH","398","398","780","780","780","CASH","CASH","CASH","CASH","CASH","CASH","780","398","398","398","398","398","398","398"];
+
+  var close780 = [0.666,0.682,0.681,0.692,0.692,0.738,0.772,0.759,0.762,0.818,0.824,0.847,0.825,0.826,0.771,0.824,0.816,0.8,0.811,0.865,0.857,0.857,0.868,0.881,0.878,0.873,0.888,0.896,0.914,0.933,0.915,0.928,0.931,0.94,0.892,0.886,0.845,0.866,0.87,0.841,0.857,0.891,0.889,0.887,0.934,0.953,0.95,0.973,0.952,0.914,0.914,0.9,0.909,0.939,0.93,0.917,0.901,0.899,0.913,0.885,0.88,0.876,0.877,0.869,0.834,0.83,0.845,0.872,0.869,0.875,0.884,0.879,0.876,0.888,0.894,0.925,0.935,0.934,0.916,0.922,0.904,0.883,0.919,0.895,0.899,0.924,0.93,0.935,0.932,0.93,0.927,0.939,0.919,0.95,0.954,0.96,0.953,0.959,0.965,0.943,0.953,0.962,0.968,0.962,0.94,0.966,0.971,0.962,0.955,0.964,0.963,0.945,0.965,0.943,0.948,0.931,0.914,0.906,0.94,0.945,0.927,0.939,0.93,0.938,0.949,0.957,0.943,0.942,0.914,0.9,0.92,0.92,0.903,0.933,0.936,0.924,0.924,0.935,0.91,0.931,0.921,0.932,0.906,0.911,0.931,0.918,0.917,0.907,0.882,0.905,0.885,0.884,0.89,0.947,0.942,0.974,0.985,1.005,0.998,1.023,1.043,1.05,1.047,1.072,1.062,1.05,1.062,1.041,1.061,1.088,1.125,1.147,1.132,1.181,1.195,1.237,1.212,1.201,1.2,1.214,1.232,1.2,1.238,1.296,1.304,1.291,1.328,1.286,1.236,1.288,1.319,1.315,1.258,1.228,1.259,1.229,1.224,1.217,1.283,1.297,1.331,1.382,1.4,1.351,1.378,1.438,1.386,1.414,1.467,1.419,1.345,1.316,1.307,1.31,1.299,1.381,1.298,1.262,1.298,1.252,1.202,1.118,1.13,1.234,1.189,1.175,1.159,1.188,1.096,1.093,1.039,1.071,1.041,1.098,1.135,1.124,1.143,1.129,1.126,1.143,1.136,1.15,1.19,1.18,1.102,1.096,1.11];
+  var bh780DD = [];
+  var bhPeak = close780[0];
+  for (var i = 0; i < close780.length; i++) { if (close780[i] > bhPeak) bhPeak = close780[i]; bh780DD.push(Math.round((close780[i] - bhPeak) / bhPeak * 10000) / 100); }
+
+  // === Chart 1: Monthly Returns ===
+  var c1 = echarts.init(document.getElementById('chart-monthly'), null, {renderer:'svg'});
+  c1.setOption({
+    animation: false,
+    tooltip: { trigger: 'axis', appendToBody: true, axisPointer: {type:'shadow'}, formatter: function(p){ var v=p[0].value; return p[0].name+'<br/>收益: <span style="color:'+(v>=0?up:down)+';font-weight:700;">'+(v>=0?'+':'')+v+'%</span>'; } },
+    grid: { left: '8%', right: '5%', top: '8%', bottom: '15%' },
+    xAxis: { type: 'category', data: monthlyReturns.map(function(m){return m.month;}), axisLabel: {color:ink,fontSize:11,fontWeight:600}, axisLine:{lineStyle:{color:rule}}, axisTick:{show:false} },
+    yAxis: { type: 'value', axisLabel: {color:muted,fontSize:11,formatter:'{value}%'}, splitLine:{lineStyle:{color:rule,type:'dashed'}}, axisLine:{show:false} },
+    series: [{ type:'bar', barWidth:'55%', data: monthlyReturns.map(function(m){return m.return;}), itemStyle:{color:function(p){return p.value>=0?up:down;},borderRadius:[4,4,0,0]}, label:{show:true,position:'top',color:ink,fontSize:11,fontWeight:700,formatter:function(p){return (p.value>=0?'+':'')+p.value+'%';}}, markLine:{silent:true,symbol:'none',lineStyle:{color:muted,type:'dashed',width:1},data:[{yAxis:0}]} }]
+  });
+  window.addEventListener('resize', function(){c1.resize();});
+
+  // === Chart 2: NAV Curve ===
+  var c2 = echarts.init(document.getElementById('chart-nav'), null, {renderer:'svg'});
+  var markAreas = []; var segStart = 0;
+  for (var i = 1; i <= allHoldings.length; i++) {
+    if (i === allHoldings.length || allHoldings[i] !== allHoldings[segStart]) {
+      var h = allHoldings[segStart];
+      var bg = h==='780' ? 'rgba(217,119,46,0.16)' : (h==='398' ? 'rgba(180,83,9,0.08)' : 'rgba(138,119,101,0.12)');
+      markAreas.push([{xAxis:allDates[segStart],itemStyle:{color: bg}},{xAxis:allDates[i-1]}]);
+      segStart = i;
+    }
+  }
+  // 买卖点标记: 已隐藏(曲线只保留"终值"), 如需恢复请重新启用下方循环与 markPoint 的 mp
+  var mp = [];
+  if (false) trades.forEach(function(t){
+    var isBuy780 = (t.action === '建仓780' || t.action === '清仓→780' || t.action === '398→780');
+    var isBuy398 = (t.action === '780→398' || t.action === '清仓→398');
+    var isCash = (t.action === '398→清仓' || t.action === '780→清仓');
+    if (isBuy780) mp.push({coord:[t.date, t.value], value:'买780', itemStyle:{color:accent}, label:{color:'#fff',fontSize:9}});
+    else if (isBuy398) mp.push({coord:[t.date, t.value], value:'买398', itemStyle:{color:accent2}, label:{color:'#fff',fontSize:9}});
+    else if (isCash) mp.push({coord:[t.date, t.value], value:'清仓', itemStyle:{color:'#8a7765'}, label:{color:'#fff',fontSize:9}});
+  });
+  c2.setOption({
+    animation: false,
+    tooltip: { trigger:'axis', appendToBody:true, formatter: function(p){ var idx=p[0].dataIndex; var h=allHoldings[idx]; var ret=((allValues[idx]-100000)/100000*100).toFixed(2); var hc = h==='780'?accent:(h==='398'?accent2:'#8a7765'); var hl = h==='CASH'?'空仓':h; return p[0].axisValue+'<br/>净值: <b>'+p[0].value.toLocaleString()+'</b>元<br/>收益: <span style="color:'+(ret>=0?up:down)+';font-weight:700;">'+(ret>=0?'+':'')+ret+'%</span><br/>持仓: <span style="color:'+hc+';font-weight:700;">'+hl+'</span>'; } },
+    grid: { left:'10%',right:'5%',top:'8%',bottom:'15%' },
+    xAxis: { type:'category', data:allDates, axisLabel:{color:muted,fontSize:10,interval:Math.floor(allDates.length/8)}, axisLine:{lineStyle:{color:rule}}, axisTick:{show:false} },
+    yAxis: { type:'value', name:'净值', axisLabel:{color:muted,fontSize:11,formatter:function(v){return (v/10000).toFixed(0)+'万';}}, splitLine:{lineStyle:{color:rule,type:'dashed'}}, axisLine:{show:false} },
+    series: [{ type:'line', data:allValues, smooth:0.1, symbol:'none', lineStyle:{color:accent,width:2}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(217,119,46,0.15)'},{offset:1,color:'rgba(217,119,46,0)'}]}}, markArea:{silent:true,data:markAreas}, markPoint:{symbol:'pin',symbolSize:46,data:[{coord:[allDates[allDates.length-1],allValues[allDates.length-1]],value:'终值',itemStyle:{color:accent},label:{color:'#fff',fontSize:10}}]} }]
+  });
+  window.addEventListener('resize', function(){c2.resize();});
+
+  // === Trades Table ===
+  var tb = document.getElementById('trades-body');
+  trades.forEach(function(t, idx) {
+    var isCash = t.etf === 'CASH';
+    var isSwitch = t.action.indexOf('→') >= 0;
+    var color = isCash ? '#8a7765' : (t.etf === '398' ? accent2 : accent);
+    var badgeClass = isCash ? '' : (t.etf === '780' ? 'green' : 'orange');
+    var holdLabel = isCash ? '空仓' : t.etf;
+    var tr = document.createElement('tr');
+    var cum = (t.value / 100000 - 1) * 100;
+    tr.innerHTML = '<td class="mono">'+(idx+1)+'</td><td class="mono">'+t.date+'</td><td><span style="color:'+color+';font-weight:600;">'+t.action+'</span></td><td style="font-size:0.8rem;">'+t.reason+'</td><td class="mono">'+t.comm.toFixed(2)+'</td><td class="mono">'+t.value.toLocaleString()+'</td><td class="mono" style="color:'+(cum>=0?up:down)+';font-weight:600;">'+(cum>=0?'+':'')+cum.toFixed(2)+'%</td><td>'+(isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.75rem;">空仓</span>' : '<span class="badge '+badgeClass+'">'+holdLabel+'</span>')+'</td>';
+    tb.appendChild(tr);
+  });
   
-
-  
-
-  <section id="trades" class="card">
-    <h2><span class="dot"></span>交易记录（点击展开全部）</h2>
-    <div id="tradeWrap"></div>
-  </section>
-
-  
-
-  <div class="foot">数据源：腾讯财经前复权日线（东财备用，Worker 第三源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍）；<b>空仓期按国债逆回购 1.8% 年化逐日计息</b>。</div>
-  </div>
-</div>
-
-<script>
+  // === Client-side Data Computation ===
 // ============================================================
-// 数据获取 (与 index.html 同源同口径)
+// 数据获取: 腾讯前复权(主) + 东方财富前复权(备), 双源自动切换
 // ============================================================
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-// ★ 2026-11-14 修正：预热起点 2022-07-01 只给了 125 个交易日，250日高与"回撤"都被截断
-//   （2023-01-03 的 780 回撤被算成 −12.45%，真实 −39.04%）→ 事件的 sw/sc 出口少触发，收益虚高约 150pct。
-//   现改为 2021-06-01（159780 上市 2021-07-05，这是能拿到的最长历史）。
-// ★★ 2026-11-14 二次修正：回撤口径改为「滚动 250 日」，不再从数据起点累计。
-//   原因：累计口径会随数据起点漂移 151 点（2021 起 373.9% / 2022 起 518.2%），且 2023 以来
-//   81% 的交易日回撤读数都 < −12%，sw/sc 恒真、失去区分度；而牛市开关本来就是滚动 250 日高，两者口径不一致。
-//   改后：+518.2% / −19.1% / 卡玛 3.31（原 +373.9% / −27.9% / 1.87），数据起点敏感性降到 6.7 点。
-//   当前信号不变（2026-11-13：DD −49.3%、牛市开关 False、持 601398）—— 只改历史读数，不改当日动作。
-const DATA_BEG = "2021-06-01";
-const WINDOW_START = "2023-01-01";
-const BULL_PCT = 0.95;
-// ★ 成本止损线：持有 159780 期间跌破买入价 STOP_PCT → 立即切 601398（工行），借负相关对冲
-//   修正口径实测（2023-01-03~2026-11-05，预热 2021-06）：无止损 +244.6% → 含止损 +332.5% → 含止损+乖离过滤 +355.5%
-//   截至 2026-11-13（旧累计回撤口径，仅供追溯）：无止损 +254.6% → 含止损 +345.0% → +乖离过滤 +368.7% → +空仓计息 +373.9%
-//   （旧口径 2022-07 预热给出的 +500.9% / +505.8% 已作废：预热不足导致 250日高与回撤失真）
-const STOP_PCT = 0.04;
-// ★ 止损切工行前的「位置检查」（2026-11-06 新增）
-//   止损信号来自 780 的风险，买入动作落在 398 身上 —— 若 398 当天已远离 MA20（刚创新高、被避险资金顶上去），
-//   就是拿 A 的风险信号在最贵的位置满仓买 B。实测 2026-10-29：398 创历史新高、乖离 +5.3%，5 天后 -4.9%。
-//   规则：398 乖离 MA20 > BIAS_MAX → 止损后不切工行，直接空仓等信号。
-//   回测（2023-01-03~2026-11-05，预热 2021-06）：+332.5% → +355.5%，只拦 1 次；4% 与 5% 差 0.6pct（不敏感）。
-const BIAS_MAX = 0.04;
-// ★ 398 防守腿「趋势过滤」（2026-11-14 新增）
-//   问题：原策略在 780 跌破成本时无条件切工行。但若工行自身正在下跌，这一步等于从一个下跌资产
-//        换到另一个下跌资产 —— "借负相关对冲"的前提并不成立。
-//   背景：2023-01-03~2026-11-13 工行 +202%、连年正收益（26.3/65.8/26.2/18.0%），是"高股息+中特估"
-//        特定环境。全样本 45.5% 的利润来自这条腿，而"银行转熊"这一情形从未被检验。
-//   规则：601398 收盘跌破自身 MA60 → 不换仓，直接空仓等信号。
-//   实测：T+0 +518.2%→+558.7%（拦 16 次）；T+1 可执行口径 +322.2%→+430.7%；
-//        MA50~MA80 为平台（T+1 +429%~+470%），非孤峰拟合；MA20~40 过度过滤反而变差。
-//   注意：本规则价值主要是银行转熊时的尾部保护，该情形不在样本内 —— 不要把 +40/+108 当收益来源。
-const MA398_FILTER = 60;
-// ★ 空仓期计息（2026-11-14 新增）：空仓不是白等，闲置资金做国债逆回购，按 1.8% 年化逐日计息。
-//   只对「整仓 CASH」状态计息（与 _opt_engine.py 的 cash_yield 同口径），换仓手续费仍照扣。
-//   实测（2023-01-03~2026-11-13）：+368.69% → +373.89%，只多 5.2pct —— 因为空仓天数本来就少。
+const DATA_BEG = "2021-06-01";   // RSI/MA全量预热起点(2021-06 起，250日高/回撤才够长；2022-07 预热不足会失真)
+const WINDOW_START = "2023-01-01";  // 策略状态机窗口起点(与回测一致)
+// 空仓期计息(2026-11-14 新增)：闲置资金做国债逆回购, 按 1.8% 年化逐日计息, 与 hybrid.html 同口径
 const CASH_YIELD = 0.018;
 
 async function fetchTx(code) {
@@ -384,7 +610,7 @@ async function fetchEm(secid) {
   const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://quote.eastmoney.com/" } });
   if (!res.ok) throw new Error("东财源 HTTP " + res.status);
   const json = await res.json();
-  const klines = json && json.data && json.data.klines;
+  const klines = json && json.data && json.data.klines; // 注意: 东财返回 data.klines, 逗号分隔字符串
   if (!klines || !klines.length) throw new Error("东财源无K线数据");
   return klines.map(k => {
     const p = k.split(",");
@@ -428,8 +654,13 @@ async function getKlines(code, secid, label) {
   throw new Error(label + " 三源获取失败 [" + errors.join(" | ") + "]");
 }
 
+// ============================================================
+// 盘中实时增强: 腾讯分时接口(主, 同域CF可靠) + qt.gtimg.cn(备)
+// 两者 qt 快照格式相同: 字段[3]=现价 [6]=成交量 [30]=时间戳(YYYYMMDDHHMMSS)
+// ============================================================
 async function fetchRealtime(code) {
   const errors = [];
+  // 源2: qt.gtimg.cn 实时 (CF出口可能被拦)
   try {
     const url = `https://qt.gtimg.cn/q=${code}`;
     const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
@@ -438,23 +669,28 @@ async function fetchRealtime(code) {
     const m = text.match(/v_\w+="([^"]*)"/);
     if (!m) throw new Error("无行情数据");
     const f = m[1].split("~");
-    const _p = parseFloat(f[3]);
-    if (_p > 0) return {
-      price: _p, volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时",
-      prevClose: parseFloat(f[4]) || null, chg: parseFloat(f[32]),
-      high: parseFloat(f[33]), low: parseFloat(f[34])
-    };
+    if (parseFloat(f[3]) > 0) {
+      return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+    }
     throw new Error("现价为0");
   } catch (e) { errors.push("实时: " + e.message); }
-  throw new Error("实时行情失败 [" + errors.join(" | ") + "]");
+  const err = new Error("实时行情获取失败 [" + errors.join(" | ") + "]");
+  err.detail = errors.join(" | ");
+  throw err;
 }
 
-function realtimeDate(ts) { return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8); }
-function isWeekday(dateStr) {
+function realtimeDate(ts) { // "20260817103237" -> "2026-08-17"
+  return ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8);
+}
+
+function isWeekday(dateStr) { // 周一~周五 (用 UTC 锚定, 不受运行时本地时区影响)
   const [y, m, d] = dateStr.split("-").map(Number);
-  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const day = dt.getUTCDay();
   return day >= 1 && day <= 5;
 }
+
+// 若实时行情日期晚于日K末条(即今天已有盘中/收盘数据), 追加当日K线使信号实时化
 function augmentDaily(klines, rt) {
   if (!rt || !rt.price || !rt.time) return klines;
   const last = klines[klines.length - 1];
@@ -466,9 +702,9 @@ function augmentDaily(klines, rt) {
 }
 
 // ============================================================
-// 指标计算 (与回测完全一致)
+// 指标计算 (与已验证回测 route_b_backtest.py 完全一致)
 // ============================================================
-function calcRSI(p, n) {
+function calcRSI(p, n) { // Wilder RSI
   const r = new Array(p.length).fill(null);
   if (p.length < n + 1) return r;
   let g = 0, l = 0;
@@ -484,20 +720,6 @@ function calcRSI(p, n) {
   return r;
 }
 
-// 取 index i 处的 Wilder 平均涨幅/跌幅 —— 用于反推「明日 RSI 恰好 = 25」的价位
-function rsiWilder(p, n, i) {
-  if (i < n) return null;
-  let g = 0, l = 0;
-  for (let k = 1; k <= n; k++) { const c = p[k] - p[k - 1]; if (c >= 0) g += c; else l -= c; }
-  let ag = g / n, al = l / n;
-  for (let k = n + 1; k <= i; k++) {
-    const c = p[k] - p[k - 1];
-    ag = (ag * (n - 1) + (c >= 0 ? c : 0)) / n;
-    al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
-  }
-  return { ag: ag, al: al };
-}
-
 function calcMA(p, n) {
   const m = new Array(p.length).fill(null);
   let s = 0;
@@ -510,29 +732,20 @@ function calcMA(p, n) {
 }
 
 function calcDD(p, n) {
-    const W = n || 250, d = new Array(p.length).fill(0);
-    for (let i2 = 0; i2 < p.length; i2++) {
-      let mx = p[i2];
-      for (let j = Math.max(0, i2 - W + 1); j <= i2; j++) { if (p[j] > mx) mx = p[j]; }
-      d[i2] = (p[i2] - mx) / mx;
-    }
-    return d;
-}
-
-function rollingHigh(p, n) {
-  const out = new Array(p.length).fill(null);
-  for (let i = 0; i < p.length; i++) {
-    let mx = -Infinity;
-    for (let j = Math.max(0, i - n + 1); j <= i; j++) if (p[j] > mx) mx = p[j];
-    out[i] = mx;
+  const W = n || 250, d = new Array(p.length).fill(0);
+  for (let i2 = 0; i2 < p.length; i2++) {
+    let mx = p[i2];
+    for (let j = Math.max(0, i2 - W + 1); j <= i2; j++) { if (p[j] > mx) mx = p[j]; }
+    d[i2] = (p[i2] - mx) / mx;
   }
-  return out;
+  return d;
 }
+// 注意：回撤为滚动 250 日窗口（与牛市开关同窗），不再从数据起点累计
 
 // ============================================================
-// 主流程
+// /api/data — D3策略实时信号 (策略逻辑与回测逐行对齐, 未做任何改动)
 // ============================================================
-async function updateData() {
+async function computeData(wantDebug) {
   try {
     const [d780raw, d398raw, d300raw] = await Promise.all([
       getKlines("sz159780", "0.159780", "159780"),
@@ -540,666 +753,602 @@ async function updateData() {
       getKlines("sh000300", "1.000300", "沪深300"),
     ]);
     let d780 = d780raw, d398 = d398raw;
-    let rt780 = null, rt398 = null;
+
+    // 盘中实时增强: 把当日分时快照价并回日K(失败不影响主流程)
+    let intraday = false;
+    const rtDiag = { rtOk: false, rtErr: null, augment780: false, augment398: false };
     try {
-      const [r1, r2] = await Promise.all([fetchRealtime("sz159780"), fetchRealtime("sh601398")]);
-      rt780 = r1; rt398 = r2;
+      const [rt780, rt398] = await Promise.all([
+        fetchRealtime("sz159780"),
+        fetchRealtime("sh601398"),
+      ]);
       const a780 = augmentDaily(d780raw, rt780);
       const a398 = augmentDaily(d398raw, rt398);
-      if (a780.length !== d780raw.length) d780 = a780;
-      if (a398.length !== d398raw.length) d398 = a398;
-    } catch (e) { /* 实时增强失败不影响主流程 */ }
+      if (a780.length !== d780raw.length) { intraday = true; rtDiag.augment780 = true; }
+      if (a398.length !== d398raw.length) { intraday = true; rtDiag.augment398 = true; }
+      rtDiag.rtOk = true;
+      rtDiag.rt780 = { src: rt780.source, price: rt780.price, time: rt780.time };
+      rtDiag.rt398 = { src: rt398.source, price: rt398.price, time: rt398.time };
+      d780 = a780; d398 = a398;
+    } catch (e) {
+      rtDiag.rtErr = e.message || String(e);
+    }
 
+    // 按日期对齐(两ETF共同交易日)
     const m780 = new Map(d780.map(x => [x.date, x.close]));
     const m398 = new Map(d398.map(x => [x.date, x.close]));
-    const m300 = new Map(d300raw.map(x => [x.date, x.close]));
     const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
-    if (dates.length < 100) throw new Error("对齐后交易日不足");
+    if (dates.length < 60) throw new Error("对齐后交易日不足: " + dates.length);
     const c780 = dates.map(dd => m780.get(dd));
     const c398 = dates.map(dd => m398.get(dd));
-    const c300 = dates.map(dd => m300.get(dd));
     const N = dates.length;
 
+    // 指标: 全量计算(2024-01-01起预热)
     const rsi6 = calcRSI(c780, 6);
+    const rsi6398 = calcRSI(c398, 6);   // 398 自己的 RSI6(之前从未计算)
     const ma20 = calcMA(c780, 20);
-    const ma60 = calcMA(c780, 60);
-    const ma398_20 = calcMA(c398, 20);   // ★398 的 MA20 —— 止损换仓前的位置尺
-    const ma398_60 = calcMA(c398, MA398_FILTER);  // ★398 的 MA60 —— 防守腿趋势过滤
-    const bias398 = new Array(N).fill(null);
-    for (let i = 0; i < N; i++) if (ma398_20[i]) bias398[i] = c398[i] / ma398_20[i] - 1;
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
-    // 注：2026-11-04 曾试「距20日高回撤>=4%」(dd4)，实盘口径回测 2023-26 少赚 96pct → 已回滚
-    const rh250 = rollingHigh(c780, 250);
-    const bull = [];
-    for (let i = 0; i < N; i++) bull.push(c780[i] >= BULL_PCT * rh250[i]);
+    // 注：2026-11-04 曾试「398 距20日高回撤>=4%」(dd4)，实盘口径(含成本止损)回测 2023-26 少赚 96pct → 已回滚
 
-    const S = dates.findIndex(d => d >= WINDOW_START);
+    // 切窗口: 2025-08-15起跑D3状态机(与回测一致)
+    let S = dates.findIndex(d => d >= WINDOW_START);
+    if (S < 0) S = Math.max(0, N - 60);
+
     const sig = i => ({
-      sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
-      sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
-      bk: rsi6[i] !== null && rsi6[i] < 25,
-      d398: r5[i] !== null && r5[i] < -0.02,
-      aMA: ma20[i] !== null && c780[i] > ma20[i]
+      sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,        // 切398
+      sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,       // 空仓避险
+      bk: rsi6[i] !== null && rsi6[i] < 25,                     // 抢底
+      d398: r5[i] !== null && r5[i] < -0.02,                    // 398止损
+      aMA: ma20[i] !== null && c780[i] > ma20[i],               // MA20恢复
     });
 
-    function d3Next(hold, s, p, px780, ep780, stopPct) {
-      if (hold === "780") {
-        // ★成本止损优先：跌破买入成本 → 目标标记为 STOP，具体切 398 还是空仓由 replay 按 398 的位置定
-        if (ep780 !== null && stopPct > 0 && px780 <= ep780 * (1 - stopPct)) return "STOP";
-        if (s.sw && !p.sw) return "398";
-        if (s.sc && !p.sc) return "CASH";
-      } else if (hold === "398") {
-        if (s.bk && !p.bk) return "780";
-        if (s.d398 && !p.d398) return "CASH";
+    let h = "CASH"; // 窗口起点空仓, 由状态机自然演进到当前持仓
+    let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
+    let entryDate = null, entryPrice = null, entryCode = null; // 当前持仓的买入日期/价格
+    const tradeReason = (from, to, s, r5i, ddi) => {
+      const ddPct = (ddi * 100).toFixed(1);
+      const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
+      if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
+      if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
+      if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
+      if (from === "780" && to === "CASH") return s.sc ? ("780回撤" + ddPct + "%, 398五日" + r5Pct + "%, 双跌避险") : "离场";
+      if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
+      if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
+      return "状态切换";
+    };
+    const tradeLog = [];
+    const wallet = { cash: 100000, shares: 0, code: "CASH" };
+    // 净值曲线记录(窗口起点至最新, 供回测指标/图表实时更新)
+    const navDates = [], navValues = [], navHoldings = [], navDD = [];
+    let navPeak = 100000;
+    let cashDays = 0;
+    for (let i = S; i < N; i++) {
+      const s = sig(i);
+      let h2 = h;
+      if (h === "780") {
+        if (s.sw && !p.sw) h2 = "398";
+        else if (s.sc && !p.sc) h2 = "CASH";
+      } else if (h === "398") {
+        if (s.bk && !p.bk) h2 = "780";
+        else if (s.d398 && !p.d398) h2 = "CASH";
       } else {
-        if (s.bk && !p.bk) return "780";
-        if (s.aMA && !p.aMA) return "780";
-        if (s.sw && !p.sw) return "398";
+        if (s.bk && !p.bk) h2 = "780";
+        else if (s.aMA && !p.aMA) h2 = "780";
+        else if (s.sw && !p.sw) h2 = "398";
       }
-      return hold;
-    }
-
-    function replay(useBull, stopPct, cashYield, useMAF) {
-      const cy = (cashYield === undefined || cashYield === null) ? CASH_YIELD : cashYield;
-      let cash = 100000, shares = 0, hold = "CASH", ep780 = null;
-      let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
-      const navs = [], holds = [], trades = [];
-      let totalComm = 0, nStop = 0, nStopBlocked = 0, nCash = 0, nMaBlocked = 0;
-      for (let i = S; i < N; i++) {
-        const s = sig(i);
-        let t;
-        if (useBull && bull[i]) t = "780";
-        else t = d3Next(hold, s, p, c780[i], ep780, stopPct);
-        // ★止损落地：398 乖离 MA20 过大 → 不追高换仓，改空仓等信号
-        let isStop = false, stopBlocked = false, stopBias = null;
-        if (t === "STOP") {
-          isStop = true;
-          stopBias = bias398[i];
-          stopBlocked = BIAS_MAX > 0 && stopBias !== null && stopBias > BIAS_MAX;
-          t = stopBlocked ? "CASH" : "398";
-          nStop++;
-          if (stopBlocked) nStopBlocked++;
+      if (h2 !== h) {
+        // 钱包重放(万1佣金, 100股取整), 计算该笔佣金/净值/股数
+        let comm = 0, sellPx = null, buyPx = null;
+        if (h !== "CASH") {
+          sellPx = h === "780" ? c780[i] : c398[i];
+          const gross = wallet.shares * sellPx;
+          const c = gross * 0.0001;
+          comm += c;
+          wallet.cash += gross - c;
+          wallet.shares = 0;
+          wallet.code = "CASH";
         }
-        // ★398 趋势过滤：工行自身跌破 MA60 → 不用它防守，直接空仓等信号
-        let maBlocked = false;
-        if (useMAF && t === "398" && ma398_60[i] !== null && ma398_60[i] !== undefined
-            && c398[i] < ma398_60[i]) {
-          t = "CASH"; maBlocked = true; nMaBlocked++;
+        if (h2 !== "CASH") {
+          buyPx = h2 === "780" ? c780[i] : c398[i];
+          const investable = wallet.cash * 0.9999;
+          const c = wallet.cash * 0.0001;
+          comm += c;
+          const sh = Math.floor(investable / buyPx / 100) * 100;
+          wallet.shares = sh;
+          wallet.cash = wallet.cash - sh * buyPx - c;
+          wallet.code = h2;
         }
-        if (t !== hold) {
-          let comm = 0;
-          if (hold !== "CASH") {
-            const sp = hold === "780" ? c780[i] : c398[i];
-            const g = shares * sp; const c = g * 0.0001; comm += c;
-            cash += g - c; shares = 0;
-          }
-          if (t !== "CASH") {
-            const bp = t === "780" ? c780[i] : c398[i];
-            const inv = cash * 0.9999; const c = cash * 0.0001; comm += c;
-            const sh = Math.floor(inv / bp / 100) * 100;
-            shares = sh; cash = cash - sh * bp - c;
-          }
-          totalComm += comm;
-          const valNow = cash + shares * (t === "780" ? c780[i] : (t === "398" ? c398[i] : 0));
-          trades.push({
-            date: dates[i], from: hold, to: t,
-            comm: Math.round(comm * 10) / 10,
-            value: Math.round(valNow),
-            ret: (valNow / 100000 - 1) * 100,
-            price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i]),
-            shares: shares,
-            stop: isStop, stopBlocked: stopBlocked, stopBias: stopBias, ep: ep780,
-            maBlocked: maBlocked
-          });
-          hold = t;
-          ep780 = t === "780" ? c780[i] : null;
-        }
-        p = s;
-        // ★空仓期计息：整仓现金时按逆回购 1.8% 年化逐日滚动（年化 ÷ 252）
-        if (hold === "CASH" && cy > 0) { cash *= (1 + cy / 252); nCash++; }
-        const val = cash + shares * (hold === "780" ? c780[i] : (hold === "398" ? c398[i] : 0));
-        navs.push(val);
-        holds.push(hold);
+        const value = wallet.cash + wallet.shares * (h2 === "780" ? c780[i] : c398[i]);
+        tradeLog.push({
+          date: dates[i], action: h + "\u2192" + h2, reason: tradeReason(h, h2, s, r5[i], dd[i]),
+          comm: Math.round(comm * 10) / 10,
+          value: Math.round(value),
+          shares: wallet.shares,
+          etf: h2,
+          price: buyPx != null ? Math.round(buyPx * 1000) / 1000 : null,
+          priceSold: sellPx != null ? Math.round(sellPx * 1000) / 1000 : null,
+        });
+        // 记录新开仓的买入日期与价格
+        if (h2 === "780") { entryCode = "780"; entryDate = dates[i]; entryPrice = c780[i]; }
+        else if (h2 === "398") { entryCode = "398"; entryDate = dates[i]; entryPrice = c398[i]; }
+        else { entryCode = null; entryDate = null; entryPrice = null; }
+        h = h2;
       }
-      return { navs, holds, trades, totalComm, nStop, nStopBlocked, nMaBlocked, nCash, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
+      p = s;
+      // 空仓期计息: 整仓现金时按逆回购 1.8% 年化逐日滚动(年化 ÷ 252)
+      if (h === "CASH" && CASH_YIELD > 0) { wallet.cash *= (1 + CASH_YIELD / 252); cashDays++; }
+      // 记录每日净值曲线(实时回测)
+      const curVal = wallet.cash + wallet.shares * (h === "780" ? c780[i] : (h === "398" ? c398[i] : 0));
+      navDates.push(dates[i]);
+      navValues.push(Math.round(curVal));
+      navHoldings.push(h);
+      if (curVal > navPeak) navPeak = curVal;
+      navDD.push(Math.round((curVal - navPeak) / navPeak * 10000) / 100);
     }
 
-    const hy = replay(true, STOP_PCT, CASH_YIELD, true);   // 主口径：牛市开关 + 止损 + 乖离过滤 + MA60过滤 + 空仓计息
-    const hyNoInt = replay(true, STOP_PCT, 0, true);       // 对照：同上但不计息（用来看计息贡献几个点）
-    const hyOld = replay(true, 0, CASH_YIELD, true);       // 对照：去掉止损，其余（含 MA60 过滤）不变，保证可比
-    const d3 = replay(false, 0, CASH_YIELD);            // D3 现状（对照）
-
-    function calcMetrics(navs) {
-      const T = navs.length;
-      const total = (navs[T - 1] / 100000 - 1) * 100;
-      const cagr = (Math.pow(navs[T - 1] / 100000, 252 / T) - 1) * 100;
-      let peak = navs[0], mdd = 0;
-      for (const n of navs) { if (n > peak) peak = n; mdd = Math.min(mdd, (n - peak) / peak); }
-      let sum = 0;
-      for (let i = 1; i < T; i++) sum += navs[i] / navs[i - 1] - 1;
-      const mean = sum / (T - 1);
-      let vsum = 0;
-      for (let i = 1; i < T; i++) { const d = navs[i] / navs[i - 1] - 1 - mean; vsum += d * d; }
-      const std = Math.sqrt(vsum / (T - 1));
-      const sharpe = std > 0 ? mean / std * Math.sqrt(252) : 0;
-      return { total, cagr, mdd: mdd * 100, sharpe };
-    }
-
-    function yearly(dates2, navs) {
-      const lastBy = {};
-      for (let i = 0; i < dates2.length; i++) lastBy[dates2[i].slice(0, 4)] = navs[i];
-      const yrs = Object.keys(lastBy).sort();
-      const out = {};
-      let prev = null;
-      for (const y of yrs) {
-        out[y] = prev === null ? (lastBy[y] / navs[0] - 1) * 100 : (lastBy[y] / prev - 1) * 100;
-        prev = lastBy[y];
-      }
-      return out;
-    }
-
-    const winDates = dates.slice(S);
-    const hyM = calcMetrics(hy.navs);
-    const hyNoIntM = calcMetrics(hyNoInt.navs);
-    const hyOldM = calcMetrics(hyOld.navs);
-    const d3M = calcMetrics(d3.navs);
-    const hyY = yearly(winDates, hy.navs);
-    const hyOldY = yearly(winDates, hyOld.navs);
-    const d3Y = yearly(winDates, d3.navs);
-    const hs300Base = c300[S];
-    const hsNav = winDates.map((d, i) => c300[S + i] / hs300Base);
-    const hsY = yearly(winDates, hsNav);
-
-    // ---- 信号面板 ----
+    // 最新一天信号 + 边缘检测(昨日未触发/今日触发)
     const li = N - 1;
-    const bullOn = bull[li];
-    const distPct = (c780[li] / rh250[li] - 1) * 100;
-    const trigLine = BULL_PCT * rh250[li];
-    document.getElementById("bullBadge").textContent = bullOn ? "牛市 ON → 满仓780" : "牛市 OFF → D3";
-    document.getElementById("bullBadge").className = "badge " + (bullOn ? "b-on" : "b-off");
-    document.getElementById("bullSub").textContent = "159780@" + c780[li].toFixed(3) + " | 触发线 " + trigLine.toFixed(3);
-    const holdName = { "780": "159780 科创创业50", "398": "601398 工商银行", "CASH": "空仓（现金）" };
-    document.getElementById("holdNow").textContent = holdName[hy.holds[hy.holds.length - 1]];
-    document.getElementById("holdSub").textContent = "数据至 " + dates[li];
-    document.getElementById("distHigh").textContent = (distPct >= 0 ? "+" : "") + distPct.toFixed(2) + "%";
-    document.getElementById("distHigh").className = "m-value " + (distPct >= 0 ? "up" : "down");
-    // 当前资产按【实时价】重算, 见下方「实时股价」段 (curNav / curRet)
+    const s = sig(li);
+    const pv = sig(li - 1);
 
-    // ---- 熊市预警灯 (纯显示, 不干预自动策略) ----
-    const ma60_398 = calcMA(c398, 60);
-    const ddNow = dd[li] * 100;
-    const m398v = ma60_398[li];
-    const sysBear = ddNow <= -20 && m398v !== null && c398[li] < m398v;
-    let bearState, bearTitle, bearDetail;
-    if (sysBear) {
-      bearState = "b-red";
-      bearTitle = "红灯 · 系统性熊市预警";
-      bearDetail = "159780 距一年高点回撤 " + ddNow.toFixed(1) + "% 且 601398 跌破其 MA60（双弱确认）——建议人工考虑减仓 / 空仓，勿机械抢底。";
-    } else if (ddNow <= -10) {
-      bearState = "b-amber";
-      bearTitle = "黄灯 · 回撤警惕";
-      bearDetail = "159780 距一年高点回撤 " + ddNow.toFixed(1) + "%（D3 正按规则防御 / 切换）。若 398 同步破位且回撤超 20%，将升级红灯。";
-    } else {
-      bearState = "b-green";
-      bearTitle = "绿灯 · 正常";
-      bearDetail = "159780 距一年高点回撤 " + (ddNow >= 0 ? "+" : "") + ddNow.toFixed(1) + "%，无需干预。";
-    }
-    document.getElementById("bearBadge").textContent = bearState === "b-red" ? "红灯" : (bearState === "b-amber" ? "黄灯" : "绿灯");
-    document.getElementById("bearBadge").className = "badge " + bearState;
-    document.getElementById("bearTitle").textContent = bearTitle;
-    document.getElementById("bearDetail").textContent = bearDetail;
-
-    // ---- 回测面板 ----
-    document.getElementById("hyTotal").textContent = "+" + hyM.total.toFixed(1) + "%";
-    document.getElementById("hyCagr").textContent = "+" + hyM.cagr.toFixed(1) + "%";
-    document.getElementById("hyMdd").textContent = hyM.mdd.toFixed(1) + "%";
-    document.getElementById("hySharpe").textContent = hyM.sharpe.toFixed(2);
-    document.getElementById("hyExtra").innerHTML = hy.trades.length + " 笔交易 | 佣金 ¥" + Math.round(hy.totalComm) +
-      " ｜ 空仓 " + hy.nCash + " 天按逆回购 1.8% 计息，贡献 <b>+" + (hyM.total - hyNoIntM.total).toFixed(1) + "pct</b>（不计息 +" + hyNoIntM.total.toFixed(1) + "%）" +
-      " ｜ 对照 · 原版（事件式出口）" + (hyOldM.total >= 0 ? "+" : "") + hyOldM.total.toFixed(1) + "%、回撤 " + hyOldM.mdd.toFixed(1) +
-      "%，本次升级 <b>" + ((hyM.total - hyOldM.total) >= 0 ? "+" : "") + (hyM.total - hyOldM.total).toFixed(1) + "pct</b>";
-
-    // ---- 实时股价 + 当前持仓最后一笔浮盈 ----
-    const price780 = (rt780 && rt780.price) ? rt780.price : c780[li];
-    const price398 = (rt398 && rt398.price) ? rt398.price : c398[li];
-    const chg780 = (price780 / c780[li - 1] - 1) * 100;
-    const chg398 = (price398 / c398[li - 1] - 1) * 100;
-    const qcls = v => (v >= 0 ? "up" : "down");
-    const qsgn = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
-    document.getElementById("q780").textContent = price780.toFixed(3) + " (" + qsgn(chg780) + ")";
-    document.getElementById("q780").className = "m-value " + qcls(chg780);
-    document.getElementById("q398").textContent = price398.toFixed(3) + " (" + qsgn(chg398) + ")";
-    document.getElementById("q398").className = "m-value " + qcls(chg398);
-    const posNow = hy.holds[hy.holds.length - 1];
-    document.getElementById("posNow").textContent = { "780": "159780 科技", "398": "601398 银行", "CASH": "空仓" }[posNow];
-    let entry = null;
-    if (posNow !== "CASH") {
-      for (let k = hy.trades.length - 1; k >= 0; k--) {
-        if (hy.trades[k].to === posNow) { entry = hy.trades[k]; break; }
-      }
-    }
-    if (entry) {
-      const cur = posNow === "780" ? price780 : price398;
-      const pl = (cur - entry.price) * entry.shares;
-      const plPct = (cur / entry.price - 1) * 100;
-      document.getElementById("lastPl").textContent = (pl >= 0 ? "+" : "-") + "¥" + Math.abs(pl).toLocaleString("zh-CN", { maximumFractionDigits: 0 });
-      document.getElementById("lastPl").className = "m-value " + qcls(pl);
-      document.getElementById("lastDetail").textContent = "开仓 " + entry.date + " @" + entry.price.toFixed(3) + " × " + entry.shares.toLocaleString() +
-        " 股 → 现价 " + cur.toFixed(3) + " | 收益率 " + qsgn(plPct);
-    } else {
-      document.getElementById("lastPl").textContent = "--";
-      document.getElementById("lastDetail").textContent = "当前空仓，无持仓浮盈。";
-    }
-
-    // ---- ★止损监控：持有 780 时显示其止损价与现价距离，并预告触发后去哪儿 ----
-    const stopMonEl = document.getElementById("stopMon");
-    const stopSubEl = document.getElementById("stopSub");
-    const biasNow = ma398_20[li] ? (price398 / ma398_20[li] - 1) : null;
-    const biasNowPct = biasNow === null ? null : biasNow * 100;
-    if (posNow === "780" && hy.ep780 !== null && hy.ep780 !== undefined) {
-      const stopPx = hy.ep780 * (1 - STOP_PCT);
-      const gapPct = (price780 / stopPx - 1) * 100;
-      const maNow = ma398_60[li];
-      const maBlockNow = (maNow !== null && maNow !== undefined) && price398 < maNow;
-      const willBlock = maBlockNow || (biasNow !== null && BIAS_MAX > 0 && biasNow > BIAS_MAX);
-      stopMonEl.textContent = stopPx.toFixed(3);
-      stopMonEl.className = "m-value " + (gapPct <= 3 ? "down" : "up");
-      stopSubEl.innerHTML = "买入 " + hy.ep780.toFixed(3) + " | 现价距止损 " + (gapPct >= 0 ? "+" : "") + gapPct.toFixed(2) + "%" +
-        "<br>触发后 → <b class='" + (willBlock ? "down" : "up") + "'>" + (willBlock ? "空仓" : "切工行") + "</b>（398 乖离 " +
-        (biasNowPct === null ? "-" : (biasNowPct >= 0 ? "+" : "") + biasNowPct.toFixed(1) + "%") +
-        (maBlockNow ? "，且已跌破MA60" : "") + "）";
-    } else {
-      stopMonEl.textContent = "未持 780";
-      stopMonEl.className = "m-value";
-      stopSubEl.innerHTML = "买入 780 后此处显示止损价（买入价 −" + Math.round(STOP_PCT * 100) + "%）" +
-        "<br>398 当前乖离 " + (biasNowPct === null ? "-" : (biasNowPct >= 0 ? "+" : "") + biasNowPct.toFixed(1) + "%") +
-        "（>+" + Math.round(BIAS_MAX * 100) + "% 则改空仓）";
-    }
-
-    // ---- ★780 回补监控：未持 780 时，算出三条回补路径的实时门槛 ----
-    const reSec = document.getElementById("reentry");
-    if (posNow !== "780") {
-      reSec.style.display = "";
-      const rsNow = rsi6[li];
-      const st = rsiWilder(c780, 6, li);
-      let pxUp = null, pxDown = null;
-      if (st) {
-        const dUp = (5 * st.al - 15 * st.ag) / 3;   // 需上涨多少，RSI6 才回到 25
-        const dDn = 15 * st.ag - 5 * st.al;         // 需下跌多少，RSI6 才跌破 25
-        if (dUp > 0) pxUp = price780 + dUp;
-        if (dDn > 0) pxDown = price780 - dDn;
-      }
-      const armed = (rsNow !== null && rsNow !== undefined && rsNow >= 25);
-      const upPct = pxUp ? (pxUp / price780 - 1) * 100 : null;
-
-      const e1v = document.getElementById("re1v"), e1s = document.getElementById("re1s");
-      if (armed) {
-        e1v.textContent = "已复位 · 等下穿";
-        e1v.className = "m-value up";
-        e1s.textContent = pxDown
-          ? "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；跌到 ≤ ¥" + pxDown.toFixed(3) + " 即触发买入"
-          : "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；单日跌幅不足以触发，明日再看";
+    let action = "HOLD", actionText = "", actionDetail = "";
+    if (h === "780") {
+      if (s.sw && !pv.sw) {
+        action = "SWITCH_398";
+        actionText = "\u5398\u6362\u81f3 601398 工商银行";
+        actionDetail = "780\u56de\u64a4" + (dd[li] * 100).toFixed(1) + "%, 398\u4e94\u65e5\u6da8" + (r5[li] * 100).toFixed(1) + "%";
+      } else if (s.sc && !pv.sc) {
+        action = "GO_CASH";
+        actionText = "\u7a7a\u4ed3\u907f\u9669";
+        actionDetail = "780\u56de\u64a4" + (dd[li] * 100).toFixed(1) + "%, 398\u4e94\u65e5" + (r5[li] * 100).toFixed(1) + "%, \u53cc\u8dcc\u907f\u9669";
       } else {
-        e1v.textContent = "等反弹复位";
-        e1v.className = "m-value down";
-        e1s.textContent = pxUp
-          ? "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方（事件已用掉）；涨到 ≥ ¥" + pxUp.toFixed(3) + "（+" + upPct.toFixed(2) + "%）复位后，再跌破 25 才买入"
-          : "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方；需先反弹回 25 上方复位";
+        action = "HOLD_780";
+        actionText = "\u6301\u4ed3 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "\u4e70\u5165\u4e8e" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
       }
-
-      const bullPx = BULL_PCT * rh250[li];
-      const e2v = document.getElementById("re2v");
-      e2v.textContent = "+" + ((bullPx / price780 - 1) * 100).toFixed(1) + "%";
-      e2v.className = "m-value";
-      document.getElementById("re2s").textContent = "需 ¥" + bullPx.toFixed(3) + "（现 " + price780.toFixed(3) + "）；触发即满仓 780";
-
-      const r5p = (r5[li] === null || r5[li] === undefined) ? 0 : r5[li] * 100;
-      const e3v = document.getElementById("re3v");
-      e3v.textContent = (r5p >= 0 ? "+" : "") + r5p.toFixed(2) + "%";
-      e3v.className = "m-value " + (r5p < -2 ? "down" : "up");
-      document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；空仓后 780 站上 MA20 = ¥" +
-        ma20[li].toFixed(3) + "（+" + ((ma20[li] / price780 - 1) * 100).toFixed(1) + "%）";
-
-      const bn = document.getElementById("reentryBanner");
-      if (armed) {
-        bn.innerHTML = "<b>当前状态：</b>RSI6 已复位到 25 上方 —— <b>等它再跌破 25 的那一天</b>，当天 14:50 前挂单买回 159780。";
-      } else if (pxUp) {
-        bn.innerHTML = "<b>当前状态：</b>抄底事件已被消耗（RSI6 在持 780 期间就下穿了 25）。<b>先等一根约 +" +
-          upPct.toFixed(2) + "% 的阳线把 RSI6 推回 25 上方</b>；复位之后哪天下穿 25，就在那天 14:50 前挂单买回 159780。";
+    } else if (h === "398") {
+      if (s.bk && !pv.bk) {
+        action = "SWITCH_780";
+        actionText = "\u5398\u56de 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, \u8d85\u5356\u53cd\u5f39";
+      } else if (s.d398 && !pv.d398) {
+        action = "GO_CASH";
+        actionText = "\u7a7a\u4ed3\u6b62\u635f";
+        actionDetail = "398\u4e94\u65e5" + (r5[li] * 100).toFixed(1) + "%, \u6b62\u635f\u79bb\u573a";
       } else {
-        bn.innerHTML = "<b>当前状态：</b>等 RSI6 回到 25 上方并重新下穿 —— 那一天买回 159780。";
+        action = "HOLD_398";
+        actionText = "\u6301\u4ed3 601398 工商银行";
+        actionDetail = "\u4e70\u5165\u4e8e" + entryDate + " @ " + (entryPrice != null ? entryPrice.toFixed(4) : "-") + " | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
       }
     } else {
-      reSec.style.display = "none";
+      if (s.bk && !pv.bk) {
+        action = "BUY_780";
+        actionText = "\u4e70\u5165 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "RSI6=" + rsi6[li].toFixed(1) + " <25, \u6781\u5ea6\u8d85\u5356\u62a2\u5e95";
+      } else if (s.aMA && !pv.aMA) {
+        action = "BUY_780";
+        actionText = "\u4e70\u5165 159780 \u79d1\u521b\u521b\u4e1a50ETF";
+        actionDetail = "780\u91cd\u56deMA20\u4e0a\u65b9, \u8d8b\u52bf\u6062\u590d";
+      } else if (s.sw && !pv.sw) {
+        action = "BUY_398";
+        actionText = "\u4e70\u5165 601398 工商银行";
+        actionDetail = "398\u8f6c\u5f3a, \u4e94\u65e5\u6da8" + (r5[li] * 100).toFixed(1) + "%";
+      } else {
+        action = "HOLD_CASH";
+        actionText = "\u7a7a\u4ed3\u7b49\u5f85";
+        actionDetail = "\u7b49\u5f85RSI<25\u6216MA20\u6062\u590d | 780RSI6=" + (rsi6[li] != null ? rsi6[li].toFixed(1) : "-") + " / 398RSI6=" + (rsi6398[li] != null ? rsi6398[li].toFixed(1) : "-");
+      }
     }
 
-    // ---- 当前资产 (按实时价重算, 与交易记录首行口径一致) ----
-    const hasRT = !!(rt780 && rt780.price && rt780.time);
-    const rtStamp = (rt780 && rt780.time) ? rt780.time : (rt398 && rt398.time ? rt398.time : "");
-    const rtDate = rtStamp ? realtimeDate(rtStamp) : dates[li];
-    const rtClock = rtStamp ? rtStamp.slice(8, 10) + ":" + rtStamp.slice(10, 12) : "";
-    const rtNav = posNow === "CASH" ? hy.lastCash
-      : hy.lastCash + hy.lastShares * (posNow === "780" ? price780 : price398);
-    const rtRet = (rtNav / 100000 - 1) * 100;
-    window.__rt = { nav: rtNav, ret: rtRet, date: rtDate, clock: rtClock, hasRT: hasRT,
-                    px: posNow === "CASH" ? null : (posNow === "780" ? price780 : price398), hold: posNow };
-    document.getElementById("curNav").textContent = "¥" + Math.round(rtNav).toLocaleString("zh-CN");
-    document.getElementById("curRet").textContent = "累计 " + (rtRet >= 0 ? "+" : "") + rtRet.toFixed(1) + "%" +
-      (hasRT ? " · 实时" : " · 昨收");
-    document.getElementById("holdSub").textContent = hasRT
-      ? "数据至 " + dates[li] + "，净值按 " + rtDate + " " + rtClock + " 实时价重算"
-      : "数据至 " + dates[li] + "（实时价获取失败，按收盘价）";
-
-    // ---- 年度战绩 ----
-    const years = ["2023", "2024", "2025", "2026"];
-    let yh = "<tr><th>年份</th><th>混合策略</th><th>沪深300</th><th>跑赢</th></tr>";
-    for (const y of years) {
-      const a = hyY[y] !== undefined ? hyY[y] : null;
-      const b = hsY[y] !== undefined ? hsY[y] : null;
-      const diff = (a !== null && b !== null) ? a - b : null;
-      const sign = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-      const cls = v => v >= 0 ? "up" : "down";
-      yh += "<tr><td>" + y + "</td>" +
-        "<td class='" + (a !== null ? cls(a) : "") + "'>" + (a !== null ? sign(a) : "-") + "</td>" +
-        "<td class='" + (b !== null ? cls(b) : "") + "'>" + (b !== null ? sign(b) : "-") + "</td>" +
-        "<td class='" + (diff !== null ? cls(diff) : "") + "'>" + (diff !== null ? sign(diff) : "-") + "</td></tr>";
-    }
-    document.getElementById("yearTable").innerHTML = yh;
-
-    // ---- 月度收益(近两年) ----
-    const monMap = {};
-    for (let i = 0; i < winDates.length; i++) {
-      const mk = winDates[i].slice(0, 7);
-      if (!monMap[mk]) monMap[mk] = { first: hy.navs[i] };
-      monMap[mk].last = hy.navs[i];
-    }
-    const monKeys = Object.keys(monMap).sort();
-    const monthly24 = monKeys.slice(-24).map(k => ({ month: k, ret: (monMap[k].last / monMap[k].first - 1) * 100 }));
-    const firstNav24 = monMap[monKeys[monKeys.length - 24]].first;
-    const ret24m = (hy.navs[hy.navs.length - 1] / firstNav24 - 1) * 100;
-    const bestM = monthly24.reduce((a, b) => (b.ret > a.ret ? b : a));
-    const worstM = monthly24.reduce((a, b) => (b.ret < a.ret ? b : a));
-
-    // 先显示主区再初始化图表(容器不可见时 ECharts 尺寸为 0, 坐标轴会渲染异常)
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("main").style.display = "block";
-    const xInt = Math.max(1, Math.floor(winDates.length / 8));
-
-    // ---- 净值曲线 ----
-    const hyNav = hy.navs.map(v => +(v / 100000).toFixed(4));
-    const hyOldNav = hyOld.navs.map(v => +(v / 100000).toFixed(4));
-    const d3Nav = d3.navs.map(v => +(v / 100000).toFixed(4));
-
-    // === 深色主题适配：ECharts 统一套用暗色坐标轴/图例/提示框 ===
-    const DKC = { ink: "#a8afc4", axis: "#2a2d3a", split: "#232634" };
-    function darkOpt(o) {
-      o.backgroundColor = "transparent";
-      o.textStyle = { color: DKC.ink, fontFamily: "-apple-system,'PingFang SC','Microsoft YaHei',sans-serif" };
-      if (o.tooltip) o.tooltip = Object.assign({
-        backgroundColor: "rgba(20,22,31,.96)", borderColor: DKC.axis,
-        textStyle: { color: "#e0e0e0" }, extraCssText: "border-radius:8px;"
-      }, o.tooltip);
-      const axes = [];
-      [o.xAxis, o.yAxis].forEach(a => { if (Array.isArray(a)) a.forEach(x => x && axes.push(x)); else if (a) axes.push(a); });
-      axes.forEach(a => {
-        a.axisLine = Object.assign({ lineStyle: { color: DKC.axis } }, a.axisLine || {});
-        a.axisLabel = Object.assign({ color: DKC.ink }, a.axisLabel || {});
-        a.splitLine = Object.assign({ lineStyle: { color: DKC.split } }, a.splitLine || {});
+    const recent = [];
+    for (let i = Math.max(0, N - 10); i < N; i++) {
+      recent.push({
+        date: dates[i],
+        close780: Math.round(c780[i] * 1000) / 1000,
+        close398: Math.round(c398[i] * 1000) / 1000,
+        rsi6: rsi6[i] !== null ? Math.round(rsi6[i] * 10) / 10 : null,
+        rsi6398: rsi6398[i] !== null ? Math.round(rsi6398[i] * 10) / 10 : null,
+        ma20: ma20[i] !== null ? Math.round(ma20[i] * 1000) / 1000 : null,
+        drawdown: Math.round(dd[i] * 10000) / 100,
+        aboveMA20: ma20[i] !== null && c780[i] > ma20[i],
       });
-      if (o.legend) o.legend = Object.assign({ textStyle: { color: DKC.ink } }, o.legend);
-      return o;
     }
-    function dchart(id) {
-      const el = document.getElementById(id);
-      if (!el) return null;
-      let c = echarts.getInstanceByDom(el);
-      if (!c) c = echarts.init(el);
-      if (!c.__dk) {
-        const so = c.setOption.bind(c);
-        c.setOption = (o, ...rest) => so(darkOpt(o), ...rest);
-        c.__dk = 1;
-      }
-      return c;
-    }
-
-    dchart("navChart").setOption({
-      tooltip: { trigger: "axis", valueFormatter: v => "¥" + Math.round(v * 100000).toLocaleString() },
-      legend: { top: 0, data: ["混合·止损版", "混合·原版", "D3 现状", "沪深300"] },
-      grid: { left: 60, right: 20, top: 36, bottom: 40 },
-      xAxis: { type: "category", data: winDates, axisLabel: { interval: xInt, formatter: v => v.slice(2, 7) } },
-      yAxis: { type: "value", scale: true, axisLabel: { formatter: v => (v * 100000).toLocaleString() } },
-      series: [
-        { name: "混合·止损版", type: "line", showSymbol: false, lineStyle: { width: 2.2, color: "#667eea" }, itemStyle: { color: "#667eea" }, data: hyNav },
-        { name: "混合·原版", type: "line", showSymbol: false, lineStyle: { width: 1.3, color: "#a78bfa", type: "dashed" }, itemStyle: { color: "#a78bfa" }, data: hyOldNav },
-        { name: "D3 现状", type: "line", showSymbol: false, lineStyle: { width: 1.5, color: "#38bdf8" }, itemStyle: { color: "#38bdf8" }, data: d3Nav },
-        { name: "沪深300", type: "line", showSymbol: false, lineStyle: { width: 1.2, color: "#6b7280", type: "dotted" }, itemStyle: { color: "#6b7280" }, data: hsNav }
-      ]
-    });
-
-    // ---- 月度收益柱状图 ----
-    dchart("monthlyChart").setOption({
-      tooltip: { trigger: "axis", valueFormatter: v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%" },
-      grid: { left: 50, right: 20, top: 36, bottom: 40 },
-      xAxis: { type: "category", data: monthly24.map(m => m.month.slice(2)), axisLabel: { interval: 1, fontSize: 10 } },
-      yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
-      series: [{
-        type: "bar", barMaxWidth: 22,
-        label: { show: true, position: "top", fontSize: 9, color: "#fff", textBorderWidth: 0, textShadowBlur: 0, formatter: p => (p.value >= 0 ? "+" : "") + p.value + "%" },
-        data: monthly24.map(m => ({ value: +m.ret.toFixed(2), itemStyle: { color: m.ret >= 0 ? "#ff5252" : "#4caf50" } }))
-      }]
-    });
-    document.getElementById("monthlyStat").textContent = "近两年累计 " + (ret24m >= 0 ? "+" : "") + ret24m.toFixed(1) +
-      "% | 最好月份 " + bestM.month + " (" + (bestM.ret >= 0 ? "+" : "") + bestM.ret.toFixed(1) + "%) | 最差月份 " + worstM.month +
-      " (" + (worstM.ret >= 0 ? "+" : "") + worstM.ret.toFixed(1) + "%)";
-
-
-
-    // ---- 交易记录 (全部, 可折叠) ----
-    const allTrades = hy.trades.slice().reverse();
-    const act = t => {
-      const nm2 = { "780": "159780", "398": "601398", "CASH": "空仓" };
-      if (t.from === "CASH") return "<b class='up'>买入 " + nm2[t.to] + "</b>";
-      if (t.to === "CASH") return "<b class='down'>清仓 → 空仓</b>";
-      return "<b>" + nm2[t.from] + " → " + nm2[t.to] + "</b>";
-    };
-    const reason = t => {
-      const bTxt = (t.stopBias === null || t.stopBias === undefined) ? "" : (t.stopBias >= 0 ? "+" : "") + (t.stopBias * 100).toFixed(1) + "%";
-      if (t.maBlocked && t.stop) return "★成本止损 → 但工行跌破 MA60 → <b>改空仓</b>（不接下跌资产）";
-      if (t.maBlocked) return "风险信号 → 但工行跌破 MA60 → <b>改空仓</b>（不接下跌资产）";
-      if (t.stop && t.stopBlocked) return "★成本止损 → <b>改空仓</b>（398 乖离 " + bTxt + " &gt; +" + Math.round(BIAS_MAX * 100) + "%，不追高）";
-      if (t.stop) return "★成本止损 跌破买入价 −" + Math.round(STOP_PCT * 100) + "% → 切工行防守（398 乖离 " + bTxt + "）";
-      if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
-      if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
-      if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
-      return "780回撤>12% 双跌避险 或 398五日跌>2%";
-    };
-    const pxFmt = p => p === null || p === undefined ? "-" : p.toFixed(3);
-    let th = "<tr><th>日期</th><th>动作</th><th>原因</th><th>成交价</th><th>净值</th><th>累计盈利率</th><th>佣金</th></tr>";
-    // 首行：当前持仓（实时）。最后一笔切换之后可能已过去很久，净值会变，需单列避免误读
-    const R = window.__rt;
-    if (R) {
-      const nmNow = { "780": "159780", "398": "601398", "CASH": "空仓" }[R.hold];
-      const dateCell = R.hasRT ? (R.date + " " + R.clock) : R.date;
-      th += "<tr class='rt-row'><td>" + dateCell + "<span class='rt-badge'>实时</span></td>" +
-        "<td><b>持仓中 · " + nmNow + "</b></td>" +
-        "<td>" + (R.hold === "CASH" ? "空仓等待，逆回购计息" : "未触发切换，继续持有（浮盈未兑现）") + "</td>" +
-        "<td>" + pxFmt(R.px) + "</td><td>¥" + Math.round(R.nav).toLocaleString("zh-CN") + "</td>" +
-        "<td class='" + (R.ret >= 0 ? "up" : "down") + "'>" + (R.ret >= 0 ? "+" : "") + R.ret.toFixed(2) + "%</td>" +
-        "<td>-</td></tr>";
-    }
-    for (const t of allTrades) {
-      th += "<tr><td>" + t.date + "</td><td>" + act(t) + "</td><td>" + reason(t) + "</td><td>" + pxFmt(t.price) +
-        "</td><td>¥" + t.value.toLocaleString("zh-CN") + "</td><td class='" + (t.ret >= 0 ? "up" : "down") + "'>" +
-        (t.ret >= 0 ? "+" : "") + t.ret.toFixed(2) + "%</td><td>¥" + t.comm.toFixed(1) + "</td></tr>";
-    }
-    document.getElementById("tradeWrap").innerHTML =
-      "<details><summary>全部 " + hy.trades.length + " 笔已成交记录 + 1 行当前持仓（实时，点击展开）</summary>" +
-      "<div style='overflow-x:auto'><table>" + th + "</table></div></details>";
 
     // ============================================================
-    // ★个股面板：159780 / 601398
+    // 回测指标计算(2025-08-15至今, 实时更新)
     // ============================================================
-    function fmtPct(v, d) { return (v >= 0 ? "+" : "") + v.toFixed(d === undefined ? 2 : d) + "%"; }
-    function fmtVol(v) {
-      if (!v) return "-";
-      return v >= 1e4 ? (v / 1e4).toFixed(0) + "万手" : v.toFixed(0) + "手";
+    const finalValue = navValues[navValues.length - 1];
+    const totalReturn = (finalValue / 100000 - 1) * 100;
+    let maxDD = 0, maxDDIdx = 0;
+    for (let i = 0; i < navDD.length; i++) { if (navDD[i] < maxDD) { maxDD = navDD[i]; maxDDIdx = i; } }
+    // 夏普比率(年化, 无风险利率按0)
+    let sharpe = 0;
+    if (navValues.length > 2) {
+      let sMean = 0;
+      const dRets = [];
+      for (let i = 1; i < navValues.length; i++) { const r = navValues[i] / navValues[i - 1] - 1; dRets.push(r); sMean += r; }
+      sMean /= dRets.length;
+      let sVar = 0;
+      for (let i = 0; i < dRets.length; i++) sVar += (dRets[i] - sMean) * (dRets[i] - sMean);
+      sVar /= dRets.length;
+      const sStd = Math.sqrt(sVar);
+      sharpe = sStd > 0 ? Math.round((sMean / sStd) * Math.sqrt(252) * 100) / 100 : 0;
     }
-    // 把整仓交易流水拆成单只标的的买卖事件
-    // 注意：hy.trades[].price 记的是「买入标的目标」的价格（换仓时是后者），
-    //      卖出 780 时它存的是 398 的价 —— 必须按日期回查该标的自己的收盘价。
-    const DATE_IDX = new Map(dates.map((d, i) => [d, i]));
-    function stockEvents(key, closes) {
-      const evs = []; let entry = null;
-      for (const t of hy.trades) {
-        const i = DATE_IDX.get(t.date);
-        const pxAt = (i === undefined) ? null : closes[i];
-        if (t.from === key) {
-          evs.push({ d: t.date, side: "sell", px: pxAt, stop: !!t.stop,
-                     ret: (entry && pxAt) ? (pxAt / entry.px - 1) * 100 : null });
-          entry = null;
-        }
-        if (t.to === key) {
-          evs.push({ d: t.date, side: "buy", px: pxAt, ret: null, stop: false });
-          entry = { px: pxAt, d: t.date };
-        }
-      }
-      return { evs, open: entry };
+    // 卡玛比率 = 年化收益 ÷ |最大回撤|（标准定义；旧版误用总收益，数值会虚高一倍以上）
+    const cagr = navValues.length > 1 ? (Math.pow(finalValue / 100000, 252 / navValues.length) - 1) * 100 : 0;
+    const calmar = maxDD !== 0 ? Math.round((cagr / Math.abs(maxDD)) * 100) / 100 : 0;
+    const totalComm = tradeLog.reduce((a, t) => a + (t.comm || 0), 0);
+    // 买入持有780基准(窗口起点)
+    const bhReturn = (c780[N - 1] / c780[S] - 1) * 100;
+    const bhDDArr = calcDD(c780.slice(S));
+    let bhMaxDD = 0;
+    for (let i = 0; i < bhDDArr.length; i++) if (bhDDArr[i] < bhMaxDD) bhMaxDD = bhDDArr[i];
+    bhMaxDD *= 100;
+    const excessReturn = totalReturn - bhReturn;
+    const ddImprove = Math.abs(bhMaxDD) - Math.abs(maxDD);
+    // 买入持有780回撤序列(窗口起点, 用于回撤对比图)
+    const bh780DD = [];
+    let bhPeak = c780[S];
+    for (let i = S; i < N; i++) {
+      if (c780[i] > bhPeak) bhPeak = c780[i];
+      bh780DD.push(Math.round((c780[i] - bhPeak) / bhPeak * 10000) / 100);
     }
-    function renderStock(cfg) {
-      const k = cfg.key, code = cfg.code;
-      const closes = k === "780" ? c780 : c398;
-      const rtRow = k === "780" ? rt780 : rt398;
-      const lastClose = closes[N - 1];
-      const px = (rtRow && rtRow.price) ? rtRow.price : lastClose;
-      const chg = (rtRow && isFinite(rtRow.chg)) ? rtRow.chg
-                : (rtRow && rtRow.prevClose ? (px / rtRow.prevClose - 1) * 100 : (px / closes[N - 2] - 1) * 100);
-
-      document.getElementById("p" + code).textContent = px.toFixed(3);
-      const ce = document.getElementById("chg" + code);
-      ce.textContent = fmtPct(chg);
-      ce.className = "price-change " + (chg >= 0 ? "up" : "down");
-      document.getElementById("meta" + code).textContent = (rtRow && rtRow.high > 0)
-        ? "高 " + rtRow.high.toFixed(3) + " · 低 " + rtRow.low.toFixed(3) + " · 量 " + fmtVol(rtRow.volume)
-        : "高/低/量需实时行情，暂按收盘价展示";
-
-      const { open } = stockEvents(k, closes);
-
-      // ---- 指标盒 ----
-      const s = cfg.series, v = s[N - 1], th = cfg.threshold, isRsi = cfg.kind === "rsi";
-      const barC = isRsi ? "#38bdf8" : (v > th ? "#ff9800" : "#38bdf8");
-      document.getElementById("rsi" + code).innerHTML =
-        '<div class="rsi-box"><div class="label">' + cfg.indLabel + '</div>' +
-        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v * 100)) + '</div></div>' +
-        '<div class="rsi-box"><div class="label">' + cfg.thLabel + '</div>' +
-        '<div class="value" style="color:#4caf50">' + cfg.thText + '</div></div>';
-
-      // ---- 指标说明两行 ----
-      const hit = isRsi ? (v < th) : (v > th);
-      document.getElementById("diff" + code).innerHTML = isRsi
-        ? '<span class="arrow">' + (hit ? "✅" : "⏸️") + '</span><span>' + cfg.indLabel +
-          ' <strong style="color:' + barC + '">' + v.toFixed(2) + '</strong> / 阈值 <strong>' + th + '</strong></span>' +
-          '<span style="color:#666">' + (hit ? "已跌破阈值，触发抄底" : "高于阈值，继续等待") + '</span>'
-        : '<span class="arrow">' + (hit ? "⚠️" : "✅") + '</span><span>' + cfg.indLabel +
-          ' <strong style="color:' + barC + '">' + fmtPct(v * 100) + '</strong> / 阈值 <strong>+' + (th * 100) + '%</strong></span>' +
-          '<span style="color:#666">' + (hit ? "高于阈值，止损后不切工行" : "低于阈值，可正常换仓") + '</span>';
-
-      document.getElementById("diffB" + code).innerHTML = cfg.second(N - 1);
-
-      // ---- 持仓盒 ----
-      const pb = document.getElementById("pos" + code);
-      if (hy.lastHold === k && open) {
-        const cur = (px / open.px - 1) * 100;
-        const days = Math.round((new Date(dates[N - 1]) - new Date(open.d)) / 86400000);
-        pb.className = "position-box holding";
-        pb.innerHTML = '<div><div class="pos-label">持仓中 · ' + open.d + ' 买入 @ ' + open.px.toFixed(3) + '</div>' +
-          '<div class="pos-status">持有 ' + days + ' 天</div></div>' +
-          '<div class="pnl ' + (cur >= 0 ? "profit" : "loss") + '">' + fmtPct(cur) + '</div>';
-      } else {
-        pb.className = "position-box cash";
-        pb.innerHTML = '<div class="pos-label">当前空仓</div><div class="pos-status">等待信号</div>';
-      }
-
-      // ---- 徽章 ----
-      const bd = document.getElementById("badge" + code);
-      if (hy.lastHold === k && open) {
-        bd.className = "signal-badge red";
-        bd.textContent = "持仓中 · " + (k === "780" ? "主仓" : "避险仓") + " " + fmtPct((px / open.px - 1) * 100);
-      } else {
-        bd.className = "signal-badge " + (hit ? "orange" : "gray");
-        bd.textContent = "空仓等待 · " + cfg.indLabel + "=" + (isRsi ? v.toFixed(1) : fmtPct(v * 100));
-      }
-
-      // ---- 价格迷你图（近120日）----
-      const M = 120, cs = closes.slice(-M), ds = dates.slice(-M);
-      dchart("chart" + code).setOption({
-        grid: { left: 46, right: 12, top: 12, bottom: 18 },
-        tooltip: { trigger: "axis" },
-        xAxis: { type: "category", data: ds, axisLabel: { fontSize: 9,
-          interval: Math.floor(M / 5), formatter: t => t.slice(2) } },
-        yAxis: { type: "value", scale: true, axisLabel: { fontSize: 9 } },
-        series: [{ type: "line", data: cs, showSymbol: false,
-          lineStyle: { width: 1.4, color: "#667eea" }, itemStyle: { color: "#667eea" },
-          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [
-            { offset: 0, color: "rgba(102,126,234,.32)" },
-            { offset: 1, color: "rgba(102,126,234,0)" }] } } }]
-      }, true);
-
-      // ---- 指标曲线（近120日）----
-      const iv = s.slice(-M).map(x => x === null ? null : (isRsi ? +x.toFixed(2) : +(x * 100).toFixed(2)));
-      dchart("ind" + code).setOption({
-        grid: { left: 46, right: 12, top: 14, bottom: 18 },
-        tooltip: { trigger: "axis" },
-        xAxis: { type: "category", data: ds, axisLabel: { fontSize: 9,
-          interval: Math.floor(M / 5), formatter: t => t.slice(2) } },
-        yAxis: { type: "value", scale: true, axisLabel: { fontSize: 9,
-          formatter: isRsi ? "{value}" : "{value}%" } },
-        series: [{ type: "line", data: iv, showSymbol: false,
-          lineStyle: { width: 1.2, color: isRsi ? "#38bdf8" : "#ff9800" },
-          itemStyle: { color: isRsi ? "#38bdf8" : "#ff9800" },
-          markLine: { silent: true, symbol: "none",
-            lineStyle: { color: "#ff5252", type: "dashed", width: 1 },
-            label: { color: "#ff8b8b", fontSize: 9, formatter: isRsi ? "阈值 " + th : "阈值 +" + (th * 100) + "%" },
-            data: [{ yAxis: isRsi ? th : th * 100 }] } }]
-      }, true);
+    // 月度收益率(按自然月, 月末净值/月初净值-1)
+    const monthMap = {};
+    for (let i = 0; i < navDates.length; i++) {
+      const mk = navDates[i].slice(0, 7);
+      if (!monthMap[mk]) monthMap[mk] = { first: navValues[i], last: navValues[i] };
+      monthMap[mk].last = navValues[i];
     }
+    const monthlyAll = Object.keys(monthMap).sort().map(mk => ({
+      month: mk,
+      return: Math.round((monthMap[mk].last / monthMap[mk].first - 1) * 10000) / 100
+    }));
+    const monthlyReturns = monthlyAll.slice(-12);   // 月度收益仅展示近一年
 
-    renderStock({
-      key: "780", code: "159780", kind: "rsi", series: rsi6,
-      indLabel: "RSI6", thLabel: "抄底阈值", thText: "<25", threshold: 25,
-      second: i => {
-        const d = (c780[i] / rh250[i] - 1) * 100;
-        return '<span class="arrow">' + (d < -5 ? "⚠️" : "✅") + '</span><span>距250日高点 <strong style="color:' +
-          (d < -5 ? "#ff9800" : "#4caf50") + '">' + d.toFixed(2) + '%</strong></span>' +
-          '<span style="color:#666">触发线 −5%，跌破则牛市开关 OFF</span>';
+    // 年度收益率(按自然年, 年末净值 / 年初净值 - 1)
+    const yrMap = {};
+    for (let i = 0; i < navDates.length; i++) {
+      const yk = navDates[i].slice(0, 4);
+      if (!yrMap[yk]) yrMap[yk] = { first: navValues[i], last: navValues[i] };
+      yrMap[yk].last = navValues[i];
+    }
+    const yearlyReturns = Object.keys(yrMap).sort().map(yk => ({
+      year: yk,
+      return: Math.round((yrMap[yk].last / yrMap[yk].first - 1) * 10000) / 100
+    }));
+    // 沪深300 年度收益(窗口起点对齐, 用于"跑赢大盘"对比)
+    const hs300Yearly = [];
+    try {
+      const hm = {};
+      for (const b of (d300raw || [])) {
+        if (b.date < dates[S]) continue;
+        const yk = b.date.slice(0, 4);
+        if (!hm[yk]) hm[yk] = { first: b.close, last: b.close };
+        hm[yk].last = b.close;
       }
-    });
-    renderStock({
-      key: "398", code: "601398", kind: "bias", series: bias398,
-      indLabel: "乖离率BIAS20", thLabel: "拦截阈值", thText: "+4%", threshold: BIAS_MAX,
-      second: i => {
-        const d = r5[i] === null ? 0 : r5[i] * 100;
-        const m = ma398_60[i];
-        const ok = (m === null || m === undefined) ? true : c398[i] >= m;
-        const dp = m ? (c398[i] / m - 1) * 100 : 0;
-        return '<span class="arrow">' + (d < -2 ? "⚠️" : "✅") + '</span><span>近5日涨跌 <strong style="color:' +
-          (d < -2 ? "#ff9800" : "#4caf50") + '">' + fmtPct(d) + '</strong></span>' +
-          '<span style="color:#666">跌超 2% 则离场</span>' +
-          '<span class="arrow" style="margin-left:12px">' + (ok ? "✅" : "⚠️") + '</span>' +
-          '<span>距MA60 <strong style="color:' + (ok ? "#4caf50" : "#ff9800") + '">' + fmtPct(dp) + '</strong></span>' +
-          '<span style="color:#666">跌破则不用它防守</span>';
+      for (const yk of Object.keys(hm).sort()) {
+        hs300Yearly.push({ year: yk, return: Math.round((hm[yk].last / hm[yk].first - 1) * 10000) / 100 });
       }
-    });
+    } catch (e) { }
 
-
-
-  } catch (e) {
-    document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
+    const result = {
+      success: true, date: dates[li], holding: h,
+      close780: Math.round(c780[li] * 1000) / 1000,
+      close398: Math.round(c398[li] * 1000) / 1000,
+      rsi6: rsi6[li] !== null ? Math.round(rsi6[li] * 10) / 10 : null,
+      rsi6398: rsi6398[li] !== null ? Math.round(rsi6398[li] * 10) / 10 : null,
+      entryDate: entryDate, entryPrice: entryPrice != null ? Math.round(entryPrice * 10000) / 10000 : null, entryCode: entryCode,
+      lastTradeReturn: entryCode != null ? Math.round((((entryCode === "780" ? c780[li] : c398[li]) - entryPrice) / entryPrice) * 10000) / 100 : null,
+      lastTradeEntryDate: entryDate, lastTradeEntryPrice: entryPrice != null ? Math.round(entryPrice * 10000) / 10000 : null, lastTradeCode: entryCode,
+      ma20: ma20[li] !== null ? Math.round(ma20[li] * 1000) / 1000 : null,
+      drawdown: Math.round(dd[li] * 10000) / 100,
+      ret5d398: r5[li] !== null ? Math.round(r5[li] * 10000) / 100 : null,
+      aboveMA20: ma20[li] !== null && c780[li] > ma20[li],
+      switchTo398Signal: s.sw, goCashSignal: s.sc, buyBackSignal: s.bk,
+      drop398Signal: s.d398, maRecoverSignal: s.aMA,
+      action: action, actionText: actionText, actionDetail: actionDetail,
+      recentDays: recent,
+      intraday: intraday, rtDiag: rtDiag,
+      // 实时回测数据(2025-08-15至今)
+      nav: { dates: navDates, values: navValues, holdings: navHoldings, dd: navDD, bhDD: bh780DD },
+      backtest: {
+        totalReturn: Math.round(totalReturn * 100) / 100,
+        maxDD: Math.round(maxDD * 100) / 100,
+        maxDDDate: navDates[maxDDIdx],
+        sharpe: sharpe,
+        calmar: calmar,
+        tradeCount: tradeLog.length,
+        totalComm: Math.round(totalComm * 100) / 100,
+        excessReturn: Math.round(excessReturn * 100) / 100,
+        bhMaxDD: Math.round(bhMaxDD * 100) / 100,
+        bhReturn: Math.round(bhReturn * 100) / 100,
+        ddImprove: Math.round(ddImprove * 100) / 100,
+        finalValue: finalValue,
+        cashDays: cashDays,
+        cashYield: CASH_YIELD,
+      },
+      monthlyReturns: monthlyReturns,
+      yearlyReturns: yearlyReturns,
+      hs300Yearly: hs300Yearly,
+      windowStart: dates[S],
+      trades: tradeLog,
+    };
+    if (wantDebug) {
+      result.debug = { windowStart: dates[S], tradeCount: tradeLog.length };
+    }
+    return result;
+  } catch (err) {
+    throw new Error(err.message);
   }
 }
 
-document.addEventListener("DOMContentLoaded", updateData);
-</script>
+// /api/diag — 实时数据源连通性诊断
+async function handleDiag() {
+  const out = { success: true, time: new Date().toISOString(), kline: {}, realtime: {} };
+  try {
+    const [d780, d398] = await Promise.all([
+      getKlines("sz159780", "0.159780", "159780"),
+      getKlines("sh601398", "0.601398", "601398"),
+    ]);
+    out.kline.ok = true;
+    out.kline.last780 = d780[d780.length - 1];
+    out.kline.last398 = d398[d398.length - 1];
+  } catch (e) {
+    out.kline.ok = false;
+    out.kline.error = e.message;
+  }
+  for (const code of ["sz159780", "sh601398"]) {
+    try {
+      const rt = await fetchRealtime(code);
+      out.realtime[code] = { ok: true, source: rt.source, price: rt.price, time: rt.time, date: realtimeDate(rt.time) };
+    } catch (e) {
+      out.realtime[code] = { ok: false, error: e.message };
+    }
+  }
+  return out;
+}
+
+// === Update Data (D3) ===
+  async function updateData() {
+    var btn = document.getElementById("update-btn");
+    btn.textContent = "\u66f4\u65b0\u4e2d...";
+    btn.disabled = true;
+    try {
+      var data = await computeData(true);
+      if (data.success) {
+        // === 更新回测表现(实时) ===
+        var bt = data.backtest;
+        if (bt) {
+          var btCards = document.querySelectorAll("#backtest .metrics-grid .metric-card");
+          if (btCards.length >= 8) {
+            btCards[0].querySelector(".m-value").textContent = (bt.totalReturn >= 0 ? "+" : "") + bt.totalReturn.toFixed(2) + "%";
+            btCards[0].querySelector(".m-sub").textContent = "10万→" + bt.finalValue.toLocaleString();
+            btCards[1].querySelector(".m-value").textContent = bt.maxDD.toFixed(2) + "%";
+            btCards[1].querySelector(".m-sub").textContent = bt.maxDDDate;
+            btCards[2].querySelector(".m-value").textContent = bt.sharpe.toFixed(2);
+            btCards[2].querySelector(".m-sub").textContent = "年化";
+            btCards[3].querySelector(".m-value").textContent = bt.calmar.toFixed(2);
+            btCards[3].querySelector(".m-sub").textContent = "年化/回撤";
+            btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
+            var cashN = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
+            btCards[4].querySelector(".m-sub").textContent = "\u542b\u5efa\u4ed3+" + cashN + "\u6b21\u7a7a\u4ed3\uff08\u5171" + (bt.cashDays || 0) + "\u5929\u8ba1\u606f\uff09";
+            btCards[5].querySelector(".m-value").textContent = bt.totalComm.toFixed(2);
+            btCards[6].querySelector(".m-value").textContent = (bt.excessReturn >= 0 ? "+" : "") + bt.excessReturn.toFixed(2) + "%";
+            btCards[6].querySelector(".m-sub").textContent = "vs买入持有780(" + (bt.bhReturn >= 0 ? "+" : "") + bt.bhReturn.toFixed(2) + "%)";
+            btCards[7].querySelector(".m-value").textContent = (bt.ddImprove >= 0 ? "+" : "") + bt.ddImprove.toFixed(2) + "%";
+            btCards[7].querySelector(".m-sub").textContent = "vs 780的" + bt.bhMaxDD.toFixed(2) + "%";
+          }
+          var btTitle = document.querySelector("#backtest h2");
+          if (btTitle) btTitle.textContent = "回测表现（2023-01-01 至 " + data.date + "）";
+
+          // === 年度战绩(策略 vs 沪深300) ===
+          var yb = document.getElementById("yearly-body");
+          if (yb && data.yearlyReturns && data.yearlyReturns.length) {
+            yb.innerHTML = "";
+            var hsMap = {};
+            (data.hs300Yearly || []).forEach(function(x){ hsMap[x.year] = x.return; });
+            data.yearlyReturns.forEach(function(y){
+              var hs = hsMap[y.year];
+              var extra = (hs === undefined) ? null : (y.return - hs);
+              var tr = document.createElement("tr");
+              tr.innerHTML = '<td class="mono">' + y.year + ' \u5e74</td>' +
+                '<td class="mono" style="color:' + (y.return >= 0 ? up : down) + ';font-weight:600;">' + (y.return >= 0 ? '+' : '') + y.return.toFixed(2) + '%</td>' +
+                '<td class="mono">' + (hs === undefined ? '-' : ((hs >= 0 ? '+' : '') + hs.toFixed(2) + '%')) + '</td>' +
+                '<td class="mono" style="color:' + (extra === null ? muted : (extra >= 0 ? up : down)) + ';font-weight:600;">' +
+                (extra === null ? '-' : ((extra >= 0 ? '\u8dd1\u8d62 ' : '\u8dd1\u8f93 ') + Math.abs(extra).toFixed(2) + 'pp')) + '</td>';
+              yb.appendChild(tr);
+            });
+          }
+        }
+        document.getElementById("update-time").textContent = "\u6570\u636e: " + data.date + (data.intraday ? "\uff08\u76d8\u4e2d\u5b9e\u65f6\uff09" : "");
+        document.getElementById("signal-action").textContent = data.actionText;
+        document.getElementById("signal-detail").textContent = data.actionDetail;
+        var icon = document.getElementById("signal-icon");
+        var act = data.action;
+        if (act === "HOLD_398" || act === "HOLD_780") { icon.textContent = "\u6301"; icon.style.background = "#d9772e"; }
+        else if (act === "HOLD_CASH" || act === "GO_CASH") { icon.textContent = "\u7a7a"; icon.style.background = "#8a7765"; }
+        else if (act === "SWITCH_398" || act === "SWITCH_780") { icon.textContent = "\u6362"; icon.style.background = "#b45309"; }
+        else if (act === "BUY_780" || act === "BUY_398") { icon.textContent = "\u4e70"; icon.style.background = "#d9772e"; }
+        else { icon.textContent = "\u6301"; icon.style.background = "#d9772e"; }
+        var cards = document.querySelectorAll(".ind-card");
+        if (cards.length >= 6) {
+          cards[0].querySelector(".ind-value").textContent = data.close780;
+          cards[0].querySelector(".ind-status").textContent = data.aboveMA20 ? "\u7ad9\u4e0aMA20" : "\u8dcc\u7834MA20";
+          cards[0].className = "ind-card " + (data.aboveMA20 ? "green" : "red");
+          cards[1].querySelector(".ind-value").textContent = "780 " + data.rsi6 + " · 398 " + data.rsi6398;
+          var z780 = data.rsi6 < 25 ? "\u6781\u5ea6\u8d85\u5356" : data.rsi6 < 30 ? "\u8d85\u5356" : data.rsi6 > 70 ? "\u8d85\u4e70" : "\u4e2d\u6027";
+          var z398 = data.rsi6398 < 25 ? "\u6781\u5ea6\u8d85\u5356" : data.rsi6398 < 30 ? "\u8d85\u5356" : data.rsi6398 > 70 ? "\u8d85\u4e70" : "\u4e2d\u6027";
+          cards[1].querySelector(".ind-status").textContent = "780:" + z780 + " · 398:" + z398;
+          cards[1].className = "ind-card " + ((data.rsi6 < 25 || data.rsi6398 < 25) ? "green" : "neutral");
+          cards[2].querySelector(".ind-value").textContent = data.ma20;
+          cards[2].querySelector(".ind-status").textContent = data.aboveMA20 ? "780 > MA20" : "780 < MA20";
+          cards[2].className = "ind-card " + (data.aboveMA20 ? "green" : "red");
+          cards[3].querySelector(".ind-value").textContent = data.drawdown + "%";
+          cards[3].querySelector(".ind-status").textContent = Math.abs(data.drawdown) > 12 ? ">12%\u53cc\u8dcc\u907f\u9669" : (Math.abs(data.drawdown) > 10 ? ">10%\u9608\u503c" : "<10%\u5b89\u5168");
+          cards[3].className = "ind-card neutral";
+          cards[3].querySelector(".ind-value").style.color = down; // 回撤=绿
+          cards[4].querySelector(".ind-value").textContent = (data.ret5d398 >= 0 ? "+" : "") + data.ret5d398 + "%";
+          cards[4].querySelector(".ind-status").textContent = data.ret5d398 > 0 ? "\u4e3a\u6b63\uff0c\u89e6\u53d1\u5398\u6362" : (data.ret5d398 < -2 ? "\u8dcc<-2%\uff0c\u6b62\u635f" : "\u4e3a\u8d1f\uff0c\u4e0d\u89e6\u53d1");
+          cards[4].className = "ind-card " + (data.ret5d398 > 0 ? "green" : (data.ret5d398 < -2 ? "red" : "neutral"));
+          cards[5].querySelector(".ind-value").textContent = data.close398;
+          var holdLabel = data.holding === '780' ? '\u6301\u6709780' : (data.holding === '398' ? '\u6301\u6709398' : '\u7a7a\u4ed3');
+          cards[5].querySelector(".ind-status").textContent = holdLabel;
+        }
+        // === 更新月度收益率图表(实时) ===
+        var mr = data.monthlyReturns || [];
+        if (mr.length > 0) {
+          c1.setOption({
+            xAxis: { data: mr.map(function(m){ return m.month; }) },
+            series: [{ data: mr.map(function(m){ return m.return; }) }]
+          });
+        }
+        // === 更新净值曲线/回撤图表(实时) ===
+        var nav = data.nav;
+        if (nav && nav.dates && nav.dates.length > 0) {
+          // 重建持仓分段底色
+          var navMarkAreas = [], navSegStart = 0;
+          for (var ni = 1; ni <= nav.holdings.length; ni++) {
+            if (ni === nav.holdings.length || nav.holdings[ni] !== nav.holdings[navSegStart]) {
+              var nh = nav.holdings[navSegStart];
+              var nbg = nh === '780' ? 'rgba(217,119,46,0.16)' : (nh === '398' ? 'rgba(180,83,9,0.08)' : 'rgba(138,119,101,0.12)');
+              navMarkAreas.push([{xAxis: nav.dates[navSegStart], itemStyle:{color: nbg}}, {xAxis: nav.dates[ni - 1]}]);
+              navSegStart = ni;
+            }
+          }
+          // 买卖点标记(实时交易流水)
+          var navMp = [];   // 买卖点已隐藏, 曲线只标"终值"
+          if (false) (data.trades || []).forEach(function(t){
+            var isBuy780 = (t.action === 'CASH→780' || t.action === '398→780');
+            var isBuy398 = (t.action === '780→398' || t.action === 'CASH→398');
+            var isCash = (t.action === '398→CASH' || t.action === '780→CASH');
+            if (isBuy780) navMp.push({coord:[t.date, t.value], value:'买780', itemStyle:{color:accent}, label:{color:'#fff',fontSize:9}});
+            else if (isBuy398) navMp.push({coord:[t.date, t.value], value:'买398', itemStyle:{color:accent2}, label:{color:'#fff',fontSize:9}});
+            else if (isCash) navMp.push({coord:[t.date, t.value], value:'清仓', itemStyle:{color:'#8a7765'}, label:{color:'#fff',fontSize:9}});
+          });
+          var lastVal = nav.values[nav.values.length - 1];
+          var lastDate = nav.dates[nav.dates.length - 1];
+          c2.setOption({
+            xAxis: { data: nav.dates },
+            series: [{
+              data: nav.values,
+              markArea: { data: navMarkAreas },
+              markPoint: { data: [{coord:[lastDate, lastVal], value:'终值', itemStyle:{color:accent}, label:{color:'#fff',fontSize:10}}] }
+            }]
+          });
+        }
+        // 净值曲线仅标注终值(买卖点标记已按需求移除)
+        var tbody = document.querySelector(".recent-table tbody");
+        if (tbody) {
+          tbody.innerHTML = "";
+          data.recentDays.forEach(function(d, idx) {
+            var isLast = idx === data.recentDays.length - 1;
+            var tr = document.createElement("tr");
+            if (isLast) tr.style.background = "#fff5e8";
+            tr.innerHTML = '<td class="mono">' + d.date + '</td>' +
+              '<td class="mono">' + d.close780 + '</td>' +
+              '<td class="mono">' + d.close398 + '</td>' +
+              '<td class="mono' + (d.rsi6 !== null && d.rsi6 < 25 ? ' pos' : '') + '">' + (d.rsi6 !== null ? d.rsi6 : '-') + '</td>' +
+              '<td class="mono' + (d.rsi6398 !== null && d.rsi6398 < 25 ? ' pos' : '') + '">' + (d.rsi6398 !== null ? d.rsi6398 : '-') + '</td>' +
+              '<td class="mono">' + (d.ma20 !== null ? d.ma20 : '-') + '</td>' +
+              '<td class="neg mono">' + d.drawdown + '%</td>' +
+              '<td class="' + (d.aboveMA20 ? 'pos' : 'neg') + '">' + (d.aboveMA20 ? '\u662f' : '\u5426') + '</td>';
+            tbody.appendChild(tr);
+          });
+        }
+        var logic = document.querySelector(".callout ul");
+        if (logic) {
+          var sw = data.switchTo398Signal ? '<strong style="color:#c2772b;">\u89e6\u53d1</strong>' : '<strong>\u4e0d\u89e6\u53d1</strong>';
+          var ca = data.goCashSignal ? '<strong style="color:#c0392b;">\u89e6\u53d1</strong>' : '<strong>\u4e0d\u89e6\u53d1</strong>';
+          var bk = data.buyBackSignal ? '<strong style="color:#c2772b;">\u89e6\u53d1</strong>' : '<strong>\u4e0d\u89e6\u53d1</strong>';
+          logic.innerHTML = '<li><strong>\u5398\u6362\u81f3398\uff1a</strong>780\u56de\u6492>10% <mark class="key">\u4e14</mark> 398\u4e94\u65e5\u6da8>0 \u2192 ' + sw + '</li>' +
+            '<li><strong>\u7a7a\u4ed3\u907f\u9669\uff1a</strong>780\u56de\u6492>12% <mark class="key">\u4e14</mark> 398\u4e94\u65e5\u22640% \u2192 ' + ca + '</li>' +
+            '<li><strong>\u62a2\u5e95\u56de\u573a\uff1a</strong>RSI6<25 <mark class="key">\u6216</mark> 780\u91cd\u56deMA20\u4e0a\u65b9 \u2192 ' + bk + '</li>' +
+            '<li><strong>\u5f53\u524d\u72b6\u6001\uff1a</strong><mark class="key">' + (data.holding === '780' ? '\u6301\u6709780' : data.holding === '398' ? '\u6301\u6709398' : '\u7a7a\u4ed3') + '</mark> \u2192 ' + data.actionText + (data.entryDate ? ' \uff08\u4e70\u5165\u4e8e' + data.entryDate + (data.entryPrice != null ? ' @ ' + data.entryPrice : '') + '\uff09' : '') + '</li>';
+        }
+        // 最近一笔交易收益率(盈利=红, 回撤=绿)
+        var ltrEl = document.getElementById("last-trade-return");
+        var ltsEl = document.getElementById("last-trade-sub");
+        var ltcEl = document.getElementById("last-trade-code");
+        var lteEl = document.getElementById("last-trade-entrysub");
+        if (data.lastTradeReturn != null) {
+          var ret = data.lastTradeReturn;
+          ltrEl.textContent = (ret >= 0 ? "+" : "") + ret.toFixed(2) + "%";
+          ltrEl.style.color = ret >= 0 ? up : down;
+          var codeName = data.lastTradeCode === "780" ? "159780" : (data.lastTradeCode === "398" ? "601398" : "");
+          ltcEl.textContent = (data.lastTradeCode === "780" ? "\u6301\u6709780" : "\u6301\u6709398");
+          ltsEl.textContent = (ret >= 0 ? "\u76c8\u5229 " : "\u56de\u64a4 ") + "买入于 " + data.lastTradeEntryDate + " @ " + (data.lastTradeEntryPrice != null ? data.lastTradeEntryPrice.toFixed(4) : "-");
+          lteEl.textContent = codeName + " | 当前价 " + (data.lastTradeCode === "780" ? data.close780 : data.close398);
+        } else {
+          ltrEl.textContent = "\u7a7a\u4ed3";
+          ltrEl.style.color = "#8a7765";
+          ltcEl.textContent = "\u7a7a\u4ed3";
+          ltsEl.textContent = "\u5f53\u524d\u7a7a\u4ed3\uff0c\u65e0\u6301\u4ed3\u6536\u76ca";
+          lteEl.textContent = "\u2014";
+        }
+        // === 更新交易记录表(实时回测, 最后一笔净值随实时股价更新) ===
+        var tb2 = document.getElementById("trades-body");
+        if (data.trades && data.trades.length > 0) {
+          var shown = data.trades.slice(-30);   // 仅展示最近 30 笔
+          tb2.innerHTML = "";
+          shown.forEach(function(tt, idx) {
+            var parts = tt.action.split("\u2192");
+            var to = parts[1];
+            var isCash = to === "CASH";
+            var badgeClass = isCash ? "" : (to === "780" ? "green" : "orange");
+            var holdLabel = isCash ? "空仓" : to;
+            var color = isCash ? "#8a7765" : (to === "398" ? accent2 : accent);
+            var tr = document.createElement("tr");
+            // 最后一笔交易: 若当前持仓, 净值/累计收益率用实时股价重算
+            var isLast = idx === shown.length - 1;
+            var value = tt.value;
+            if (isLast && data.holding !== "CASH" && data.nav && data.nav.values && data.nav.values.length > 0) {
+              value = data.nav.values[data.nav.values.length - 1];
+            }
+            var cum = (value / 100000 - 1) * 100;
+            var actionLabel = tt.action;
+            if (actionLabel === "CASH\u2192780") actionLabel = "\u5efa\u4ed3780";
+            else if (actionLabel === "CASH\u2192398") actionLabel = "\u5efa\u4ed3398";
+            else actionLabel = actionLabel.replace("\u2192CASH", "\u2192\u6e05\u4ed3");
+            tr.innerHTML = '<td class="mono">' + (idx + 1) + '</td><td class="mono">' + tt.date + '</td><td><span style="color:' + color + ';font-weight:600;">' + actionLabel + '</span></td><td style="font-size:0.8rem;">' + (tt.reason || "") + '</td><td class="mono">' + (tt.comm != null ? tt.comm.toFixed(2) : "-") + '</td><td class="mono">' + value.toLocaleString() + '</td><td class="mono" style="color:' + (cum >= 0 ? up : down) + ';font-weight:600;">' + (cum >= 0 ? '+' : '') + cum.toFixed(2) + '%</td><td>' + (isCash ? '<span style="color:#8a7765;font-weight:600;font-size:0.75rem;">空仓</span>' : '<span class="badge ' + badgeClass + '">' + holdLabel + '</span>') + '</td>';
+            if (isLast) tr.style.background = "#fff5e8";
+            tb2.appendChild(tr);
+          });
+          var tnote2 = document.querySelector("#trades p");
+          if (tnote2) {
+            var cashCnt = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
+            tnote2.innerHTML = "2023-01-01 \u81f3\u4eca\u5171 " + data.backtest.tradeCount + " \u6b21\u64cd\u4f5c\uff08\u542b\u521d\u59cb\u5efa\u4ed3\u3001" + cashCnt + " \u6b21\u7a7a\u4ed3\u907f\u9669\uff09\uff0c\u603b\u4f63\u91d1 " + data.backtest.totalComm.toFixed(2) + " \u5143\uff0c\u51c0\u503c/\u7d2f\u8ba1\u76c8\u5229\u7387\u968f\u5b9e\u65f6\u884c\u60c5\u66f4\u65b0\u3002\u4e0b\u8868\u4e3a\u6700\u8fd1 " + shown.length + " \u7b14\u3002";
+          }
+        }
+        btn.textContent = "\u5df2\u66f4\u65b0 \u2713";
+        setTimeout(function() { btn.textContent = "\u66f4\u65b0\u6570\u636e"; }, 2000);
+      } else {
+        alert("\u66f4\u65b0\u5931\u8d25: " + data.error);
+        btn.textContent = "\u66f4\u65b0\u6570\u636e";
+      }
+    } catch (e) {
+      alert("\u66f4\u65b0\u5931\u8d25: " + e.message);
+      btn.textContent = "\u66f4\u65b0\u6570\u636e";
+    }
+    btn.disabled = false;
+  }
+  // 页面加载即自动拉取最新数据(含盘中实时)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateData);
+  } else {
+    updateData();
+  }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js')
+          .then(function(reg) { console.log('SW registered', reg.scope); })
+          .catch(function(err) { console.error('SW failed', err); });
+      });
+    }
+  </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v14';   // v14: 2026-11-14 隐藏 hybrid「止损档位扫描」面板（并跳过其 5 次重复回测），首屏更快
+const CACHE = 'laosan-d3-v15';   // v15: 2026-11-14 撤回 hybrid 的 398 趋势过滤（+157pct 系单次运气，2022 熊市 −10.5pct），主口径回到 +518%
 
 const SHELL = [
   './',
