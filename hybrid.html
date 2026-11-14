@@ -143,7 +143,7 @@
   </section>
 
   <section id="backtest" class="card">
-    <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金）</h2>
+    <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金，空仓计息 1.8%）</h2>
     <div class="grid g2">
       <div class="m">
         <div class="m-label">★混合策略 · 成本止损版（跌破成本 4% 止损 + 398 乖离&gt;4% 改空仓）</div>
@@ -216,7 +216,7 @@
     <div class="warn">历史表现不代表未来收益。−4% 是按<b>收盘价</b>回测的收益最优档，但<b>实盘按盘中价触发会比回测更疼</b>（盘中扫损后可能当天就反弹）；若担心噪音，可自行放宽到 −5% ~ −6%。回测未计滑点。本页不构成投资建议。</div>
   </section>
 
-  <div class="foot">数据源：腾讯财经前复权日线（东财备用，双源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍、空仓期无逆回购）。</div>
+  <div class="foot">数据源：腾讯财经前复权日线（东财备用，Worker 第三源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍）；<b>空仓期按国债逆回购 1.8% 年化逐日计息</b>。</div>
   </div>
 </div>
 
@@ -233,7 +233,7 @@ const WINDOW_START = "2023-01-01";
 const BULL_PCT = 0.95;
 // ★ 成本止损线：持有 159780 期间跌破买入价 STOP_PCT → 立即切 601398（工行），借负相关对冲
 //   修正口径实测（2023-01-03~2026-11-05，预热 2021-06）：无止损 +244.6% → 含止损 +332.5% → 含止损+乖离过滤 +355.5%
-//   截至 2026-11-13：无止损 +254.6% → 含止损 +345.0% → +乖离过滤 +368.7%
+//   截至 2026-11-13：无止损 +254.6% → 含止损 +345.0% → +乖离过滤 +368.7% → +空仓计息 +373.9%
 //   （旧口径 2022-07 预热给出的 +500.9% / +505.8% 已作废：预热不足导致 250日高与回撤失真）
 const STOP_PCT = 0.04;
 const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
@@ -243,6 +243,10 @@ const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
 //   规则：398 乖离 MA20 > BIAS_MAX → 止损后不切工行，直接空仓等信号。
 //   回测（2023-01-03~2026-11-05，预热 2021-06）：+332.5% → +355.5%，只拦 1 次；4% 与 5% 差 0.6pct（不敏感）。
 const BIAS_MAX = 0.04;
+// ★ 空仓期计息（2026-11-14 新增）：空仓不是白等，闲置资金做国债逆回购，按 1.8% 年化逐日计息。
+//   只对「整仓 CASH」状态计息（与 _opt_engine.py 的 cash_yield 同口径），换仓手续费仍照扣。
+//   实测（2023-01-03~2026-11-13）：+368.69% → +373.89%，只多 5.2pct —— 因为空仓天数本来就少。
+const CASH_YIELD = 0.018;
 
 async function fetchTx(code) {
   // 2026-11-14 修复：原 web.ifzq.gtimg.cn/appstock/app/fqkline 已被腾讯 WAF 拦（HTTP 501），
@@ -497,11 +501,12 @@ async function updateData() {
       return hold;
     }
 
-    function replay(useBull, stopPct) {
+    function replay(useBull, stopPct, cashYield) {
+      const cy = (cashYield === undefined || cashYield === null) ? CASH_YIELD : cashYield;
       let cash = 100000, shares = 0, hold = "CASH", ep780 = null;
       let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
       const navs = [], holds = [], trades = [];
-      let totalComm = 0, nStop = 0, nStopBlocked = 0;
+      let totalComm = 0, nStop = 0, nStopBlocked = 0, nCash = 0;
       for (let i = S; i < N; i++) {
         const s = sig(i);
         let t;
@@ -545,16 +550,19 @@ async function updateData() {
           ep780 = t === "780" ? c780[i] : null;
         }
         p = s;
+        // ★空仓期计息：整仓现金时按逆回购 1.8% 年化逐日滚动（年化 ÷ 252）
+        if (hold === "CASH" && cy > 0) { cash *= (1 + cy / 252); nCash++; }
         const val = cash + shares * (hold === "780" ? c780[i] : (hold === "398" ? c398[i] : 0));
         navs.push(val);
         holds.push(hold);
       }
-      return { navs, holds, trades, totalComm, nStop, nStopBlocked, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
+      return { navs, holds, trades, totalComm, nStop, nStopBlocked, nCash, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
     }
 
-    const hy = replay(true, STOP_PCT);   // 新版：牛市开关 + 止损 + 398 乖离过大改空仓
-    const hyOld = replay(true, 0);       // 原版：事件式出口（仅作对照曲线）
-    const d3 = replay(false, 0);         // D3 现状（对照）
+    const hy = replay(true, STOP_PCT, CASH_YIELD);      // 主口径：牛市开关 + 止损 + 乖离过滤 + 空仓计息
+    const hyNoInt = replay(true, STOP_PCT, 0);          // 对照：同上但不计息（用来看计息贡献几个点）
+    const hyOld = replay(true, 0, CASH_YIELD);          // 原版：事件式出口（仅作对照曲线）
+    const d3 = replay(false, 0, CASH_YIELD);            // D3 现状（对照）
 
     function calcMetrics(navs) {
       const T = navs.length;
@@ -587,6 +595,7 @@ async function updateData() {
 
     const winDates = dates.slice(S);
     const hyM = calcMetrics(hy.navs);
+    const hyNoIntM = calcMetrics(hyNoInt.navs);
     const hyOldM = calcMetrics(hyOld.navs);
     const d3M = calcMetrics(d3.navs);
     const hyY = yearly(winDates, hy.navs);
@@ -641,6 +650,7 @@ async function updateData() {
     document.getElementById("hyMdd").textContent = hyM.mdd.toFixed(1) + "%";
     document.getElementById("hySharpe").textContent = hyM.sharpe.toFixed(2);
     document.getElementById("hyExtra").innerHTML = hy.trades.length + " 笔交易 | 佣金 ¥" + Math.round(hy.totalComm) +
+      " ｜ 空仓 " + hy.nCash + " 天按逆回购 1.8% 计息，贡献 <b>+" + (hyM.total - hyNoIntM.total).toFixed(1) + "pct</b>（不计息 +" + hyNoIntM.total.toFixed(1) + "%）" +
       " ｜ 对照 · 原版（事件式出口）" + (hyOldM.total >= 0 ? "+" : "") + hyOldM.total.toFixed(1) + "%、回撤 " + hyOldM.mdd.toFixed(1) +
       "%，本次升级 <b>" + ((hyM.total - hyOldM.total) >= 0 ? "+" : "") + (hyM.total - hyOldM.total).toFixed(1) + "pct</b>";
 

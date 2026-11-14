@@ -451,6 +451,7 @@
           <li><strong>信号触发日次日：</strong>按收盘价信号操作，开盘或盘中执行买卖</li>
           <li><strong>切换操作：</strong>卖出当前持仓100%，买入目标ETF（按100股取整）</li>
           <li><strong>佣金：</strong>银河证券万1费率，最低5元/笔</li>
+          <li><strong>空仓期：</strong>闲置资金做国债逆回购，按 1.8% 年化逐日计息（2026-11-14 起计入回测）</li>
         </ul>
       </div>
     </section>
@@ -563,6 +564,8 @@
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 const DATA_BEG = "2021-06-01";   // RSI/MA全量预热起点(2021-06 起，250日高/回撤才够长；2022-07 预热不足会失真)
 const WINDOW_START = "2023-01-01";  // 策略状态机窗口起点(与回测一致)
+// 空仓期计息(2026-11-14 新增)：闲置资金做国债逆回购, 按 1.8% 年化逐日计息, 与 hybrid.html 同口径
+const CASH_YIELD = 0.018;
 
 async function fetchTx(code) {
   // 2026-11-14 修复：原 web.ifzq.gtimg.cn/appstock/app/fqkline 已被腾讯 WAF 拦（HTTP 501），
@@ -818,6 +821,7 @@ async function computeData(wantDebug) {
     // 净值曲线记录(窗口起点至最新, 供回测指标/图表实时更新)
     const navDates = [], navValues = [], navHoldings = [], navDD = [];
     let navPeak = 100000;
+    let cashDays = 0;
     for (let i = S; i < N; i++) {
       const s = sig(i);
       let h2 = h;
@@ -871,6 +875,8 @@ async function computeData(wantDebug) {
         h = h2;
       }
       p = s;
+      // 空仓期计息: 整仓现金时按逆回购 1.8% 年化逐日滚动(年化 ÷ 252)
+      if (h === "CASH" && CASH_YIELD > 0) { wallet.cash *= (1 + CASH_YIELD / 252); cashDays++; }
       // 记录每日净值曲线(实时回测)
       const curVal = wallet.cash + wallet.shares * (h === "780" ? c780[i] : (h === "398" ? c398[i] : 0));
       navDates.push(dates[i]);
@@ -1057,6 +1063,8 @@ async function computeData(wantDebug) {
         bhReturn: Math.round(bhReturn * 100) / 100,
         ddImprove: Math.round(ddImprove * 100) / 100,
         finalValue: finalValue,
+        cashDays: cashDays,
+        cashYield: CASH_YIELD,
       },
       monthlyReturns: monthlyReturns,
       yearlyReturns: yearlyReturns,
@@ -1122,7 +1130,7 @@ async function handleDiag() {
             btCards[3].querySelector(".m-sub").textContent = "收益/回撤";
             btCards[4].querySelector(".m-value").textContent = bt.tradeCount;
             var cashN = data.trades.filter(function(t){ return t.etf === "CASH"; }).length;
-            btCards[4].querySelector(".m-sub").textContent = "\u542b\u5efa\u4ed3+" + cashN + "\u6b21\u7a7a\u4ed3";
+            btCards[4].querySelector(".m-sub").textContent = "\u542b\u5efa\u4ed3+" + cashN + "\u6b21\u7a7a\u4ed3\uff08\u5171" + (bt.cashDays || 0) + "\u5929\u8ba1\u606f\uff09";
             btCards[5].querySelector(".m-value").textContent = bt.totalComm.toFixed(2);
             btCards[6].querySelector(".m-value").textContent = (bt.excessReturn >= 0 ? "+" : "") + bt.excessReturn.toFixed(2) + "%";
             btCards[6].querySelector(".m-sub").textContent = "vs买入持有780(" + (bt.bhReturn >= 0 ? "+" : "") + bt.bhReturn.toFixed(2) + "%)";

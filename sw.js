@@ -1,5 +1,5 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v9';   // v9: 2026-11-14 加第二源 Cloudflare Worker /proxy 反代 web.ifzq（浏览器直连被 IP 拦）
+const CACHE = 'laosan-d3-v10';   // v10: 2026-11-14 空仓期逆回购 1.8% 计息（hybrid +373.9% / index +209.4%），必须换壳否则老客户端仍读 v9 缓存页
 
 const SHELL = [
   './',
