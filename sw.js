@@ -1,5 +1,5 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v12';   // v12: 2026-11-14 卡玛比率改回标准定义（年化÷回撤），index/mobi/combo 三个页面读数变更，必须换壳
+const CACHE = 'laosan-d3-v13';   // v13: 2026-11-14 hybrid 新增 398 趋势过滤（跌破 MA50 达 2% 不承担防守位），+518.2% → +676.8%，必须换壳
 
 const SHELL = [
   './',

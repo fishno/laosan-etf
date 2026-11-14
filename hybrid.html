@@ -79,7 +79,7 @@
 <header>
   <div class="bar">
     <div class="logo">杨老三的混合策略 · 成本止损版</div>
-    <div class="tag">牛市开关 + 跌破成本 4% 止损 · 398 乖离&gt;4% 改空仓</div>
+    <div class="tag">牛市开关 + 跌破成本 4% 止损 · 398 乖离&gt;4% 改空仓 · 398 跌破 MA50 达 2% 不用它防守</div>
     <nav>
       <a href="#signal">信号</a>
       <a href="#discipline">纪律</a>
@@ -135,11 +135,12 @@
       <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
       <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就执行卖出，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的。但<b>卖出后买什么要单独看</b>（见下条）</div></div>
       <div class="disc-item"><span class="disc-n">3</span><div><b>止损后去哪：先量工行的位置，再决定切工行还是空仓</b> —— 打开工行日线看 <b>MA20</b>：现价<b>乖离 ≤ +4%</b> 切 601398；<b>乖离 &gt; +4%</b>（说明是避险资金把它顶上去的）<b>直接空仓</b>，不追。空仓/持工行期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
-      <div class="disc-item"><span class="disc-n">4</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
+      <div class="disc-item"><span class="disc-n">4</span><div><b>398 自己走坏就不用它防守</b> —— 601398 收盘价<b>跌破 MA50 达 2%</b>：买之前遇到就不切工行、直接空仓；<b>持有工行期间跌破也砍成空仓</b>。乖离过滤看"398 太贵"，这一条看"398 太弱"，问的是同一件事——这个防守位到底靠不靠得住</div></div>
+      <div class="disc-item"><span class="disc-n">5</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
       <div class="disc-item"><span class="disc-n">※</span><div><b>回撤口径</b> —— 全站"780 回撤"都是<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的绝对最高点。老口径会让读数随回测起点漂移 151 个百分点，且 2023 年以来八成交易日的读数都低于 −12%，风控等于长期"恒触发"</div></div>
-      <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.1%（2023-05-11→2023-10-26）都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
-      <div class="disc-item"><span class="disc-n">6</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
-      <div class="disc-item"><span class="disc-n">7</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
+      <div class="disc-item"><span class="disc-n">6</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.1%（2023-05-11→2023-10-26）都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
+      <div class="disc-item"><span class="disc-n">7</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
+      <div class="disc-item"><span class="disc-n">8</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
     </div>
   </section>
 
@@ -147,7 +148,7 @@
     <h2><span class="dot"></span>回测表现 · 实时持仓盈亏（2023-01-01 至今，万1佣金，10万本金，空仓计息 1.8%）</h2>
     <div class="grid g2">
       <div class="m">
-        <div class="m-label">★混合策略 · 成本止损版（跌破成本 4% 止损 + 398 乖离&gt;4% 改空仓）</div>
+        <div class="m-label">★混合策略 · 成本止损版（跌破成本 4% 止损 + 398 乖离&gt;4% 改空仓 + 398 跌破 MA50 达 2% 不防守）</div>
         <div class="grid g4" style="gap:8px">
           <div><div class="m-label">总收益</div><div class="m-value up" id="hyTotal">--</div></div>
           <div><div class="m-label">年化</div><div class="m-value" id="hyCagr">--</div></div>
@@ -217,7 +218,7 @@
     <div class="warn">历史表现不代表未来收益。−4% 是按<b>收盘价</b>回测的收益最优档，但<b>实盘按盘中价触发会比回测更疼</b>（盘中扫损后可能当天就反弹）；若担心噪音，可自行放宽到 −5% ~ −6%。回测未计滑点。本页不构成投资建议。</div>
   </section>
 
-  <div class="foot">数据源：腾讯财经前复权日线（东财备用，Worker 第三源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍）；<b>空仓期按国债逆回购 1.8% 年化逐日计息</b>。</div>
+  <div class="foot">数据源：腾讯财经前复权日线（东财备用、Worker 第三源，三源自动切换）；盘中实时价格增强；万1佣金、100股整数倍；<b>空仓期按国债逆回购 1.8% 年化逐日计息</b>；<b>398 跌破 MA50 达 2% 时不承担防守位</b>（与本页 D3 原版对照的差异即来自止损、乖离过滤、牛市开关、趋势过滤四条规则）。</div>
   </div>
 </div>
 
@@ -253,6 +254,15 @@ const BIAS_MAX = 0.04;
 //   只对「整仓 CASH」状态计息（与 _opt_engine.py 的 cash_yield 同口径），换仓手续费仍照扣。
 //   实测（2023-01-03~2026-11-13）：+368.69% → +373.89%，只多 5.2pct —— 因为空仓天数本来就少。
 const CASH_YIELD = 0.018;
+// ★ 398 趋势过滤（2026-11-14 新增）：601398 自身跌破 MA50 达 2% 时，不拿它当防守位，直接空仓等信号。
+//   立意：拿「780 的风险信号」去满仓一个自己也在走坏的标的，等于换了方向继续亏。
+//   与上一条 BIAS_MAX 是一对 —— 乖离过滤看「398 太贵」，趋势过滤看「398 太弱」，都在回答「这个防守位靠不靠得住」。
+//   ★ 必须带 2% 门槛：裸版只看「收盘 < MA50」会在 2023-07-03(−0.59%)、2026-07-07(−0.27%) 被贴线穿越打脸（2026 少赚 12.4pct）。
+//   实测（2023-01-03~2026-11-13，预热 2021-06，计息 1.8%）：+518.20% → +676.84%，回撤 −19.13% → −18.47%，卡玛 3.31 → 3.99。
+//   全部改善来自两次事件：2023-07-04（−2.04%，持有期跌破）与 2024-09-18/20（−5.01%/−5.20%，买入前拦截）。
+//   ⚠ 均线长度 31~68 结果完全相同（38 个值平台），69 以上一次不触发 → 50 落在平台正中，不是孤峰。
+const MA398_LEN = 50;
+const MA398_BUF = 0.02;
 
 async function fetchTx(code) {
   // 2026-11-14 修复：原 web.ifzq.gtimg.cn/appstock/app/fqkline 已被腾讯 WAF 拦（HTTP 501），
@@ -471,6 +481,11 @@ async function updateData() {
     const ma20 = calcMA(c780, 20);
     const ma60 = calcMA(c780, 60);
     const ma398_20 = calcMA(c398, 20);   // ★398 的 MA20 —— 止损换仓前的位置尺
+    const ma398_50 = calcMA(c398, MA398_LEN);  // ★398 的 MA50 —— 趋势过滤：自己也在跌就不当防守位
+    const ma398_bad = new Array(N).fill(false);
+    for (let i = 0; i < N; i++) {
+      if (ma398_50[i]) ma398_bad[i] = c398[i] < ma398_50[i] * (1 - MA398_BUF);
+    }
     const bias398 = new Array(N).fill(null);
     for (let i = 0; i < N; i++) if (ma398_20[i]) bias398[i] = c398[i] / ma398_20[i] - 1;
     const dd = calcDD(c780);
@@ -507,12 +522,13 @@ async function updateData() {
       return hold;
     }
 
-    function replay(useBull, stopPct, cashYield) {
+    function replay(useBull, stopPct, cashYield, useMA) {
+      if (useMA === undefined) useMA = true;
       const cy = (cashYield === undefined || cashYield === null) ? CASH_YIELD : cashYield;
       let cash = 100000, shares = 0, hold = "CASH", ep780 = null;
       let p = { sw: false, sc: false, bk: false, d398: false, aMA: false };
       const navs = [], holds = [], trades = [];
-      let totalComm = 0, nStop = 0, nStopBlocked = 0, nCash = 0;
+      let totalComm = 0, nStop = 0, nStopBlocked = 0, nCash = 0, nMA = 0;
       for (let i = S; i < N; i++) {
         const s = sig(i);
         let t;
@@ -527,6 +543,14 @@ async function updateData() {
           t = stopBlocked ? "CASH" : "398";
           nStop++;
           if (stopBlocked) nStopBlocked++;
+        }
+        // ★398 趋势过滤：398 自己跌破 MA50 达 2% → 不拿它防守，直接空仓等信号
+        //   不只在买入那天检查，持有期间跌破同样砍（2023-07-04 那次就是持有期跌破）
+        let maBlock = false;
+        if (useMA && t === "398" && ma398_bad[i]) {
+          t = "CASH";
+          nMA++;
+          maBlock = true;
         }
         if (t !== hold) {
           let comm = 0;
@@ -550,7 +574,8 @@ async function updateData() {
             ret: (valNow / 100000 - 1) * 100,
             price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i]),
             shares: shares,
-            stop: isStop, stopBlocked: stopBlocked, stopBias: stopBias, ep: ep780
+            stop: isStop, stopBlocked: stopBlocked, stopBias: stopBias, ep: ep780,
+            maBlocked: maBlock
           });
           hold = t;
           ep780 = t === "780" ? c780[i] : null;
@@ -562,13 +587,13 @@ async function updateData() {
         navs.push(val);
         holds.push(hold);
       }
-      return { navs, holds, trades, totalComm, nStop, nStopBlocked, nCash, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
+      return { navs, holds, trades, totalComm, nStop, nStopBlocked, nCash, nMA, lastCash: cash, lastShares: shares, lastHold: hold, ep780 };
     }
 
-    const hy = replay(true, STOP_PCT, CASH_YIELD);      // 主口径：牛市开关 + 止损 + 乖离过滤 + 空仓计息
-    const hyNoInt = replay(true, STOP_PCT, 0);          // 对照：同上但不计息（用来看计息贡献几个点）
-    const hyOld = replay(true, 0, CASH_YIELD);          // 原版：事件式出口（仅作对照曲线）
-    const d3 = replay(false, 0, CASH_YIELD);            // D3 现状（对照）
+    const hy = replay(true, STOP_PCT, CASH_YIELD, true);   // 主口径：牛市开关 + 止损 + 乖离过滤 + 398趋势过滤 + 空仓计息
+    const hyNoInt = replay(true, STOP_PCT, 0, true);       // 对照：同上但不计息（用来看计息贡献几个点）
+    const hyOld = replay(true, 0, CASH_YIELD, false);      // 原版：事件式出口（仅作对照曲线，不带398趋势过滤）
+    const d3 = replay(false, 0, CASH_YIELD, false);        // D3 现状（对照，不带398趋势过滤）
 
     function calcMetrics(navs) {
       const T = navs.length;
@@ -657,6 +682,7 @@ async function updateData() {
     document.getElementById("hySharpe").textContent = hyM.sharpe.toFixed(2);
     document.getElementById("hyExtra").innerHTML = hy.trades.length + " 笔交易 | 佣金 ¥" + Math.round(hy.totalComm) +
       " ｜ 空仓 " + hy.nCash + " 天按逆回购 1.8% 计息，贡献 <b>+" + (hyM.total - hyNoIntM.total).toFixed(1) + "pct</b>（不计息 +" + hyNoIntM.total.toFixed(1) + "%）" +
+      " ｜ 398 跌破 MA" + MA398_LEN + " 拦截 <b>" + hy.nMA + " 次</b>" +
       " ｜ 对照 · 原版（事件式出口）" + (hyOldM.total >= 0 ? "+" : "") + hyOldM.total.toFixed(1) + "%、回撤 " + hyOldM.mdd.toFixed(1) +
       "%，本次升级 <b>" + ((hyM.total - hyOldM.total) >= 0 ? "+" : "") + (hyM.total - hyOldM.total).toFixed(1) + "pct</b>";
 
@@ -899,6 +925,7 @@ async function updateData() {
       const bTxt = (t.stopBias === null || t.stopBias === undefined) ? "" : (t.stopBias >= 0 ? "+" : "") + (t.stopBias * 100).toFixed(1) + "%";
       if (t.stop && t.stopBlocked) return "★成本止损 → <b>改空仓</b>（398 乖离 " + bTxt + " &gt; +" + Math.round(BIAS_MAX * 100) + "%，不追高）";
       if (t.stop) return "★成本止损 跌破买入价 −" + Math.round(STOP_PCT * 100) + "% → 切工行防守（398 乖离 " + bTxt + "）";
+      if (t.maBlocked) return "★398 跌破 MA" + MA398_LEN + " 达 " + Math.round(MA398_BUF * 100) + "% → <b>不用它防守</b>，改空仓等信号";
       if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
       if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
       if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
