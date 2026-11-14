@@ -1068,7 +1068,7 @@ async function updateData() {
       const barC = isRsi ? "#38bdf8" : (v > th ? "#ff9800" : "#38bdf8");
       document.getElementById("rsi" + code).innerHTML =
         '<div class="rsi-box"><div class="label">' + cfg.indLabel + '</div>' +
-        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v)) + '</div></div>' +
+        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v * 100)) + '</div></div>' +
         '<div class="rsi-box"><div class="label">' + cfg.thLabel + '</div>' +
         '<div class="value" style="color:#4caf50">' + cfg.thText + '</div></div>';
 
@@ -1079,7 +1079,7 @@ async function updateData() {
           ' <strong style="color:' + barC + '">' + v.toFixed(2) + '</strong> / 阈值 <strong>' + th + '</strong></span>' +
           '<span style="color:#666">' + (hit ? "已跌破阈值，触发抄底" : "高于阈值，继续等待") + '</span>'
         : '<span class="arrow">' + (hit ? "⚠️" : "✅") + '</span><span>' + cfg.indLabel +
-          ' <strong style="color:' + barC + '">' + fmtPct(v) + '</strong> / 阈值 <strong>+' + (th * 100) + '%</strong></span>' +
+          ' <strong style="color:' + barC + '">' + fmtPct(v * 100) + '</strong> / 阈值 <strong>+' + (th * 100) + '%</strong></span>' +
           '<span style="color:#666">' + (hit ? "高于阈值，止损后不切工行" : "低于阈值，可正常换仓") + '</span>';
 
       document.getElementById("diffB" + code).innerHTML = cfg.second(N - 1);
@@ -1105,7 +1105,7 @@ async function updateData() {
         bd.textContent = "持仓中 · " + (k === "780" ? "主仓" : "避险仓") + " " + fmtPct((px / open.px - 1) * 100);
       } else {
         bd.className = "signal-badge " + (hit ? "orange" : "gray");
-        bd.textContent = "空仓等待 · " + cfg.indLabel + "=" + (isRsi ? v.toFixed(1) : fmtPct(v));
+        bd.textContent = "空仓等待 · " + cfg.indLabel + "=" + (isRsi ? v.toFixed(1) : fmtPct(v * 100));
       }
 
       // ---- 价格迷你图（近120日）----
