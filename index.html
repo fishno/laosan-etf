@@ -99,6 +99,62 @@
   details[open] summary{margin-bottom:10px}
   .load{text-align:center;padding:60px;color:var(--muted)}
   @media(max-width:640px){.chart{height:300px}table{font-size:12px}}
+
+    /* === 个股面板（对齐参照站卡片结构） === */
+    .etf-card{padding:0 !important;overflow:hidden}
+    .card-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;
+      border-bottom:1px solid var(--rule);gap:12px;flex-wrap:wrap}
+    .card-header .etf-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .card-header .etf-code{font-size:18px;font-weight:700;color:#fff}
+    .card-header .etf-name{font-size:14px;color:var(--muted)}
+    .card-header .params{background:var(--rule);padding:4px 10px;border-radius:8px;font-size:12px;color:var(--accent)}
+    .signal-badge{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
+    .signal-badge.red{background:rgba(255,82,82,.15);color:#ff5252;border:1px solid rgba(255,82,82,.3)}
+    .signal-badge.green{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+    .signal-badge.gray{background:rgba(128,128,128,.15);color:#8a90a2;border:1px solid rgba(128,128,128,.3)}
+    .signal-badge.orange{background:rgba(255,152,0,.15);color:#ff9800;border:1px solid rgba(255,152,0,.3)}
+    .card-body{padding:16px 20px}
+    .price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .price-row .price{font-size:26px;font-weight:700;color:#fff}
+    .price-change{font-size:16px;font-weight:600}
+    .price-change.up{color:#ff5252}
+    .price-change.down{color:#4caf50}
+    .price-meta{font-size:12px;color:#666;margin-left:auto}
+    .rsi-row{display:flex;gap:12px;margin-bottom:16px}
+    .rsi-box{flex:1;background:var(--inner);border-radius:10px;padding:12px;text-align:center}
+    .rsi-box .label{font-size:11px;color:var(--muted)}
+    .rsi-box .value{font-size:22px;font-weight:700;margin-top:4px}
+    .rsi-box .bar{height:4px;border-radius:2px;margin-top:6px;background:#333;overflow:hidden}
+    .rsi-box .bar-fill{height:100%;border-radius:2px}
+    .rsi-diff{display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:8px;gap:6px;flex-wrap:wrap}
+    .rsi-diff .arrow{font-size:16px}
+    .position-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;
+      justify-content:space-between;align-items:center;gap:12px}
+    .position-box.holding{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2)}
+    .position-box.cash{background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.2)}
+    .position-box .pos-label{font-size:13px;color:var(--muted)}
+    .position-box .pos-status{font-size:16px;font-weight:700}
+    .position-box.holding .pos-status{color:#ff5252}
+    .position-box.cash .pos-status{color:#4caf50}
+    .position-box .pnl{font-size:18px;font-weight:700;white-space:nowrap}
+    .position-box .pnl.profit{color:#ff5252}
+    .position-box .pnl.loss{color:#4caf50}
+    .mini-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:12px;height:135px}
+    .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:16px;height:110px}
+    .trade-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .trade-stats .stat-item{background:var(--inner);border-radius:8px;padding:10px 12px;
+      flex:1;text-align:center;min-width:88px}
+    .trade-stats .stat-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+    .trade-stats .stat-value{font-size:16px;font-weight:700;color:#fff}
+    .signal-list{font-size:12px}
+    .signal-list .title{color:var(--muted);margin-bottom:8px;font-size:13px}
+    .signal-list th{text-align:left;color:#666;font-weight:400;padding:4px 8px;border-bottom:1px solid var(--rule)}
+    .signal-list td{padding:6px 8px;border-bottom:1px solid #1e212c;text-align:left}
+    .signal-list .buy{color:#ff5252}
+    .signal-list .sell{color:#4caf50}
+    .signal-list .profit{color:#ff5252;font-weight:600}
+    .signal-list .loss{color:#4caf50;font-weight:600}
+    @media(max-width:640px){.rsi-row{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -108,13 +164,10 @@
     <div class="tag">牛市开关 + 跌破成本 4% 止损 · 398 乖离&gt;4% 改空仓</div>
     <nav>
       <a href="#signal">信号</a>
-      <a href="#discipline">纪律</a>
       <a href="#backtest">回测</a>
       <a href="#monthly">月度</a>
       <a href="#yearly">年度战绩</a>
       <a href="#nav">净值</a>
-      <a href="#stopscan">止损扫描</a>
-      <a href="#regime">信号可视化</a>
       <a href="#trades">交易记录</a>
     </nav>
     <button class="refresh" onclick="location.reload()">更新数据</button>
@@ -155,17 +208,50 @@
     <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
   </section>
 
-  <section id="discipline" class="card">
-    <h2><span class="dot"></span>操作纪律卡（机械执行，按规则来）</h2>
-    <div class="disc-list">
-      <div class="disc-item"><span class="disc-n">1</span><div><b>每个交易日 14:50 前看信号</b> —— 留足 10 分钟挂单，参与 14:57-15:00 收盘集合竞价（此后不能撤单）；信号卡在 14:50 后才触发就放弃，次日开盘再说</div></div>
-      <div class="disc-item"><span class="disc-n">2</span><div><b>★ 止损是硬约束</b> —— 持有 159780 期间，现价跌破买入价 <b>4%</b> 就执行卖出，<b>不找理由、不等反弹、不"再看一天"</b>。这是全部规则里唯一一条不许人为放宽的。但<b>卖出后买什么要单独看</b>（见下条）</div></div>
-      <div class="disc-item"><span class="disc-n">3</span><div><b>止损后去哪：先量工行的位置，再决定切工行还是空仓</b> —— 打开工行日线看 <b>MA20</b>：现价<b>乖离 ≤ +4%</b> 切 601398；<b>乖离 &gt; +4%</b>（说明是避险资金把它顶上去的）<b>直接空仓</b>，不追。空仓/持工行期间离场按原规则（398 五日跌&gt;2% 或 780 回撤&gt;12% 双跌 → 空仓）。<b>回补 780 只看「★780 回补监控」格子</b>：信号没到不猜底、不抢反弹</div></div>
-      <div class="disc-item"><span class="disc-n">4</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
-      <div class="disc-item"><span class="disc-n">※</span><div><b>回撤口径</b> —— 全站"780 回撤"都是<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的绝对最高点。老口径会让读数随回测起点漂移 151 个百分点，且 2023 年以来八成交易日的读数都低于 −12%，风控等于长期"恒触发"</div></div>
-      <div class="disc-item"><span class="disc-n">5</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −19.1%（2023-05-11→2023-10-26）都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
-      <div class="disc-item"><span class="disc-n">6</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
-      <div class="disc-item"><span class="disc-n">7</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
+  
+
+
+  <section class="card etf-card" id="card159780">
+    <div class="card-header">
+      <div class="etf-info"><span class="etf-code">159780</span><span class="etf-name">科创创业50ETF</span><span class="params">D3 主仓 · RSI6&lt;25 抄底</span></div>
+      <span class="signal-badge gray" id="badge159780">--</span>
+    </div>
+    <div class="card-body">
+      <div class="price-row">
+        <span class="price" id="p159780">--</span>
+        <span class="price-change" id="chg159780">--</span>
+        <span class="price-meta" id="meta159780">--</span>
+      </div>
+      <div class="rsi-row" id="rsi159780"></div>
+      <div class="rsi-diff" id="diff159780"></div>
+      <div class="rsi-diff" id="diffB159780" style="margin-top:4px"></div>
+      <div class="position-box cash" id="pos159780"></div>
+      <div class="mini-chart" id="chart159780"></div>
+      <div class="ind-chart" id="ind159780"></div>
+      <div class="trade-stats" id="stats159780"></div>
+      <div class="signal-list"><div class="title">近期信号</div><div style="overflow-x:auto"><table id="sig159780"></table></div></div>
+    </div>
+  </section>
+
+  <section class="card etf-card" id="card601398">
+    <div class="card-header">
+      <div class="etf-info"><span class="etf-code">601398</span><span class="etf-name">工商银行</span><span class="params">D3 避险 · 5日跌&gt;2% 离场 / 乖离&gt;4% 拦截</span></div>
+      <span class="signal-badge gray" id="badge601398">--</span>
+    </div>
+    <div class="card-body">
+      <div class="price-row">
+        <span class="price" id="p601398">--</span>
+        <span class="price-change" id="chg601398">--</span>
+        <span class="price-meta" id="meta601398">--</span>
+      </div>
+      <div class="rsi-row" id="rsi601398"></div>
+      <div class="rsi-diff" id="diff601398"></div>
+      <div class="rsi-diff" id="diffB601398" style="margin-top:4px"></div>
+      <div class="position-box cash" id="pos601398"></div>
+      <div class="mini-chart" id="chart601398"></div>
+      <div class="ind-chart" id="ind601398"></div>
+      <div class="trade-stats" id="stats601398"></div>
+      <div class="signal-list"><div class="title">近期信号</div><div style="overflow-x:auto"><table id="sig601398"></table></div></div>
     </div>
   </section>
 
@@ -211,37 +297,16 @@
     <div id="navChart" class="chart"></div>
   </section>
 
-  <section id="stopscan" class="card">
-    <h2><span class="dot"></span>止损档位扫描（同一策略，只改止损线）</h2>
-    <div style="overflow-x:auto"><table id="stopTable"></table></div>
-    <p class="foot" id="stopNote"></p>
-  </section>
+  
 
-  <section id="regime" class="card">
-    <h2><span class="dot"></span>信号可视化：价格 + 250日高点 + 牛市开关</h2>
-    <div id="regimeChart" class="chart"></div>
-    <p class="foot" id="regimeStat"></p>
-  </section>
+  
 
   <section id="trades" class="card">
     <h2><span class="dot"></span>交易记录（点击展开全部）</h2>
     <div id="tradeWrap"></div>
   </section>
 
-  <section class="card">
-    <h2><span class="dot"></span>策略说明与本次升级</h2>
-    <div class="rule-box"><b>为什么改：</b>2026-09-28 那笔抄底（买入 @0.994）后 159780 一路阴跌，浮亏一度 −13.98%（10-16 收 0.855）。复盘发现根因是<b>防守出口写成了"事件触发式"</b>——它要求"今天成立且昨天不成立"，而 9-28 当天条件已长期为真，此后<b>永不触发</b>，等于没有出口。同时 601398 工行同期 <b>+2.42%</b>，防守腿在涨却空着。</div>
-    <ul>
-      <li><b>原规则（已被替换）</b>：780 回撤&gt;10% 且 398五日涨&gt;0 → 切398；回撤&gt;12% 且 398五日≤0 → 空仓。问题在于判据是"距一年高点回撤"，而双创回撤 10% 后反弹是常态 → 震荡市反复被赶出（2023、2024 各伤约 16pct）。</li>
-      <li><b>★成本止损规则（2026-10 部署）</b>：<b>持有 159780 期间，价格跌破买入价 4% → 卖出 159780</b>；牛市开关与其余 D3 逻辑不变。判据从"距一年高点回撤多少"换成"这笔亏没亏"。</li>
-      <li><b>为什么默认切工行而不是空仓</b>：159780 与 601398 日收益负相关很强（近 3 个月 −0.60，2026 年以来 −0.54），止损后切工行＝用负相关资产对冲，长期看比空仓更赚。<b>但前提是工行本身没被追高</b>——见下条补丁。</li>
-      <li><b>★2026-11-06 补丁 · 换仓前先量位置（本页已生效）</b>：原规则只管"780 亏了 4% 就卖"，没管<b>卖完买什么价位的工行</b>。2026-10-29 就是反面案例：780 触发止损，同日 601398 创<b>历史新高</b>、乖离 MA20 <b>+5.3%</b>，满仓切进去，5 天后工行跌到 8.350，这笔亏 <b>−4.9%</b>。本质是<b>用 A 标的的风险信号，在最贵的位置满仓买 B</b>。新规则：<b>398 乖离 MA20 &gt; 4% → 止损后不换仓、直接空仓</b>，等信号再进。同口径回测（2023-01-03 ~ 2026-11-05，预热 2021-06）：<b>+332.5% → +355.5%（+23.0pct）</b>，回撤从 −27.98% 微降到 −27.88%；阈值 4% 与 5% 基本一致（+355.5% vs +354.9%）。<span class="down">注意：全窗口只拦下 1 次，这 23pct 主要来自 2026-10-29 这一笔，样本撑不住"铁律"两个字——加它是因为修补了一个真实逻辑漏洞，不是因为它被历史反复验证过。</span></li>
-      <li><b>低频动作</b>：3.8 年里 −4% 止损只触发 <b>3 次</b>（−8% 仅 1 次）——平时不交保费，出事才赔付。</li>
-      <li><b>稳健性</b>：样本外（IS 2023-24 / OOS 2025-26）参数秩相关 <b>+0.973</b>，起点漂移 <b>6/6 全跑赢</b>原版；剔除 2026-10 这段单边下跌，仍比原版高约 18pct。</li>
-      <li><b>回撤：止损把最深回撤从 −28.3% 压到 −19.2%</b>（最深的坑在 2023-05-11→2023-10-26 那段）。注意止损不创造收益，它避免的是"单边下跌里死扛"；收益端的贡献主要来自避开 2026-10 这类急跌。</li>
-    </ul>
-    <div class="warn">历史表现不代表未来收益。−4% 是按<b>收盘价</b>回测的收益最优档，但<b>实盘按盘中价触发会比回测更疼</b>（盘中扫损后可能当天就反弹）；若担心噪音，可自行放宽到 −5% ~ −6%。回测未计滑点。本页不构成投资建议。</div>
-  </section>
+  
 
   <div class="foot">数据源：腾讯财经前复权日线（东财备用，Worker 第三源自动切换）；盘中实时价格增强；与 index.html 同口径（万1佣金、100股整数倍）；<b>空仓期按国债逆回购 1.8% 年化逐日计息</b>。</div>
   </div>
@@ -268,7 +333,6 @@ const BULL_PCT = 0.95;
 //   截至 2026-11-13（旧累计回撤口径，仅供追溯）：无止损 +254.6% → 含止损 +345.0% → +乖离过滤 +368.7% → +空仓计息 +373.9%
 //   （旧口径 2022-07 预热给出的 +500.9% / +505.8% 已作废：预热不足导致 250日高与回撤失真）
 const STOP_PCT = 0.04;
-const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
 // ★ 止损切工行前的「位置检查」（2026-11-06 新增）
 //   止损信号来自 780 的风险，买入动作落在 398 身上 —— 若 398 当天已远离 MA20（刚创新高、被避险资金顶上去），
 //   就是拿 A 的风险信号在最贵的位置满仓买 B。实测 2026-10-29：398 创历史新高、乖离 +5.3%，5 天后 -4.9%。
@@ -376,7 +440,12 @@ async function fetchRealtime(code) {
     const m = text.match(/v_\w+="([^"]*)"/);
     if (!m) throw new Error("无行情数据");
     const f = m[1].split("~");
-    if (parseFloat(f[3]) > 0) return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+    const _p = parseFloat(f[3]);
+    if (_p > 0) return {
+      price: _p, volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时",
+      prevClose: parseFloat(f[4]) || null, chg: parseFloat(f[32]),
+      high: parseFloat(f[33]), low: parseFloat(f[34])
+    };
     throw new Error("现价为0");
   } catch (e) { errors.push("实时: " + e.message); }
   throw new Error("实时行情失败 [" + errors.join(" | ") + "]");
@@ -874,9 +943,15 @@ async function updateData() {
       return o;
     }
     function dchart(id) {
-      const c = echarts.init(document.getElementById(id));
-      const so = c.setOption.bind(c);
-      c.setOption = (o, ...rest) => so(darkOpt(o), ...rest);
+      const el = document.getElementById(id);
+      if (!el) return null;
+      let c = echarts.getInstanceByDom(el);
+      if (!c) c = echarts.init(el);
+      if (!c.__dk) {
+        const so = c.setOption.bind(c);
+        c.setOption = (o, ...rest) => so(darkOpt(o), ...rest);
+        c.__dk = 1;
+      }
       return c;
     }
 
@@ -910,35 +985,7 @@ async function updateData() {
       "% | 最好月份 " + bestM.month + " (" + (bestM.ret >= 0 ? "+" : "") + bestM.ret.toFixed(1) + "%) | 最差月份 " + worstM.month +
       " (" + (worstM.ret >= 0 ? "+" : "") + worstM.ret.toFixed(1) + "%)";
 
-    // ---- 信号可视化 ----
-    const sigArr = [];
-    for (let i = S; i < N; i++) sigArr.push(bull[i] ? 1 : 0);
-    const p780 = c780.slice(S);
-    const p250 = rh250.slice(S);
-    const p60 = ma60.slice(S);
-    dchart("regimeChart").setOption({
-      tooltip: { trigger: "axis" },
-      legend: { top: 0, data: ["159780 收盘", "250日高点", "MA60", "牛市开关(满仓780)"] },
-      grid: [{ left: 60, right: 20, top: 40, height: "50%" }, { left: 60, right: 20, top: "76%", height: "14%" }],
-      xAxis: [
-        { type: "category", data: winDates, gridIndex: 0, axisLabel: { show: false } },
-        { type: "category", data: winDates, gridIndex: 1, axisLabel: { fontSize: 10, interval: xInt, formatter: v => v.slice(2, 7) } }
-      ],
-      yAxis: [
-        { type: "value", gridIndex: 0, scale: true },
-        { type: "value", gridIndex: 1, min: 0, max: 1, interval: 1 }
-      ],
-      series: [
-        { name: "159780 收盘", type: "line", showSymbol: false, lineStyle: { width: 1.4, color: "#667eea" }, itemStyle: { color: "#667eea" }, data: p780 },
-        { name: "250日高点", type: "line", showSymbol: false, lineStyle: { type: "dashed", color: "#7c8398" }, itemStyle: { color: "#7c8398" }, data: p250 },
-        { name: "MA60", type: "line", showSymbol: false, lineStyle: { width: 1, color: "#38bdf8" }, itemStyle: { color: "#38bdf8" }, data: p60 },
-        { name: "牛市开关(满仓780)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, step: "end", lineStyle: { width: 0 }, itemStyle: { color: "#ff5252" }, areaStyle: { color: "rgba(255,82,82,0.30)" }, data: sigArr }
-      ]
-    });
-    const on25 = sigArr.reduce((c, v, i) => c + (winDates[i].slice(0, 4) === "2025" && v === 1 ? 1 : 0), 0);
-    const tot25 = sigArr.reduce((c, v, i) => c + (winDates[i].slice(0, 4) === "2025" ? 1 : 0), 0);
-    const first25 = winDates.find((d, i) => d.slice(0, 4) === "2025" && sigArr[i] === 1);
-    document.getElementById("regimeStat").textContent = "2025 年牛市开关覆盖 " + on25 + "/" + tot25 + " 个交易日（" + (100 * on25 / Math.max(tot25, 1)).toFixed(0) + "%），首次触发 " + (first25 || "-") + "；2023/2026 未触发时段与纯 D3 收益一致。";
+
 
     // ---- 交易记录 (全部, 可折叠) ----
     const allTrades = hy.trades.slice().reverse();
@@ -980,42 +1027,197 @@ async function updateData() {
       "<details><summary>全部 " + hy.trades.length + " 笔已成交记录 + 1 行当前持仓（实时，点击展开）</summary>" +
       "<div style='overflow-x:auto'><table>" + th + "</table></div></details>";
 
-    // ---- ★止损档位扫描（同一策略，只改止损线；复用同一回测引擎）----
-    function segTot(navs, dts, lo) {
-      let fi = -1, li = -1;
-      for (let i = 0; i < dts.length; i++) { if (dts[i] >= lo) { if (fi < 0) fi = i; li = i; } }
-      if (fi < 0) return null;
-      const base = fi > 0 ? navs[fi - 1] : navs[fi];
-      return (navs[li] / base - 1) * 100;
+    // ============================================================
+    // ★个股面板：159780 / 601398
+    // ============================================================
+    function fmtPct(v, d) { return (v >= 0 ? "+" : "") + v.toFixed(d === undefined ? 2 : d) + "%"; }
+    function fmtVol(v) {
+      if (!v) return "-";
+      return v >= 1e4 ? (v / 1e4).toFixed(0) + "万手" : v.toFixed(0) + "手";
     }
-    const sgn = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-    let sHtml = "<tr><th>止损线</th><th>全窗口</th><th>年化</th><th>最大回撤</th><th>卡玛</th><th>近一年</th><th>本月</th><th>交易</th><th>止损触发</th><th>其中改空仓</th></tr>";
-    for (const pct of STOP_SCAN) {
-      const cur = Math.abs(pct - STOP_PCT) < 1e-9;
-      const r = cur ? hy : replay(true, pct);
-      const m = calcMetrics(r.navs);
-      const y1 = segTot(r.navs, winDates, "2025-10-16");
-      const mo = segTot(r.navs, winDates, "2026-10-01");
-      const nStop = r.trades.filter(t => t.stop).length;
-      const calmar = m.mdd < 0 ? m.cagr / Math.abs(m.mdd) : 0;
-      sHtml += "<tr" + (cur ? " style='background:var(--accent-light);font-weight:600'" : "") + ">" +
-        "<td>−" + Math.round(pct * 100) + "%" + (cur ? " ★本次部署" : "") + "</td>" +
-        "<td class='" + (m.total >= 0 ? "up" : "down") + "'>" + sgn(m.total) + "</td>" +
-        "<td>" + sgn(m.cagr) + "</td>" +
-        "<td class='down'>" + m.mdd.toFixed(1) + "%</td>" +
-        "<td>" + calmar.toFixed(2) + "</td>" +
-        "<td>" + (y1 === null ? "-" : sgn(y1)) + "</td>" +
-        "<td>" + (mo === null ? "-" : sgn(mo)) + "</td>" +
-        "<td>" + r.trades.length + "</td>" +
-        "<td>" + nStop + " 次</td>" +
-        "<td>" + r.nStopBlocked + " 次</td></tr>";
+    // 把整仓交易流水拆成单只标的的买卖事件
+    // 注意：hy.trades[].price 记的是「买入标的目标」的价格（换仓时是后者），
+    //      卖出 780 时它存的是 398 的价 —— 必须按日期回查该标的自己的收盘价。
+    const DATE_IDX = new Map(dates.map((d, i) => [d, i]));
+    function stockEvents(key, closes) {
+      const evs = []; let entry = null;
+      for (const t of hy.trades) {
+        const i = DATE_IDX.get(t.date);
+        const pxAt = (i === undefined) ? null : closes[i];
+        if (t.from === key) {
+          evs.push({ d: t.date, side: "sell", px: pxAt, stop: !!t.stop,
+                     ret: (entry && pxAt) ? (pxAt / entry.px - 1) * 100 : null });
+          entry = null;
+        }
+        if (t.to === key) {
+          evs.push({ d: t.date, side: "buy", px: pxAt, ret: null, stop: false });
+          entry = { px: pxAt, d: t.date };
+        }
+      }
+      return { evs, open: entry };
     }
-    document.getElementById("stopTable").innerHTML = sHtml;
-    document.getElementById("stopNote").innerHTML =
-      "表内所有档位都已含 <b>398 乖离 +" + Math.round(BIAS_MAX * 100) + "% 改空仓</b> 这条位置过滤（同一策略，只改止损线）。" +
-      "止损线越紧、收益越高（单调），但实盘按盘中价触发会比收盘价回测更疼 —— −4% 是收益最优档，" +
-      "若担心盘中噪音被扫损，可放宽到 <b>−5% ~ −6%</b>，代价是让出部分全窗口收益。" +
-      "卡玛 = 年化 ÷ |最大回撤|；「近一年」自 2025-10-16 起；「止损触发」为全窗口累计触发笔数，「其中改空仓」为因 398 乖离过大而未换仓的次数。";
+    function renderStock(cfg) {
+      const k = cfg.key, code = cfg.code;
+      const closes = k === "780" ? c780 : c398;
+      const rtRow = k === "780" ? rt780 : rt398;
+      const lastClose = closes[N - 1];
+      const px = (rtRow && rtRow.price) ? rtRow.price : lastClose;
+      const chg = (rtRow && isFinite(rtRow.chg)) ? rtRow.chg
+                : (rtRow && rtRow.prevClose ? (px / rtRow.prevClose - 1) * 100 : (px / closes[N - 2] - 1) * 100);
+
+      document.getElementById("p" + code).textContent = px.toFixed(3);
+      const ce = document.getElementById("chg" + code);
+      ce.textContent = fmtPct(chg);
+      ce.className = "price-change " + (chg >= 0 ? "up" : "down");
+      document.getElementById("meta" + code).textContent = (rtRow && rtRow.high > 0)
+        ? "高 " + rtRow.high.toFixed(3) + " · 低 " + rtRow.low.toFixed(3) + " · 量 " + fmtVol(rtRow.volume)
+        : "高/低/量需实时行情，暂按收盘价展示";
+
+      const { evs, open } = stockEvents(k, closes);
+
+      // ---- 指标盒 ----
+      const s = cfg.series, v = s[N - 1], th = cfg.threshold, isRsi = cfg.kind === "rsi";
+      const barW = isRsi ? Math.max(0, Math.min(100, v))
+        : Math.max(0, Math.min(100, Math.abs(v) / (th * 2) * 100));
+      const barC = isRsi ? "#38bdf8" : (v > th ? "#ff9800" : "#38bdf8");
+      document.getElementById("rsi" + code).innerHTML =
+        '<div class="rsi-box"><div class="label">' + cfg.indLabel + '</div>' +
+        '<div class="value" style="color:' + barC + '">' + (isRsi ? v.toFixed(2) : fmtPct(v)) + '</div>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + barW + '%;background:' + barC + '"></div></div></div>' +
+        '<div class="rsi-box"><div class="label">' + cfg.thLabel + '</div>' +
+        '<div class="value" style="color:#4caf50">' + cfg.thText + '</div>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + (isRsi ? th : 50) + '%;background:#4caf50"></div></div></div>';
+
+      // ---- 指标说明两行 ----
+      const hit = isRsi ? (v < th) : (v > th);
+      document.getElementById("diff" + code).innerHTML = isRsi
+        ? '<span class="arrow">' + (hit ? "✅" : "⏸️") + '</span><span>' + cfg.indLabel +
+          ' <strong style="color:' + barC + '">' + v.toFixed(2) + '</strong> / 阈值 <strong>' + th + '</strong></span>' +
+          '<span style="color:#666">' + (hit ? "已跌破阈值，触发抄底" : "高于阈值，继续等待") + '</span>'
+        : '<span class="arrow">' + (hit ? "⚠️" : "✅") + '</span><span>' + cfg.indLabel +
+          ' <strong style="color:' + barC + '">' + fmtPct(v) + '</strong> / 阈值 <strong>+' + (th * 100) + '%</strong></span>' +
+          '<span style="color:#666">' + (hit ? "高于阈值，止损后不切工行" : "低于阈值，可正常换仓") + '</span>';
+
+      document.getElementById("diffB" + code).innerHTML = cfg.second(N - 1);
+
+      // ---- 持仓盒 ----
+      const pb = document.getElementById("pos" + code);
+      if (hy.lastHold === k && open) {
+        const cur = (px / open.px - 1) * 100;
+        const days = Math.round((new Date(dates[N - 1]) - new Date(open.d)) / 86400000);
+        pb.className = "position-box holding";
+        pb.innerHTML = '<div><div class="pos-label">持仓中 · ' + open.d + ' 买入 @ ' + open.px.toFixed(3) + '</div>' +
+          '<div class="pos-status">持有 ' + days + ' 天</div></div>' +
+          '<div class="pnl ' + (cur >= 0 ? "profit" : "loss") + '">' + fmtPct(cur) + '</div>';
+      } else {
+        pb.className = "position-box cash";
+        pb.innerHTML = '<div class="pos-label">当前空仓</div><div class="pos-status">等待信号</div>';
+      }
+
+      // ---- 徽章 ----
+      const bd = document.getElementById("badge" + code);
+      if (hy.lastHold === k && open) {
+        bd.className = "signal-badge red";
+        bd.textContent = "持仓中 · " + (k === "780" ? "主仓" : "避险仓") + " " + fmtPct((px / open.px - 1) * 100);
+      } else {
+        bd.className = "signal-badge " + (hit ? "orange" : "gray");
+        bd.textContent = "空仓等待 · " + cfg.indLabel + "=" + (isRsi ? v.toFixed(1) : fmtPct(v));
+      }
+
+      // ---- 近一年统计 ----
+      const cut365 = new Date(dates[N - 1]);
+      cut365.setDate(cut365.getDate() - 365);
+      const lo = cut365.toISOString().slice(0, 10);
+      const closed = evs.filter(e => e.side === "sell" && e.ret !== null && e.d >= lo);
+      let comp = 1;
+      closed.forEach(e => comp *= (1 + e.ret / 100));
+      if (hy.lastHold === k && open) comp *= (px / open.px);
+      comp = (comp - 1) * 100;
+      const wins = closed.filter(e => e.ret > 0).length;
+      const avg = closed.length ? closed.reduce((a, e) => a + e.ret, 0) / closed.length : 0;
+      const wr = closed.length ? wins / closed.length * 100 : 0;
+      document.getElementById("stats" + code).innerHTML =
+        '<div class="stat-item"><span class="stat-label">一年复合收益</span><span class="stat-value" style="color:' +
+          (comp >= 0 ? "#ff5252" : "#4caf50") + '">' + fmtPct(comp) + '</span></div>' +
+        '<div class="stat-item"><span class="stat-label">胜率</span><span class="stat-value" style="color:' +
+          (wr >= 50 ? "#ff5252" : "#ff9800") + '">' + wr.toFixed(1) + '%</span></div>' +
+        '<div class="stat-item"><span class="stat-label">交易次数</span><span class="stat-value">' +
+          closed.length + '次 (' + wins + '胜' + (closed.length - wins) + '负)</span></div>' +
+        '<div class="stat-item"><span class="stat-label">场均收益</span><span class="stat-value" style="color:' +
+          (avg >= 0 ? "#ff5252" : "#4caf50") + '">' + fmtPct(avg) + '</span></div>';
+
+      // ---- 近期信号 ----
+      const nm = { "780": "159780", "398": "601398" };
+      let sh = "<tr><th>日期</th><th>类型</th><th>价格</th><th>收益率</th></tr>";
+      evs.slice().reverse().slice(0, 8).forEach(e => {
+        const isBuy = e.side === "buy";
+        const type = isBuy ? ("往" + (k === "780" ? "780" : "398") + " · 买入")
+                           : (e.stop ? "止损卖出" : "信号卖出");
+        sh += "<tr><td>" + e.d.slice(5) + "</td>" +
+          '<td class="' + (isBuy ? "buy" : "sell") + '">' + type + "</td>" +
+          "<td>" + (e.px === null ? "-" : e.px.toFixed(3)) + "</td>" +
+          "<td>" + (e.ret === null ? "" : '<span class="' + (e.ret >= 0 ? "profit" : "loss") + '">' +
+            fmtPct(e.ret) + "</span>") + "</td></tr>";
+      });
+      document.getElementById("sig" + code).innerHTML = sh;
+
+      // ---- 价格迷你图（近120日）----
+      const M = 120, cs = closes.slice(-M), ds = dates.slice(-M);
+      dchart("chart" + code).setOption({
+        grid: { left: 46, right: 12, top: 12, bottom: 18 },
+        tooltip: { trigger: "axis" },
+        xAxis: { type: "category", data: ds, axisLabel: { fontSize: 9,
+          interval: Math.floor(M / 5), formatter: t => t.slice(2) } },
+        yAxis: { type: "value", scale: true, axisLabel: { fontSize: 9 } },
+        series: [{ type: "line", data: cs, showSymbol: false,
+          lineStyle: { width: 1.4, color: "#667eea" }, itemStyle: { color: "#667eea" },
+          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+            { offset: 0, color: "rgba(102,126,234,.32)" },
+            { offset: 1, color: "rgba(102,126,234,0)" }] } } }]
+      }, true);
+
+      // ---- 指标曲线（近120日）----
+      const iv = s.slice(-M).map(x => x === null ? null : (isRsi ? +x.toFixed(2) : +(x * 100).toFixed(2)));
+      dchart("ind" + code).setOption({
+        grid: { left: 46, right: 12, top: 14, bottom: 18 },
+        tooltip: { trigger: "axis" },
+        xAxis: { type: "category", data: ds, axisLabel: { fontSize: 9,
+          interval: Math.floor(M / 5), formatter: t => t.slice(2) } },
+        yAxis: { type: "value", scale: true, axisLabel: { fontSize: 9,
+          formatter: isRsi ? "{value}" : "{value}%" } },
+        series: [{ type: "line", data: iv, showSymbol: false,
+          lineStyle: { width: 1.2, color: isRsi ? "#38bdf8" : "#ff9800" },
+          itemStyle: { color: isRsi ? "#38bdf8" : "#ff9800" },
+          markLine: { silent: true, symbol: "none",
+            lineStyle: { color: "#ff5252", type: "dashed", width: 1 },
+            label: { color: "#ff8b8b", fontSize: 9, formatter: isRsi ? "阈值 " + th : "阈值 +" + (th * 100) + "%" },
+            data: [{ yAxis: isRsi ? th : th * 100 }] } }]
+      }, true);
+    }
+
+    renderStock({
+      key: "780", code: "159780", kind: "rsi", series: rsi6,
+      indLabel: "RSI6", thLabel: "抄底阈值", thText: "<25", threshold: 25,
+      second: i => {
+        const d = (c780[i] / rh250[i] - 1) * 100;
+        return '<span class="arrow">' + (d < -5 ? "⚠️" : "✅") + '</span><span>距250日高点 <strong style="color:' +
+          (d < -5 ? "#ff9800" : "#4caf50") + '">' + d.toFixed(2) + '%</strong></span>' +
+          '<span style="color:#666">触发线 −5%，跌破则牛市开关 OFF</span>';
+      }
+    });
+    renderStock({
+      key: "398", code: "601398", kind: "bias", series: bias398,
+      indLabel: "乖离率BIAS20", thLabel: "拦截阈值", thText: "+4%", threshold: BIAS_MAX,
+      second: i => {
+        const d = r5[i] === null ? 0 : r5[i] * 100;
+        return '<span class="arrow">' + (d < -2 ? "⚠️" : "✅") + '</span><span>近5日涨跌 <strong style="color:' +
+          (d < -2 ? "#ff9800" : "#4caf50") + '">' + fmtPct(d) + '</strong></span>' +
+          '<span style="color:#666">跌超 2% 则避嫌离场转空仓</span>';
+      }
+    });
+
+
+
   } catch (e) {
     document.getElementById("loading").textContent = "加载失败: " + e.message + "。请双击本文件或换网络重试。";
   }
