@@ -208,7 +208,7 @@
       <li><b>原规则（已被替换）</b>：780 回撤&gt;10% 且 398五日涨&gt;0 → 切398；回撤&gt;12% 且 398五日≤0 → 空仓。问题在于判据是"距高点回撤"，而双创回撤 10% 后反弹是常态 → 震荡市反复被赶出（2023、2024 各伤约 16pct）。</li>
       <li><b>★成本止损规则（2026-10 部署）</b>：<b>持有 159780 期间，价格跌破买入价 4% → 卖出 159780</b>；牛市开关与其余 D3 逻辑不变。判据从"距高点回撤多少"换成"这笔亏没亏"。</li>
       <li><b>为什么默认切工行而不是空仓</b>：159780 与 601398 日收益负相关很强（近 3 个月 −0.60，2026 年以来 −0.54），止损后切工行＝用负相关资产对冲，长期看比空仓更赚。<b>但前提是工行本身没被追高</b>——见下条补丁。</li>
-      <li><b>★2026-11-06 补丁 · 换仓前先量位置（本页已生效）</b>：原规则只管"780 亏了 4% 就卖"，没管<b>卖完买什么价位的工行</b>。2026-10-29 就是反面案例：780 触发止损，同日 601398 创<b>历史新高</b>、乖离 MA20 <b>+5.3%</b>，满仓切进去，5 天后工行跌到 8.350，这笔亏 <b>−4.9%</b>。本质是<b>用 A 标的的风险信号，在最贵的位置满仓买 B</b>。新规则：<b>398 乖离 MA20 &gt; 4% → 止损后不换仓、直接空仓</b>，等信号再进。同口径回测（2023-01-03 ~ 2026-11-05）：<b>+471.4% → +500.9%（+29.5pct）</b>，回撤不变；阈值 4% 与 5% 结果完全相同（说明不是挑参数）。<span class="down">注意：全窗口只拦下 1 次，这 29.5pct 全部来自 2026-10-29 这一笔，样本撑不住"铁律"两个字——加它是因为修补了一个真实逻辑漏洞，不是因为它被历史反复验证过。</span></li>
+      <li><b>★2026-11-06 补丁 · 换仓前先量位置（本页已生效）</b>：原规则只管"780 亏了 4% 就卖"，没管<b>卖完买什么价位的工行</b>。2026-10-29 就是反面案例：780 触发止损，同日 601398 创<b>历史新高</b>、乖离 MA20 <b>+5.3%</b>，满仓切进去，5 天后工行跌到 8.350，这笔亏 <b>−4.9%</b>。本质是<b>用 A 标的的风险信号，在最贵的位置满仓买 B</b>。新规则：<b>398 乖离 MA20 &gt; 4% → 止损后不换仓、直接空仓</b>，等信号再进。同口径回测（2023-01-03 ~ 2026-11-05，预热 2021-06）：<b>+332.5% → +355.5%（+23.0pct）</b>，回撤从 −27.98% 微降到 −27.88%；阈值 4% 与 5% 基本一致（+355.5% vs +354.9%）。<span class="down">注意：全窗口只拦下 1 次，这 23pct 主要来自 2026-10-29 这一笔，样本撑不住"铁律"两个字——加它是因为修补了一个真实逻辑漏洞，不是因为它被历史反复验证过。</span></li>
       <li><b>低频动作</b>：3.8 年里 −4% 止损只触发 <b>3 次</b>（−8% 仅 1 次）——平时不交保费，出事才赔付。</li>
       <li><b>稳健性</b>：样本外（IS 2023-24 / OOS 2025-26）参数秩相关 <b>+0.973</b>，起点漂移 <b>6/6 全跑赢</b>原版；剔除 2026-10 这段单边下跌，仍比原版高约 18pct。</li>
       <li><b>回撤：止损把最深回撤从 −28.3% 压到 −19.2%</b>（最深的坑在 2023-05-11→2023-10-26 那段）。注意止损不创造收益，它避免的是"单边下跌里死扛"；收益端的贡献主要来自避开 2026-10 这类急跌。</li>
@@ -225,38 +225,58 @@
 // 数据获取 (与 index.html 同源同口径)
 // ============================================================
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-const DATA_BEG = "2022-07-01";
+// ★ 2026-11-14 修正：预热起点 2022-07-01 只给了 125 个交易日，250日高与"回撤"都被截断
+//   （2023-01-03 的 780 回撤被算成 −12.45%，真实 −39.04%）→ 事件的 sw/sc 出口少触发，收益虚高约 150pct。
+//   现改为 2021-06-01（159780 上市 2021-07-05，这是能拿到的最长历史）。
+const DATA_BEG = "2021-06-01";
 const WINDOW_START = "2023-01-01";
 const BULL_PCT = 0.95;
 // ★ 成本止损线：持有 159780 期间跌破买入价 STOP_PCT → 立即切 601398（工行），借负相关对冲
-//   本页同口径实测（2023-01-03~2026-11-05）：无止损 +345.9% → 含止损 +471.4% → 含止损+乖离过滤 +500.9%
-//   （注：早期文字里的 +505.8% / +421.4% 是预热起点 2022-07 的旧口径，与本页窗口不可直接比较，已不再引用）
+//   修正口径实测（2023-01-03~2026-11-05，预热 2021-06）：无止损 +244.6% → 含止损 +332.5% → 含止损+乖离过滤 +355.5%
+//   截至 2026-11-13：无止损 +254.6% → 含止损 +345.0% → +乖离过滤 +368.7%
+//   （旧口径 2022-07 预热给出的 +500.9% / +505.8% 已作废：预热不足导致 250日高与回撤失真）
 const STOP_PCT = 0.04;
 const STOP_SCAN = [0.03, 0.04, 0.05, 0.06, 0.08, 0.10];
 // ★ 止损切工行前的「位置检查」（2026-11-06 新增）
 //   止损信号来自 780 的风险，买入动作落在 398 身上 —— 若 398 当天已远离 MA20（刚创新高、被避险资金顶上去），
 //   就是拿 A 的风险信号在最贵的位置满仓买 B。实测 2026-10-29：398 创历史新高、乖离 +5.3%，5 天后 -4.9%。
 //   规则：398 乖离 MA20 > BIAS_MAX → 止损后不切工行，直接空仓等信号。
-//   回测（2023-01-03~2026-11-05，本页同口径）：+471.4% → +500.9%，只拦 1 次；4%~5% 结果相同（不敏感）。
+//   回测（2023-01-03~2026-11-05，预热 2021-06）：+332.5% → +355.5%，只拦 1 次；4% 与 5% 差 0.6pct（不敏感）。
 const BIAS_MAX = 0.04;
 
 async function fetchTx(code) {
-  const end = new Date().toISOString().slice(0, 10);
-  const SEGS = [["2022-07-01", "2023-12-31"], ["2024-01-01", "2025-06-30"], ["2025-07-01", end]];
-  const map = {};
-  for (const [b, e] of SEGS) {
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${b},${e},800,qfq`;
-    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
+  // 2026-11-14 修复：原 web.ifzq.gtimg.cn/appstock/app/fqkline 已被腾讯 WAF 拦（HTTP 501），
+  // 改走 proxy.finance.qq.com 的 newfqkline。
+  // ★该接口单次返回条数不稳定：601398 传 cnt=1600 只回 640 条（从 2024-03 起），
+  //   若只发一次请求，398 会缺 2023 年数据，整段回测失真（实测累计会从 368% 掉到 291%）。
+  //   所以必须像回测脚本 _verify_518.py 那样循环往前翻页，直到覆盖 DATA_BEG。
+  const map = new Map();
+  let cur = new Date().toISOString().slice(0, 10), guard = 0;
+  while (guard++ < 12) {
+    const url = `https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get` +
+                `?param=${code},day,${DATA_BEG},${cur},640,qfq`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const d = json && json.data && json.data[code];
     const arr = d && (d.qfqday || d.day);
-    if (!arr || !arr.length) continue;
-    for (const k of arr) map[k[0]] = { date: k[0], close: parseFloat(k[2]) };
+    if (!arr || !arr.length) break;
+    for (const k of arr) {
+      const c = parseFloat(k[2]);
+      if (k[0] && isFinite(c) && c > 0) map.set(k[0], c);
+    }
+    const first = [...map.keys()].sort()[0];
+    if (!first || first <= DATA_BEG || arr.length < 100) break;
+    cur = dayShift(first, -1);
   }
-  const out = Object.keys(map).sort().map(k => map[k]);
-  if (!out.length) throw new Error("empty");
-  return out;
+  if (!map.size) throw new Error("empty");
+  return [...map.keys()].sort().map(k => ({ date: k, close: map.get(k) }));
+}
+
+function dayShift(ds, n) {
+  const t = new Date(ds + "T00:00:00Z");
+  t.setUTCDate(t.getUTCDate() + n);
+  return t.toISOString().slice(0, 10);
 }
 
 async function fetchEm(secid) {
@@ -274,28 +294,44 @@ async function fetchEm(secid) {
   });
 }
 
+// ★ 第二源：Cloudflare Worker 反代 web.ifzq.gtimg.cn（2026-11-14 接入）
+//   背景：web.ifzq 按来源 IP 判断，浏览器直连报 Failed to fetch（无 CORS 头），
+//        但 Cloudflare 边缘出口可通 → 借老杨的 worker /proxy 转发出来。
+//   该接口单次只回 640 条（cnt 是条数不是日期），必须循环往前翻页，逻辑同 fetchTx。
+const WORKER_BASE = "https://laosan.sanyan.ccwu.cc";
+async function fetchWorker(code) {
+  const map = new Map();
+  let cur = new Date().toISOString().slice(0, 10), guard = 0;
+  while (guard++ < 12) {
+    const inner = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,${DATA_BEG},${cur},640,qfq`;
+    const res = await fetch(WORKER_BASE + "/proxy?url=" + encodeURIComponent(inner));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const d = json && json.data && json.data[code];
+    const arr = d && (d.qfqday || d.day);
+    if (!arr || !arr.length) break;
+    for (const k of arr) {
+      const c = parseFloat(k[2]);
+      if (k[0] && isFinite(c) && c > 0) map.set(k[0], c);
+    }
+    const first = [...map.keys()].sort()[0];
+    if (!first || first <= DATA_BEG || arr.length < 100) break;
+    cur = dayShift(first, -1);
+  }
+  if (!map.size) throw new Error("无K线数据");
+  return [...map.keys()].sort().map(k => ({ date: k, close: map.get(k) }));
+}
+
 async function getKlines(code, secid, label) {
   const errors = [];
   try { return await fetchTx(code); } catch (e) { errors.push("腾讯: " + e.message); }
+  try { return await fetchWorker(code); } catch (e) { errors.push("Worker: " + e.message); }
   try { return await fetchEm(secid); } catch (e) { errors.push("东财: " + e.message); }
-  throw new Error(label + " 双源获取失败 [" + errors.join(" | ") + "]");
+  throw new Error(label + " 三源获取失败 [" + errors.join(" | ") + "]");
 }
 
 async function fetchRealtime(code) {
   const errors = [];
-  try {
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
-    const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
-    if (res.ok) {
-      const json = await res.json();
-      const node = json && json.data && json.data[code];
-      const arr = node && node.qt && node.qt[code];
-      if (arr && arr.length > 30 && parseFloat(arr[3]) > 0) {
-        return { price: parseFloat(arr[3]), volume: parseFloat(arr[6]) || 0, time: arr[30] || "", source: "分时" };
-      }
-      errors.push("分时: 无快照");
-    } else { errors.push("分时: HTTP " + res.status); }
-  } catch (e) { errors.push("分时: " + e.message); }
   try {
     const url = `https://qt.gtimg.cn/q=${code}`;
     const res = await fetch(url, { headers: { "User-Agent": UA, "Referer": "https://gu.qq.com/" } });
