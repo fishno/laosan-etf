@@ -138,12 +138,7 @@
     .position-box .pnl.profit{color:#ff5252}
     .position-box .pnl.loss{color:#4caf50}
     .mini-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:12px;height:135px}
-    .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;margin-bottom:16px;height:110px}
-    .trade-stats{display:flex;gap:10px;flex-wrap:wrap}
-    .trade-stats .stat-item{background:var(--inner);border-radius:8px;padding:10px 12px;
-      flex:1;text-align:center;min-width:88px}
-    .trade-stats .stat-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
-    .trade-stats .stat-value{font-size:16px;font-weight:700;color:#fff}
+    .ind-chart{background:var(--inner);border-radius:10px;padding:8px 4px;height:110px}
     @media(max-width:640px){.rsi-row{flex-direction:column}}
 
     /* === 个股面板并排 === */
@@ -224,7 +219,6 @@
       <div class="position-box cash" id="pos159780"></div>
       <div class="mini-chart" id="chart159780"></div>
       <div class="ind-chart" id="ind159780"></div>
-      <div class="trade-stats" id="stats159780"></div>
     </div>
   </section>
 
@@ -245,7 +239,6 @@
       <div class="position-box cash" id="pos601398"></div>
       <div class="mini-chart" id="chart601398"></div>
       <div class="ind-chart" id="ind601398"></div>
-      <div class="trade-stats" id="stats601398"></div>
     </div>
   </section>
   </div>
@@ -1068,7 +1061,7 @@ async function updateData() {
         ? "高 " + rtRow.high.toFixed(3) + " · 低 " + rtRow.low.toFixed(3) + " · 量 " + fmtVol(rtRow.volume)
         : "高/低/量需实时行情，暂按收盘价展示";
 
-      const { evs, open } = stockEvents(k, closes);
+      const { open } = stockEvents(k, closes);
 
       // ---- 指标盒 ----
       const s = cfg.series, v = s[N - 1], th = cfg.threshold, isRsi = cfg.kind === "rsi";
@@ -1114,28 +1107,6 @@ async function updateData() {
         bd.className = "signal-badge " + (hit ? "orange" : "gray");
         bd.textContent = "空仓等待 · " + cfg.indLabel + "=" + (isRsi ? v.toFixed(1) : fmtPct(v));
       }
-
-      // ---- 近一年统计 ----
-      const cut365 = new Date(dates[N - 1]);
-      cut365.setDate(cut365.getDate() - 365);
-      const lo = cut365.toISOString().slice(0, 10);
-      const closed = evs.filter(e => e.side === "sell" && e.ret !== null && e.d >= lo);
-      let comp = 1;
-      closed.forEach(e => comp *= (1 + e.ret / 100));
-      if (hy.lastHold === k && open) comp *= (px / open.px);
-      comp = (comp - 1) * 100;
-      const wins = closed.filter(e => e.ret > 0).length;
-      const avg = closed.length ? closed.reduce((a, e) => a + e.ret, 0) / closed.length : 0;
-      const wr = closed.length ? wins / closed.length * 100 : 0;
-      document.getElementById("stats" + code).innerHTML =
-        '<div class="stat-item"><span class="stat-label">一年复合收益</span><span class="stat-value" style="color:' +
-          (comp >= 0 ? "#ff5252" : "#4caf50") + '">' + fmtPct(comp) + '</span></div>' +
-        '<div class="stat-item"><span class="stat-label">胜率</span><span class="stat-value" style="color:' +
-          (wr >= 50 ? "#ff5252" : "#ff9800") + '">' + wr.toFixed(1) + '%</span></div>' +
-        '<div class="stat-item"><span class="stat-label">交易次数</span><span class="stat-value">' +
-          closed.length + '次 (' + wins + '胜' + (closed.length - wins) + '负)</span></div>' +
-        '<div class="stat-item"><span class="stat-label">场均收益</span><span class="stat-value" style="color:' +
-          (avg >= 0 ? "#ff5252" : "#4caf50") + '">' + fmtPct(avg) + '</span></div>';
 
       // ---- 价格迷你图（近120日）----
       const M = 120, cs = closes.slice(-M), ds = dates.slice(-M);
