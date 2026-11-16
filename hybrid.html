@@ -33,6 +33,7 @@
   .m-label{font-size:12px;color:var(--muted);margin-bottom:4px}
   .m-value{font-size:22px;font-weight:600}
   .m-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .basis{display:block;font-size:11px;color:var(--muted);opacity:.85;margin-top:3px;font-weight:400}
   #backtest .m{padding:10px 12px}
   #backtest .m-label{font-size:10px;margin-bottom:2px}
   #backtest .m-value{font-size:16px}
@@ -867,8 +868,9 @@ async function updateData() {
     window.__rt = { nav: rtNav, ret: rtRet, date: rtDate, clock: rtClock, hasRT: hasRT,
                     px: posNow === "CASH" ? null : (posNow === "780" ? price780 : price398), hold: posNow };
     document.getElementById("curNav").textContent = "¥" + Math.round(rtNav).toLocaleString("zh-CN");
-    document.getElementById("curRet").textContent = "累计 " + (rtRet >= 0 ? "+" : "") + rtRet.toFixed(1) + "%" +
-      (hasRT ? " · 实时" : " · 昨收");
+    document.getElementById("curRet").innerHTML = "累计 " + (rtRet >= 0 ? "+" : "") + rtRet.toFixed(1) + "%" +
+      (hasRT ? " · 实时" : " · 昨收") +
+      '<span class="basis">2023-01 投入 10 万元</span>';
     document.getElementById("holdSub").textContent = hasRT
       ? "数据至 " + dates[li] + "，净值按 " + rtDate + " " + rtClock + " 实时价重算"
       : "数据至 " + dates[li] + "（实时价获取失败，按收盘价）";
