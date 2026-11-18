@@ -199,7 +199,7 @@
   </section>
 
   <section id="yearly" class="card">
-    <h2><span class="dot"></span>年度战绩（混合 vs 沪深300）</h2>
+    <h2><span class="dot"></span>年度战绩（混合 vs 上证指数）</h2>
     <div style="overflow-x:auto"><table id="yearTable"></table></div>
   </section>
 
@@ -495,10 +495,11 @@ function rollingHigh(p, n) {
 // ============================================================
 async function updateData() {
   try {
-    const [d780raw, d398raw, d300raw] = await Promise.all([
+    // ★2026-11-18：对比基准由「沪深300(sh000300/1.000300)」改为「上证指数(sh000001/1.000001)」
+    const [d780raw, d398raw, dIdxRaw] = await Promise.all([
       getKlines("sz159780", "0.159780", "159780"),
       getKlines("sh601398", "0.601398", "601398"),
-      getKlines("sh000300", "1.000300", "沪深300"),
+      getKlines("sh000001", "1.000001", "上证指数"),
     ]);
     let d780 = d780raw, d398 = d398raw;
     let rt780 = null, rt398 = null;
@@ -513,12 +514,12 @@ async function updateData() {
 
     const m780 = new Map(d780.map(x => [x.date, x.close]));
     const m398 = new Map(d398.map(x => [x.date, x.close]));
-    const m300 = new Map(d300raw.map(x => [x.date, x.close]));
+    const mIdx = new Map(dIdxRaw.map(x => [x.date, x.close]));
     const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
     if (dates.length < 100) throw new Error("对齐后交易日不足");
     const c780 = dates.map(dd => m780.get(dd));
     const c398 = dates.map(dd => m398.get(dd));
-    const c300 = dates.map(dd => m300.get(dd));
+    const cIdx = dates.map(dd => mIdx.get(dd));
     const N = dates.length;
 
     const rsi6 = calcRSI(c780, 6);
@@ -683,8 +684,8 @@ async function updateData() {
     const hyY = yearly(winDates, hy.navs);
     const hyOldY = yearly(winDates, hyOld.navs);
     const d3Y = yearly(winDates, d3.navs);
-    const hs300Base = c300[S];
-    const hsNav = winDates.map((d, i) => c300[S + i] / hs300Base);
+    const idxBase = cIdx[S];
+    const hsNav = winDates.map((d, i) => cIdx[S + i] / idxBase);
     const hsY = yearly(winDates, hsNav);
 
     // ---- 信号面板 ----
@@ -877,7 +878,7 @@ async function updateData() {
 
     // ---- 年度战绩 ----
     const years = ["2023", "2024", "2025", "2026"];
-    let yh = "<tr><th>年份</th><th>混合策略</th><th>沪深300</th><th>跑赢</th></tr>";
+    let yh = "<tr><th>年份</th><th>混合策略</th><th>上证指数</th><th>跑赢</th></tr>";
     for (const y of years) {
       const a = hyY[y] !== undefined ? hyY[y] : null;
       const b = hsY[y] !== undefined ? hsY[y] : null;
@@ -916,7 +917,7 @@ async function updateData() {
     const d3Nav = d3.navs.map(v => +(v / 100000).toFixed(4));
     echarts.init(document.getElementById("navChart")).setOption({
       tooltip: { trigger: "axis", valueFormatter: v => "¥" + Math.round(v * 100000).toLocaleString() },
-      legend: { top: 0, data: ["混合·止损版", "混合·原版", "D3 现状", "沪深300"] },
+      legend: { top: 0, data: ["混合·止损版", "混合·原版", "D3 现状", "上证指数"] },
       grid: { left: 60, right: 20, top: 36, bottom: 40 },
       xAxis: { type: "category", data: winDates, axisLabel: { interval: xInt, formatter: v => v.slice(2, 7) } },
       yAxis: { type: "value", scale: true, axisLabel: { formatter: v => (v * 100000).toLocaleString() } },
@@ -924,7 +925,7 @@ async function updateData() {
         { name: "混合·止损版", type: "line", showSymbol: false, lineStyle: { width: 2.2, color: "#d9772e" }, itemStyle: { color: "#d9772e" }, data: hyNav },
         { name: "混合·原版", type: "line", showSymbol: false, lineStyle: { width: 1.3, color: "#b45309", type: "dashed" }, itemStyle: { color: "#b45309" }, data: hyOldNav },
         { name: "D3 现状", type: "line", showSymbol: false, lineStyle: { width: 1.5, color: "#378ADD" }, itemStyle: { color: "#378ADD" }, data: d3Nav },
-        { name: "沪深300", type: "line", showSymbol: false, lineStyle: { width: 1.2, color: "#888780", type: "dotted" }, itemStyle: { color: "#888780" }, data: hsNav }
+        { name: "上证指数", type: "line", showSymbol: false, lineStyle: { width: 1.2, color: "#888780", type: "dotted" }, itemStyle: { color: "#888780" }, data: hsNav }
       ]
     });
 
