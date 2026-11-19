@@ -1,5 +1,5 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v20';   // v20: 2026-11-19 hybrid 对比基准 上证指数 → 沪深300（回滚 v19）；v19 曾短暂改为上证指数
+const CACHE = 'laosan-d3-v21';   // v21: 2026-11-19 hybrid 信号卡新增「双弱 MA120」温度计（纯提示，不参与交易）
 
 const SHELL = [
   './',

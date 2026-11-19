@@ -50,6 +50,13 @@
   .bear-left{flex-shrink:0}
   .bear-right{font-size:13px}
   .bear-detail{color:var(--muted);font-size:12px;margin-top:2px}
+  /* 双弱监控（慢线·纯提示） */
+  .bear-warn.dw{margin-top:8px;background:#fffdf8;align-items:flex-start}
+  .bear-warn.dw .bear-left{margin-top:2px}
+  .dw-cap{font-size:11px;color:var(--muted);margin-top:10px}
+  .dw-strip{display:flex;gap:0;margin-top:4px;height:14px;border-radius:2px;overflow:hidden}
+  .dw-strip i{flex:1;background:#e6d8c6;height:14px;display:block}
+  .dw-strip i.on{background:var(--danger)}
   .disc-list{display:flex;flex-direction:column;gap:8px}
   .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
   .disc-item b{color:var(--accent2)}
@@ -133,6 +140,16 @@
         <div class="bear-detail" id="bearDetail"></div>
       </div>
     </div>
+    <div class="bear-warn dw" id="dwWarn">
+      <div class="bear-left"><span class="badge" id="dwBadge">--</span></div>
+      <div class="bear-right">
+        <div id="dwTitle">--</div>
+        <div class="bear-detail" id="dwDetail"></div>
+        <div class="dw-cap">近 250 个交易日（约一年）· 红线 = 双弱亮灯（仅供看环境，不参与交易）</div>
+        <div class="dw-strip" id="dwStrip"></div>
+        <div class="bear-detail" id="dwFoot"></div>
+      </div>
+    </div>
   </section>
 
   <section id="reentry" class="card" style="display:none">
@@ -159,7 +176,7 @@
       <div class="disc-item"><span class="disc-n">5</span><div><b>没信号 = 不动</b> —— 触发只做一个动作（切780 / 切398 / 空仓），做完就关页面</div></div>
       <div class="disc-item"><span class="disc-n">※</span><div><b>回撤口径</b> —— 全站"780 回撤"都是<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的绝对最高点。老口径会让读数随回测起点漂移 151 个百分点，且 2023 年以来八成交易日的读数都低于 −12%，风控等于长期"恒触发"</div></div>
       <div class="disc-item"><span class="disc-n">6</span><div><b>止损之外的浮亏不手动割</b> —— 历史最大回撤 −18.5%（2023-05-11→2023-10-26）都在规则内；手动割是唯一被证明会拖垮收益的动作</div></div>
-      <div class="disc-item"><span class="disc-n">7</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓</div></div>
+      <div class="disc-item"><span class="disc-n">7</span><div><b>绿灯 / 黄灯不干预</b> —— 只有红灯（系统性熊市）才允许人工降仓；下方「双弱 MA120」只是环境温度计，<b>不作为卖出依据</b>（拿它清仓，2022 实测更差）</div></div>
       <div class="disc-item"><span class="disc-n">8</span><div><b>每周复盘一次</b> —— 检查最近切换是否符合规则，违规就记下来，下不为例</div></div>
     </div>
       </div>
@@ -725,6 +742,54 @@ async function updateData() {
     document.getElementById("bearBadge").className = "badge " + bearState;
     document.getElementById("bearTitle").textContent = bearTitle;
     document.getElementById("bearDetail").textContent = bearDetail;
+
+    // ---- 双弱监控：780 与 398 同时跌破 MA120（2026-11-19 新增，纯提示 / 不参与交易）----
+    // 用途只有一句：在熊市里提前告诉你「现在不是牛市环境」，别把回撤当抄底。
+    // 为什么不做成信号：实测拿它清仓，2022 从 −10.8% 恶化到 −17.5%~−22.4%（交易 26→13 笔、亏损反而更多）。
+    const DW_LEN = 120;
+    const dwMA780 = calcMA(c780, DW_LEN);
+    const dwMA398 = calcMA(c398, DW_LEN);
+    const dwFlag = new Array(N).fill(false);
+    for (let i = 0; i < N; i++) {
+      dwFlag[i] = dwMA780[i] !== null && dwMA398[i] !== null && c780[i] < dwMA780[i] && c398[i] < dwMA398[i];
+    }
+    const dwNow = dwFlag[li];
+    let dwStreak = 0;
+    for (let i = li; i >= 0 && dwFlag[i]; i--) dwStreak++;
+    const dwYear = {};
+    for (let i = S; i < N; i++) {
+      const y = dates[i].slice(0, 4);
+      if (!dwYear[y]) dwYear[y] = { on: 0, n: 0 };
+      dwYear[y].n++; if (dwFlag[i]) dwYear[y].on++;
+    }
+    let dwLastOn = null;
+    for (let i = N - 1; i >= 0; i--) { if (dwFlag[i]) { dwLastOn = i; break; } }
+    const dwCell = (px, mav) => {
+      if (!mav) return "-";
+      const b = (px / mav - 1) * 100;
+      return "<b class='" + (b >= 0 ? "up" : "down") + "'>" + (b >= 0 ? "+" : "") + b.toFixed(1) + "%</b>";
+    };
+    const dwYrTxt = Object.keys(dwYear).sort()
+      .map(y => y + " <b>" + (100 * dwYear[y].on / dwYear[y].n).toFixed(1) + "%</b>").join(" · ");
+    document.getElementById("dwBadge").textContent = dwNow ? "双弱 ON" : "双弱 OFF";
+    document.getElementById("dwBadge").className = "badge " + (dwNow ? "b-red" : "b-green");
+    document.getElementById("dwTitle").innerHTML = dwNow
+      ? "<b>780 与 398 同时跌破 MA120 —— 冬季环境</b>（已连续 " + dwStreak + " 个交易日）。别把这段回撤当便宜货，仓位仍按规则走。"
+      : "<b>环境温度：非冬季</b> —— 两条腿没有同时走坏" +
+        (dwLastOn !== null ? "；上次亮灯 " + dates[dwLastOn] + "，距今 " + (N - 1 - dwLastOn) + " 个交易日" : "") +
+        "。这时逆势抄底的胜率才站得住。";
+    document.getElementById("dwDetail").innerHTML =
+      "159780 " + c780[li].toFixed(3) + " vs MA120 " + (dwMA780[li] ? dwMA780[li].toFixed(3) : "-") + "（" + dwCell(c780[li], dwMA780[li]) + "）" +
+      "　｜　601398 " + c398[li].toFixed(3) + " vs MA120 " + (dwMA398[li] ? dwMA398[li].toFixed(3) : "-") + "（" + dwCell(c398[li], dwMA398[li]) + "）" +
+      "<br>窗口内亮灯占比（2023 起）：" + dwYrTxt;
+    let dwStrip = "";
+    for (let i = Math.max(S, N - 250); i < N; i++) {
+      dwStrip += "<i class='" + (dwFlag[i] ? "on" : "") + "' title='" + dates[i] + "'></i>";
+    }
+    document.getElementById("dwStrip").innerHTML = dwStrip;
+    document.getElementById("dwFoot").innerHTML =
+      "<b>只当温度计，不当卖出信号</b>：它有两次漂亮记录 —— 2022 年亮灯 49.2%、2024/2025 一年零误报、2024-09 反弹前没亮。" +
+      "但实测拿它清仓，2022 反而从 −10.8% 恶化到 −17.5%~−22.4%（交易 26 笔砍到 13 笔、亏损更多）——它认的是慢熊，本策略靠超跌反弹吃饭，砍交易等于关掉止血阀。";
 
     // ---- 回测面板 ----
     document.getElementById("hyTotal").textContent = "+" + hyM.total.toFixed(1) + "%";
