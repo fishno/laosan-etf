@@ -28,7 +28,7 @@
   .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
   .g5{grid-template-columns:repeat(5,1fr)}
-  @media(max-width:720px){.g3{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,1fr)}.g5{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
+  @media(max-width:720px){.g3{grid-template-columns:minmax(0,1fr)}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g5{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1fr)}}
   .m{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
   .m-label{font-size:12px;color:var(--muted);margin-bottom:4px}
   .m-value{font-size:22px;font-weight:600}
@@ -46,9 +46,9 @@
   .b-green{background:#eaf3de;color:#3b6d11}
   .b-amber{background:#faeeda;color:#854f0b}
   .b-red{background:#fcebeb;color:#a32d2d}
-  .bear-warn{display:flex;align-items:center;gap:14px;margin-top:14px;border:1px solid var(--rule);border-radius:12px;padding:14px 16px;background:#fff}
+  .bear-warn{display:flex;align-items:center;gap:14px;margin-top:14px;border:1px solid var(--rule);border-radius:12px;padding:14px 16px;background:#fff;overflow:hidden}
   .bear-left{flex-shrink:0}
-  .bear-right{font-size:13px}
+  .bear-right{font-size:13px;flex:1;min-width:0}
   .bear-detail{color:var(--muted);font-size:12px;margin-top:2px}
   /* 双弱监控（慢线·纯提示） */
   .bear-warn.dw{margin-top:8px;background:#fffdf8;align-items:flex-start}
@@ -57,6 +57,18 @@
   .dw-strip{display:flex;gap:0;margin-top:4px;height:14px;border-radius:2px;overflow:hidden}
   .dw-strip i{flex:1;background:#e6d8c6;height:14px;display:block}
   .dw-strip i.on{background:var(--danger)}
+  /* 601398 五日跌幅出场阈值（2026-11-23） */
+  .bear-warn.px{margin-top:8px;background:#fff;align-items:flex-start}
+  .bear-warn.px .bear-left{margin-top:2px}
+  .b-mute{background:#f1ece3;color:#8a7765}
+  .px-bar{position:relative;height:10px;margin-top:12px;border-radius:5px;background:#eaf3de;border:1px solid var(--rule)}
+  .px-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:33.3%;background:#f5cbc4;border-radius:4px 0 0 4px}
+  .px-trig{position:absolute;left:33.3%;top:-5px;bottom:-5px;width:2px;background:var(--danger);border-radius:1px}
+  .px-dot{position:absolute;top:50%;left:60%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;border:2px solid #3b6d11}
+  .px-scale{position:relative;height:16px;margin-top:6px;font-size:10px;color:var(--muted)}
+  .px-scale span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+  .px-scale span.f{left:0;transform:none}
+  .px-scale span.l{left:auto;right:0;transform:none}
   .disc-list{display:flex;flex-direction:column;gap:8px}
   .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
   .disc-item b{color:var(--accent2)}
@@ -148,6 +160,16 @@
         <div class="dw-cap">近 250 个交易日（约一年）· 红线 = 双弱亮灯（仅供看环境，不参与交易）</div>
         <div class="dw-strip" id="dwStrip"></div>
         <div class="bear-detail" id="dwFoot"></div>
+      </div>
+    </div>
+    <div class="bear-warn px" id="pxWarn">
+      <div class="bear-left"><span class="badge b-mute" id="pxBadge">--</span></div>
+      <div class="bear-right" style="flex:1;min-width:0">
+        <div id="pxTitle">--</div>
+        <div class="bear-detail" id="pxDetail"></div>
+        <div class="px-bar"><span class="px-trig"></span><span class="px-dot" id="pxDot"></span></div>
+        <div class="px-scale"><span class="f">−4%</span><span style="left:33.3%">−2% 触发</span><span style="left:66.7%">0</span><span class="l">+2%</span></div>
+        <div class="bear-detail" id="pxFoot"></div>
       </div>
     </div>
   </section>
@@ -863,6 +885,37 @@ async function updateData() {
         "（>+" + Math.round(BIAS_MAX * 100) + "% 则改空仓）" +
         (cdLeft > 0 ? "<br>" + cdNote : "");
     }
+
+    // ---- 601398 五日跌幅出场阈值（事件式：由未触发转为触发的那一天清仓）----
+    (function () {
+      const bd = document.getElementById("pxBadge");
+      const tt = document.getElementById("pxTitle");
+      const dt = document.getElementById("pxDetail");
+      const ft = document.getElementById("pxFoot");
+      const dot = document.getElementById("pxDot");
+      if (!bd || !dot) return;
+      const basePx = c398[li - 5];
+      const baseDay = dates[li - 5];
+      const curPct = (price398 / basePx - 1) * 100;
+      const trigPx = basePx * 0.98;
+      const gapPct = (price398 / trigPx - 1) * 100;
+      const on398 = posNow === "398";
+      const hit = curPct <= -2;
+      const near = !hit && curPct <= -1.5;
+      bd.className = "badge " + (hit ? "b-red" : (!on398 ? "b-mute" : (near ? "b-amber" : "b-green")));
+      bd.textContent = hit ? "已触发" : (!on398 ? "未生效" : (near ? "接近" : "安全"));
+      tt.innerHTML = "601398 <b>五日跌幅 ≥2% 清仓</b>" +
+        (hit ? "　<b style='color:var(--danger)'>今日已满足，收盘价确认后清仓</b>" : "");
+      dt.innerHTML = "五日 <b class='" + (curPct >= 0 ? "up" : "down") + "'>" + (curPct >= 0 ? "+" : "") + curPct.toFixed(2) + "%</b>（基准 " + basePx.toFixed(2) + " · " + baseDay.slice(5) + "）" +
+        "<br>触发价 <b style='color:var(--danger)'>" + trigPx.toFixed(2) + "</b> ｜ 现价 " + price398.toFixed(2) +
+        (gapPct >= 0 ? " ｜ 还需 <b style='color:var(--danger)'>−" + gapPct.toFixed(2) + "%</b>" : " ｜ <b style='color:var(--danger)'>已跌破</b>");
+      ft.textContent = on398
+        ? "事件式：只在「由未触发转为触发」那一天执行；清仓后按逆回购 1.8% 计息 · 收盘价定信号，14:57–15:00 集合竞价成交"
+        : "当前未持 601398（持仓：" + ({ "780": "159780", "398": "601398", "CASH": "空仓" }[posNow] || posNow) + "），该规则只在持有 398 时生效";
+      const pct = Math.max(0, Math.min(100, (curPct + 4) / 6 * 100));
+      dot.style.left = pct.toFixed(1) + "%";
+      dot.style.borderColor = hit ? "var(--danger)" : (near ? "#c98a2e" : "#3b6d11");
+    })();
 
     // ---- ★780 回补监控：未持 780 时，算出三条回补路径的实时门槛 ----
     const reSec = document.getElementById("reentry");
