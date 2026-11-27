@@ -130,6 +130,7 @@
       <a href="#trades">交易记录</a>
     </nav>
     <button class="refresh" onclick="location.reload()">更新数据</button>
+    <div style="font-size:11px;color:#9a968c;margin-top:6px;text-align:right">页面版本 <b style="color:#e8792e">v31</b>（最新为 v31；若显示更小说明是浏览器旧缓存，按 Ctrl+Shift+R 强刷）</div>
   </div>
 </header>
 
@@ -274,6 +275,9 @@
 
   <section id="trades" class="card">
     <h2><span class="dot"></span>交易记录（点击展开全部）</h2>
+    <div style="font-size:12.5px;line-height:1.7;color:#8a4a1f;background:#fdf1ea;border-left:3px solid #e8792e;border-radius:10px;padding:9px 12px;margin-bottom:10px">
+      <b>★ 本表是策略推演，不是您的实盘成交。</b>页面每次打开都用 <b>10 万虚拟本金、从 2023-01-01 起</b>把规则重跑一遍，算出这条曲线上的买卖点；它<b>不记录</b>您的真实成本、股数、资金，也<b>不知道您有没有执行</b>。改规则会重算整段历史，历史成交点位随之变化（例如 2026-11-27 把买点从 KDJ 回滚到 RSI6&lt;25 后，11 月那笔 780 就没了、换成了 398）。实盘与这条曲线的差距，本页<b>不反映</b>。
+    </div>
     <div id="tradeWrap"></div>
   </section>
 
