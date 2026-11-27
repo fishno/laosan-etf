@@ -69,6 +69,13 @@
   .px-scale span{position:absolute;transform:translateX(-50%);white-space:nowrap}
   .px-scale span.f{left:0;transform:none}
   .px-scale span.l{left:auto;right:0;transform:none}
+  /* 780 相对 MA20 状态提示（2026-11-27） */
+  .ma20-note{margin-top:10px;font-size:12.5px;line-height:1.65;padding:9px 12px;border-radius:10px;background:#faf7f1;border-left:3px solid #d8d2c6;color:#5f5e5a}
+  .ma20-note b{color:#444441}
+  .ma20-note.hot{background:#fdf1ea;border-left-color:#e8792e;color:#8a4a1f}
+  .ma20-note.hot b{color:#a34d15}
+  .ma20-note.ok{background:#eef7f2;border-left-color:#1d9e75;color:#0f6e56}
+  .ma20-note.ok b{color:#0b5a45}
   .disc-list{display:flex;flex-direction:column;gap:8px}
   .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
   .disc-item b{color:var(--accent2)}
@@ -177,6 +184,7 @@
   <section id="reentry" class="card" style="display:none">
     <h2><span class="dot"></span>★780 回补监控（未持 159780 时显示）</h2>
     <div class="rule-box" id="reentryBanner">--</div>
+    <div class="ma20-note" id="ma20Note">--</div>
     <div class="grid g3">
       <div class="m"><div class="m-label">路径① RSI6 &lt; 25（主力路径，历史占比 74%）</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
       <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
@@ -960,6 +968,42 @@ async function updateData() {
       e3v.className = "m-value " + (r5p < -2 ? "down" : "up");
       document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；空仓后 780 站上 MA20 = ¥" +
         ma20[li].toFixed(3) + "（+" + ((ma20[li] / price780 - 1) * 100).toFixed(1) + "%）";
+
+      const mn = document.getElementById("ma20Note");
+      if (mn) {
+        const m20 = ma20[li];
+        const above = (m20 !== null && m20 !== undefined) && c780[li] > m20;
+        const abovePrev = (li > 0 && ma20[li - 1] !== null && ma20[li - 1] !== undefined)
+          ? c780[li - 1] > ma20[li - 1] : false;
+        const first = above && !abovePrev;
+        const gap = (m20 !== null && m20 !== undefined) ? (c780[li] / m20 - 1) * 100 : 0;
+        const isCash = (posNow === "CASH");
+        const m20s = (m20 !== null && m20 !== undefined) ? m20.toFixed(4) : "--";
+        const r5now = (r5[li] === null || r5[li] === undefined) ? 0 : r5[li];
+        const r5prev = (li > 0 && r5[li - 1] !== null && r5[li - 1] !== undefined) ? r5[li - 1] : 0;
+        const clearToday = (r5now < -0.02) && !(r5prev < -0.02);
+        if (first && clearToday) {
+          mn.className = "ma20-note hot";
+          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
+            "%），但今天同时是 601398 的<b>五日跌幅清仓日</b> —— 两个信号撞在同一天，<b>回场不成立</b>（引擎先处理清仓，站上事件被跳过）。历史同类 7 次，780 后 10 日 5 跌 2 涨、均值 −3.52%。";
+        } else if (first && isCash) {
+          mn.className = "ma20-note ok";
+          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
+            "%），且当前空仓 —— <b>回场条件成立，收盘前买回 159780</b>。";
+        } else if (first) {
+          mn.className = "ma20-note hot";
+          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
+            "%），但当前持有 601398 —— <b>该路径要求先空仓，本次信号不生效</b>。";
+        } else if (above) {
+          mn.className = "ma20-note";
+          mn.innerHTML = "780 在 MA20 上方 <b>+" + gap.toFixed(2) + "%</b>（¥" + m20s +
+            "）—— <b>非首次站上</b>，需先跌破再重新收上，才算新的回场信号。";
+        } else {
+          mn.className = "ma20-note";
+          mn.innerHTML = "780 在 MA20 下方 <b>" + gap.toFixed(2) + "%</b>（¥" + m20s +
+            "）—— 空仓期间若出现「首次收上」，即为买回 159780 的时点。";
+        }
+      }
 
       const bn = document.getElementById("reentryBanner");
       const cdPre = cdLeft > 0 ? cdNote + "<br>" : "";
