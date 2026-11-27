@@ -775,7 +775,8 @@ async function updateData() {
             comm: Math.round(comm * 10) / 10,
             value: Math.round(valNow),
             ret: (valNow / 100000 - 1) * 100,
-            price: t === "CASH" ? null : (t === "780" ? c780[i] : c398[i]),
+            // 清仓行也记卖出价（原为 null，表格「成交价」列会空着）——hold 此时仍是旧仓位
+            price: (t === "CASH" ? hold : t) === "780" ? c780[i] : c398[i],
             shares: shares,
             stop: isStop, stopBlocked: stopBlocked, stopBias: stopBias, ep: ep780,
             maBlocked: maBlock
@@ -976,12 +977,19 @@ async function updateData() {
       if (!why.length) why.unshift("今日无规则触发，继续持有 <b>" + NMC[posNow] + "</b>");
       let h = "<b style='color:var(--accent)'>" + dates[i] + " · 今日动作</b>　" + why.join("　｜　");
       if (todayTr) {
-        h += "<br>成交：" + NMC[todayTr.from] + " → <b>" + NMC[todayTr.to] + "</b>" + (todayTr.price ? " @ " + todayTr.price.toFixed(3) : "");
+        const tpx = todayTr.price ? " @ " + todayTr.price.toFixed(3) : "", toC = NMC[todayTr.to], fromC = NMC[todayTr.from];
+        let actTxt;
+        if (todayTr.from === "CASH") actTxt = "买入 <b>" + toC + "</b>" + tpx;
+        else if (todayTr.to === "CASH") actTxt = "卖出 " + fromC + tpx + " → <b>空仓</b>";
+        else actTxt = fromC + " → <b>" + toC + "</b>" + tpx;
+        h += "<br>成交：" + actTxt;
         if (todayTr.from !== "CASH") {
           let ent = null;
           for (let k = hy.trades.length - 2; k >= 0; k--) { if (hy.trades[k].to === todayTr.from) { ent = hy.trades[k]; break; } }
+          // 清仓时 todayTr.price 已是卖出价，直接用；换仓时取新标的价
+          const sellPx = todayTr.to === "CASH" ? todayTr.price : (todayTr.from === "780" ? c780[i] : c398[i]);
           if (ent && ent.price) {
-            const pp = (todayTr.from === "780" ? c780[i] : c398[i]) / ent.price - 1;
+            const pp = sellPx / ent.price - 1;
             h += "　本笔 <b class='" + (pp >= 0 ? "up" : "down") + "'>" + (pp >= 0 ? "+" : "") + (pp * 100).toFixed(2) + "%</b>（" + ent.date + " 进 @" + ent.price.toFixed(3) + "）";
           }
         }
