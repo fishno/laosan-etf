@@ -1016,7 +1016,8 @@ async function updateData() {
       if (r20now !== null) {
         if (r20now < -15) line20 = "<br>20 日累计 <b class='down'>" + r20now.toFixed(1) + "%</b> —— <b>已跌破 −15%，此路径已触发</b>";
         else line20 = "<br>20 日累计 <b>" + (r20now >= 0 ? "+" : "") + r20now.toFixed(1) +
-          "%</b>（触发 −15% = ¥" + px20.toFixed(3) + "，还需 <b class='down'>−" + Math.abs((px20 / price780 - 1) * 100).toFixed(2) + "%</b>）";
+          "%</b>（按今日基准 −15% = ¥" + px20.toFixed(3) + "，还需 <b class='down'>−" + Math.abs((px20 / price780 - 1) * 100).toFixed(2) +
+          "%</b>；基准每日滚动，明日以新基准为准）";
       }
       if (r20now !== null && r20now < -15) {
         e1v.textContent = "20 日跌幅已触发";
