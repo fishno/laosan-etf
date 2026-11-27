@@ -376,7 +376,7 @@
         <ul>
           <li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → <strong>不触发</strong></li>
           <li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → <strong>不触发</strong></li>
-          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
+          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 20日跌>15% <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
           <li><strong>当前状态：</strong><mark class="key">持有780</mark> → 持有 159780 科创创业50ETF</li>
         </ul>
       </div>
@@ -409,7 +409,7 @@
       <p>科技银行轮动策略是一个<mark class="key">回撤保护型轮动策略</mark>，在科创创业50ETF（159780）和工商银行（601398）之间智能切换，<mark class="warn">极端行情可空仓避险</mark>。</p>
 
       <div class="strategy-card">
-        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25或MA20恢复回780</div>
+        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25 或 20日跌>15% 或 MA20恢复回780</div>
         <div class="strategy-rules">
           <div class="rule-box sell">
             <div class="r-action">780 → 398（避险）</div>
@@ -421,11 +421,11 @@
           </div>
           <div class="rule-box">
             <div class="r-action">空仓 → 780（抢底）</div>
-            <div class="r-value">RSI6<25<br>或重回MA20上方</div>
+            <div class="r-value">RSI6<25 或<br>20日跌>15%<br>或重回MA20上方</div>
           </div>
           <div class="rule-box">
             <div class="r-action">398 → 780（反弹）</div>
-            <div class="r-value">RSI6 < 25</div>
+            <div class="r-value">RSI6<25 或<br>20日跌>15%</div>
           </div>
           <div class="rule-box sell">
             <div class="r-action">398 → 空仓（止损）</div>
@@ -439,7 +439,7 @@
         <li><strong>边缘检测：</strong>信号仅在状态从"未触发"变为"触发"时执行交易，避免阈值附近反复切换</li>
         <li><strong>空仓避险：</strong>780回撤>12%且398同步走弱时空仓离场，避免"两ETF同跌"的双杀局面</li>
         <li><strong>回撤口径：</strong>本页所有"780回撤"均指<b>距过去 250 个交易日最高点</b>的跌幅（与牛市开关同窗），<b>不是</b>从数据起点累计的历史最高点 —— 后者会随回测起点漂移，2023 年以来有八成交易日的读数都低于 −12%，风控会长期处于"恒触发"的失效状态</li>
-        <li><strong>双重回场：</strong>空仓后RSI6<25极度超卖或780重回MA20上方均可回场，不错过反弹机会</li>
+        <li><strong>双重回场：</strong>空仓后 RSI6<25 极度超卖、或 20 日累计跌超 15%（阴跌补位）、或 780 重回 MA20 上方均可回场，不错过反弹机会</li>
         <li><strong>目标质量检查：</strong>切换至398前需确认398五日涨幅>0，过滤弱势标的</li>
         <li><strong>398离场口径：</strong>398 五日跌幅 ≤ −2% → 空仓（<b>2026-11-04 曾试「距20日最高价回撤≥4%」，实盘口径回测 2023-26 少赚 96pct，已回滚</b>）</li>
         <li><strong>默认仓位：</strong>无信号时持有780，保持对高弹性品种的风险暴露</li>
@@ -790,6 +790,10 @@ async function computeData(wantDebug) {
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+    // ★20 日累计跌幅：补 RSI6 的阴跌盲区（2026-11-27）
+    const r20 = new Array(N).fill(null);
+    for (let i = 20; i < N; i++) r20[i] = (c780[i] - c780[i - 20]) / c780[i - 20];
+    const bkLevel = i => (rsi6[i] !== null && rsi6[i] < 25) || (r20[i] !== null && r20[i] < -0.15);
     // 注：2026-11-04 曾试「398 距20日高回撤>=4%」(dd4)，实盘口径(含成本止损)回测 2023-26 少赚 96pct → 已回滚
 
     // 切窗口: 2025-08-15起跑D3状态机(与回测一致)
@@ -799,7 +803,7 @@ async function computeData(wantDebug) {
     const sig = i => ({
       sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,        // 切398
       sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,       // 空仓避险
-      bk: rsi6[i] !== null && rsi6[i] < 25,                     // 抢底
+      bk: bkLevel(i),                                           // 抢底：RSI6<25 或 20日跌>15%
       d398: r5[i] !== null && r5[i] < -0.02,                    // 398止损
       aMA: ma20[i] !== null && c780[i] > ma20[i],               // MA20恢复
     });
@@ -810,9 +814,9 @@ async function computeData(wantDebug) {
     const tradeReason = (from, to, s, r5i, ddi) => {
       const ddPct = (ddi * 100).toFixed(1);
       const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
-      if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
+      if (from === "CASH" && to === "780") return s.bk ? "超跌抄底(RSI6<25 或 20日跌>15%)" : "780重回MA20上方, 趋势恢复";
       if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
-      if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
+      if (from === "398" && to === "780") return "超跌抄底(RSI6<25 或 20日跌>15%)";
       if (from === "780" && to === "CASH") return s.sc ? ("780回撤" + ddPct + "%, 398五日" + r5Pct + "%, 双跌避险") : "离场";
       if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
       if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
@@ -1265,7 +1269,7 @@ async function handleDiag() {
           var bk = data.buyBackSignal ? '<strong style="color:#c2772b;">\u89e6\u53d1</strong>' : '<strong>\u4e0d\u89e6\u53d1</strong>';
           logic.innerHTML = '<li><strong>\u5398\u6362\u81f3398\uff1a</strong>780\u56de\u6492>10% <mark class="key">\u4e14</mark> 398\u4e94\u65e5\u6da8>0 \u2192 ' + sw + '</li>' +
             '<li><strong>\u7a7a\u4ed3\u907f\u9669\uff1a</strong>780\u56de\u6492>12% <mark class="key">\u4e14</mark> 398\u4e94\u65e5\u22640% \u2192 ' + ca + '</li>' +
-            '<li><strong>\u62a2\u5e95\u56de\u573a\uff1a</strong>RSI6<25 <mark class="key">\u6216</mark> 780\u91cd\u56deMA20\u4e0a\u65b9 \u2192 ' + bk + '</li>' +
+            '<li><strong>\u62a2\u5e95\u56de\u573a\uff1a</strong>RSI6<25 <mark class="key">\u6216</mark> 20日跌>15% <mark class="key">\u6216</mark> 780\u91cd\u56deMA20\u4e0a\u65b9 \u2192 ' + bk + '</li>' +
             '<li><strong>\u5f53\u524d\u72b6\u6001\uff1a</strong><mark class="key">' + (data.holding === '780' ? '\u6301\u6709780' : data.holding === '398' ? '\u6301\u6709398' : '\u7a7a\u4ed3') + '</mark> \u2192 ' + data.actionText + (data.entryDate ? ' \uff08\u4e70\u5165\u4e8e' + data.entryDate + (data.entryPrice != null ? ' @ ' + data.entryPrice : '') + '\uff09' : '') + '</li>';
         }
         // 最近一笔交易收益率(盈利=红, 回撤=绿)

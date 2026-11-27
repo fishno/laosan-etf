@@ -228,7 +228,7 @@
         <ul>
           <li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → <strong>不触发</strong></li>
           <li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → <strong>不触发</strong></li>
-          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
+          <li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 20日跌>15% <mark class="key">或</mark> 780重回MA20上方 → <strong>不触发</strong></li>
           <li><strong>当前状态：</strong><mark class="key">持有780</mark> → 持有 159780 科创创业50ETF</li>
         </ul>
       </div>
@@ -246,12 +246,12 @@
       <h2>策略D3 规则</h2>
       <p>科技银行轮动策略是一个<mark class="key">回撤保护型轮动策略</mark>，在科创创业50ETF（159780）和工商银行（601398）之间智能切换，<mark class="key">极端行情可空仓避险</mark>。</p>
       <div class="strategy-card">
-        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25或MA20恢复回780</div>
+        <div class="s-label">策略D3：回撤>10%切398，回撤>12%空仓，RSI6<25 或 20日跌>15% 或 MA20恢复回780</div>
         <div class="strategy-rules">
           <div class="rule-box sell"><div class="r-action">780 → 398（避险）</div><div class="r-value">回撤>10%<br>且398五日涨>0</div></div>
           <div class="rule-box sell"><div class="r-action">→ 空仓（双跌）</div><div class="r-value">回撤>12%<br>且398五日≤0%</div></div>
-          <div class="rule-box"><div class="r-action">空仓 → 780（抢底）</div><div class="r-value">RSI6<25<br>或重回MA20</div></div>
-          <div class="rule-box"><div class="r-action">398 → 780（反弹）</div><div class="r-value">RSI6 < 25</div></div>
+          <div class="rule-box"><div class="r-action">空仓 → 780（抢底）</div><div class="r-value">RSI6<25 或<br>20日跌>15%<br>或重回MA20</div></div>
+          <div class="rule-box"><div class="r-action">398 → 780（反弹）</div><div class="r-value">RSI6<25 或<br>20日跌>15%</div></div>
         </div>
       </div>
     </section>
@@ -498,6 +498,10 @@
       const dd = calcDD(c780);
       const r5 = new Array(N).fill(null);
       for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
+      // ★20 日累计跌幅：补 RSI6 的阴跌盲区（2026-11-27）
+      const r20 = new Array(N).fill(null);
+      for (let i = 20; i < N; i++) r20[i] = (c780[i] - c780[i - 20]) / c780[i - 20];
+      const bkLevel = i => (rsi6[i] !== null && rsi6[i] < 25) || (r20[i] !== null && r20[i] < -0.15);
 
       let S = dates.findIndex(d => d >= WINDOW_START);
       if (S < 0) S = Math.max(0, N - 60);
@@ -505,7 +509,7 @@
       const sig = i => ({
         sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
         sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
-        bk: rsi6[i] !== null && rsi6[i] < 25,
+        bk: bkLevel(i),
         d398: r5[i] !== null && r5[i] < -0.02,
         aMA: ma20[i] !== null && c780[i] > ma20[i],
       });
@@ -516,9 +520,9 @@
       const tradeReason = (from, to, s, r5i, ddi) => {
         const ddPct = (ddi * 100).toFixed(1);
         const r5Pct = r5i != null ? (r5i * 100).toFixed(1) : "-";
-        if (from === "CASH" && to === "780") return s.bk ? "RSI6<25, 极度超卖抢底" : "780重回MA20上方, 趋势恢复";
+        if (from === "CASH" && to === "780") return s.bk ? "超跌抄底(RSI6<25 或 20日跌>15%)" : "780重回MA20上方, 趋势恢复";
         if (from === "780" && to === "398") return "780回撤" + ddPct + "%, 398五日涨" + r5Pct + "%";
-        if (from === "398" && to === "780") return "RSI6<25, 超卖反弹";
+        if (from === "398" && to === "780") return "超跌抄底(RSI6<25 或 20日跌>15%)";
         if (from === "780" && to === "CASH") return s.sc ? ("780回撤" + ddPct + "%, 398五日" + r5Pct + "%, 双跌避险") : "离场";
         if (from === "398" && to === "CASH") return s.d398 ? ("398五日" + r5Pct + "%, 止损离场") : "离场";
         if (from === "CASH" && to === "398") return "398转强, 五日涨" + r5Pct + "%";
@@ -801,7 +805,7 @@
           var bk = data.buyBackSignal ? '<strong style="color:#c2772b;">触发</strong>' : '<strong>不触发</strong>';
           logic.innerHTML = '<li><strong>切换至398：</strong>780回撤>10% <mark class="key">且</mark> 398五日涨>0 → ' + sw + '</li>' +
             '<li><strong>空仓避险：</strong>780回撤>12% <mark class="key">且</mark> 398五日≤0% → ' + ca + '</li>' +
-            '<li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 780重回MA20上方 → ' + bk + '</li>' +
+            '<li><strong>抢底回场：</strong>RSI6<25 <mark class="key">或</mark> 20日跌>15% <mark class="key">或</mark> 780重回MA20上方 → ' + bk + '</li>' +
             '<li><strong>当前状态：</strong><mark class="key">' + (data.holding === '780' ? '持有780' : data.holding === '398' ? '持有398' : '空仓') + '</mark> → ' + data.actionText + (data.entryDate ? ' （买入于' + data.entryDate + (data.entryPrice != null ? ' @ ' + data.entryPrice : '') + '）' : '') + '</li>' +
             '<li style="color:#8a8377;font-size:0.86em;">回撤口径：距过去250个交易日最高点的跌幅（与牛市开关同窗），非从数据起点累计</li>';
         }
