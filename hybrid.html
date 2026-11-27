@@ -142,7 +142,7 @@
     <details class="fold">
       <summary>规则说明 <span class="hint">点击展开 · 牛市开关 / 成本止损 / 位置检查 / 回补 / 止损冷却</span></summary>
       <div class="fold-body">
-    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b><br><b>★止损冷却（2026-11-15 新增）：</b>780 被<b>成本止损</b>后 <b>30 个交易日内不买回</b>（即使上面三条成立），且该规则<b>只在 780 低于 250 日高 −10% 时生效</b>——牛市里的正常回踩不拦。理由：刚被 −4% 打出来说明趋势对己不利，立刻再抄等于同一个坑摔第二次。<b>设为 0 即关闭。</b></div>
+    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / KDJ J&lt;8 或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——三条任一成立即买回：</b>① KDJ 的 J 值跌破 8（<b>事件式</b>：今&lt;8 且 昨≥8）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b><br><b>★止损冷却（2026-11-15 新增）：</b>780 被<b>成本止损</b>后 <b>30 个交易日内不买回</b>（即使上面三条成立），且该规则<b>只在 780 低于 250 日高 −10% 时生效</b>——牛市里的正常回踩不拦。理由：刚被 −4% 打出来说明趋势对己不利，立刻再抄等于同一个坑摔第二次。<b>设为 0 即关闭。</b></div>
       </div>
     </details>
     <div class="grid g5">
@@ -186,11 +186,11 @@
     <div class="rule-box" id="reentryBanner">--</div>
     <div class="ma20-note" id="ma20Note">--</div>
     <div class="grid g3">
-      <div class="m"><div class="m-label">路径① RSI6 &lt; 25（主力路径，历史占比 74%）</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
+      <div class="m"><div class="m-label">路径① KDJ J &lt; 8（主力路径）</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
       <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
       <div class="m"><div class="m-label">路径③ 绕道空仓 → 站上 MA20</div><div class="m-value" id="re3v">--</div><div class="m-sub" id="re3s">--</div></div>
     </div>
-    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
+    <div class="warn"><b>路径①是「事件式」</b>——要求「今天 J &lt; 8 且 昨天 J ≥ 8」。如果 J 值在<b>持有 780 期间</b>就跌破了 8，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 J <b>先反弹回 8 上方复位</b>，之后再跌破 8 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。<br><b>★2026-11-27 指标变更：RSI6&lt;25 → KDJ J&lt;8。</b>起因是 11-27 780 单日 +16.30%，而 11-26 的 RSI6 是 31.8、全程没跌破 25，整段行情吃不到；同一天 J 值在 11-20 已低至 −2.5、11-25 为 9.1。<b>测了 33 个候选指标，只有 KDJ 家族系统性胜出</b>：J&lt;8 口径 +687.4%（旧 +623.3%）、回撤 −18.5%→−14.7%、卡玛 3.76→4.99、2026 年 +58.7%→+81.9%。J&lt;5 / J&lt;8 / J&lt;10 三个连续阈值在 5 个起点全部 4 胜 1 负（参数高原，不是孤点；J&lt;0 只 1/5、J&lt;12 直接 0/5）。<b>代价：780 腿胜率 60%→49%</b>——它靠多做 12 笔、一半亏小钱、但多抓 1 个大赢家，累计贡献 +116.7pct→+150.2pct。<span class="down">信号与旧口径重合率仅 12%，是真换指标。已知局限：33 选 1 存在多重比较偏差，2026 年那 +23pct 主要来自 11-20 单笔 +14.59%。</span></div>
   </section>
 
   <section id="discipline" class="card">
@@ -355,6 +355,20 @@ const USE_MA398 = false;
 const MA398_LEN = 50;
 const MA398_BUF = 0.02;
 
+// ★★ 780 买点指标：RSI6<25 → KDJ J<8（2026-11-27 变更，老杨拍板）
+//   起因：11-27 780 单日 +16.30%，而 11-26 收盘时 RSI6 为 31.8、整段从未跌破 25，这笔完全没吃到。
+//   实测（33 个候选指标，其余规则一字不动，仅换 780 入场信号；2023-01-02 → 2026-11-27）：
+//     RSI6<25（旧） +623.3% / 回撤 −18.5% / 卡玛 3.76 / 780笔 35 / 胜率 60% / 2026年 +58.7%
+//     KDJ J<5      +608.5% / 回撤 −13.8% / 卡玛 4.97 / 780笔 46 / 胜率 57% / 2026年 +73.4%
+//     KDJ J<8（新） +687.4% / 回撤 −14.7% / 卡玛 4.99 / 780笔 47 / 胜率 49% / 2026年 +81.9%
+//     KDJ J<10     +624.5% / 回撤 −15.4% / 卡玛 4.52 / 780笔 46 / 胜率 46% / 2026年 +77.8%
+//   选 J<8 的依据：J<5 / J<8 / J<10 三个连续阈值在 5 个起点（2021-08/2022/2023/2024/2025）
+//     全部 4 胜 1 负 → 是参数高原不是孤点；J<0 仅 1/5、J<12 直接 0/5 断崖。
+//   代价：780 腿胜率 60% → 49%，靠「多做 12 笔、一半亏小钱、但多抓 1 个大赢家」换取累计 +116.7pct → +150.2pct。
+//   信号重合率仅 12%（RSI 37 次 vs J<10 58 次，共同 10 次）→ 是换指标，不是调参。
+const KDJ_N = 9, KDJ_M1 = 3, KDJ_M2 = 3, KDJ_TH = 8;
+const RSI6_TH = 25;   // 旧阈值，仅保留给文案对照与诊断，不参与交易
+
 async function fetchTx(code) {
   // 2026-11-14 修复：原 web.ifzq.gtimg.cn/appstock/app/fqkline 已被腾讯 WAF 拦（HTTP 501），
   // 改走 proxy.finance.qq.com 的 newfqkline。
@@ -373,15 +387,20 @@ async function fetchTx(code) {
     const arr = d && (d.qfqday || d.day);
     if (!arr || !arr.length) break;
     for (const k of arr) {
-      const c = parseFloat(k[2]);
-      if (k[0] && isFinite(c) && c > 0) map.set(k[0], c);
+      // ★2026-11-27：买点指标改用 KDJ，需要 high/low，不能再只留 close
+      const c = parseFloat(k[2]), hh = parseFloat(k[3]), ll = parseFloat(k[4]);
+      if (k[0] && isFinite(c) && c > 0) map.set(k[0], {
+        close: c,
+        high: (isFinite(hh) && hh > 0) ? hh : c,
+        low: (isFinite(ll) && ll > 0) ? ll : c
+      });
     }
     const first = [...map.keys()].sort()[0];
     if (!first || first <= DATA_BEG || arr.length < 100) break;
     cur = dayShift(first, -1);
   }
   if (!map.size) throw new Error("empty");
-  return [...map.keys()].sort().map(k => ({ date: k, close: map.get(k) }));
+  return [...map.keys()].sort().map(k => Object.assign({ date: k }, map.get(k)));
 }
 
 function dayShift(ds, n) {
@@ -401,7 +420,12 @@ async function fetchEm(secid) {
   if (!klines || !klines.length) throw new Error("东财源无K线数据");
   return klines.map(k => {
     const p = k.split(",");
-    return { date: p[0], close: parseFloat(p[2]) };
+    const c = parseFloat(p[2]), hh = parseFloat(p[3]), ll = parseFloat(p[4]);
+    return {
+      date: p[0], close: c,
+      high: (isFinite(hh) && hh > 0) ? hh : c,
+      low: (isFinite(ll) && ll > 0) ? ll : c
+    };
   });
 }
 
@@ -422,15 +446,20 @@ async function fetchWorker(code) {
     const arr = d && (d.qfqday || d.day);
     if (!arr || !arr.length) break;
     for (const k of arr) {
-      const c = parseFloat(k[2]);
-      if (k[0] && isFinite(c) && c > 0) map.set(k[0], c);
+      // ★2026-11-27：买点指标改用 KDJ，需要 high/low，不能再只留 close
+      const c = parseFloat(k[2]), hh = parseFloat(k[3]), ll = parseFloat(k[4]);
+      if (k[0] && isFinite(c) && c > 0) map.set(k[0], {
+        close: c,
+        high: (isFinite(hh) && hh > 0) ? hh : c,
+        low: (isFinite(ll) && ll > 0) ? ll : c
+      });
     }
     const first = [...map.keys()].sort()[0];
     if (!first || first <= DATA_BEG || arr.length < 100) break;
     cur = dayShift(first, -1);
   }
   if (!map.size) throw new Error("无K线数据");
-  return [...map.keys()].sort().map(k => ({ date: k, close: map.get(k) }));
+  return [...map.keys()].sort().map(k => Object.assign({ date: k }, map.get(k)));
 }
 
 async function getKlines(code, secid, label) {
@@ -451,7 +480,14 @@ async function fetchRealtime(code) {
     const m = text.match(/v_\w+="([^"]*)"/);
     if (!m) throw new Error("无行情数据");
     const f = m[1].split("~");
-    if (parseFloat(f[3]) > 0) return { price: parseFloat(f[3]), volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时" };
+    // ★2026-11-27：f[33]=当日最高、f[34]=当日最低（KDJ 需要）
+    const px = parseFloat(f[3]), hh = parseFloat(f[33]), ll = parseFloat(f[34]);
+    if (px > 0) return {
+      price: px,
+      high: (isFinite(hh) && hh > 0) ? hh : px,
+      low: (isFinite(ll) && ll > 0) ? ll : px,
+      volume: parseFloat(f[6]) || 0, time: f[30] || "", source: "实时"
+    };
     throw new Error("现价为0");
   } catch (e) { errors.push("实时: " + e.message); }
   throw new Error("实时行情失败 [" + errors.join(" | ") + "]");
@@ -468,7 +504,13 @@ function augmentDaily(klines, rt) {
   const last = klines[klines.length - 1];
   const rtDate = realtimeDate(rt.time);
   if (rtDate > last.date && isWeekday(rtDate) && rt.volume > 0) {
-    return [...klines, { date: rtDate, close: rt.price }];
+    // ★2026-11-27：盘中 bar 也要带 high/low（KDJ 用），并保证 high≥close≥low
+    const rth = (rt.high && rt.high > 0) ? rt.high : rt.price;
+    const rtl = (rt.low && rt.low > 0) ? rt.low : rt.price;
+    return [...klines, {
+      date: rtDate, close: rt.price,
+      high: Math.max(rth, rt.price), low: Math.min(rtl, rt.price)
+    }];
   }
   return klines;
 }
@@ -504,6 +546,64 @@ function rsiWilder(p, n, i) {
     al = (al * (n - 1) + (c < 0 ? -c : 0)) / n;
   }
   return { ag: ag, al: al };
+}
+
+// ★KDJ(9,3,3) —— 与回测 _ind_common.kdj() 逐行对齐：
+//   RSV = (C - LLV(L,9)) / (HHV(H,9) - LLV(L,9)) * 100
+//   K   = 2/3·K_prev + 1/3·RSV   （pandas ewm(com=2, adjust=False)，初值 = 首个有效 RSV）
+//   D   = 2/3·D_prev + 1/3·K
+//   J   = 3K - 2D
+//   注：rolling(9) 前 8 个为 NaN；HHV==LLV 时 RSV 为 NaN，ewm 输出 NaN 但保留状态
+function calcKDJ(high, low, close, n, m1, m2) {
+  const N = close.length;
+  const outK = new Array(N).fill(null), outD = new Array(N).fill(null), outJ = new Array(N).fill(null);
+  let k = null, d = null;
+  for (let i = n - 1; i < N; i++) {
+    let hh = -Infinity, ll = Infinity;
+    for (let j = i - n + 1; j <= i; j++) {
+      if (high[j] > hh) hh = high[j];
+      if (low[j] < ll) ll = low[j];
+    }
+    const rng = hh - ll;
+    if (rng > 0) {
+      const rsv = (close[i] - ll) / rng * 100;
+      k = (k === null) ? rsv : ((m1 - 1) * k + rsv) / m1;
+      d = (d === null) ? k : ((m2 - 1) * d + k) / m2;
+      outK[i] = k; outD[i] = d; outJ[i] = 3 * k - 2 * d;
+    }
+    // rng==0：保持 k/d 状态不变，当日输出 null（与 pandas 的 NaN 语义一致）
+  }
+  return { k: outK, d: outD, j: outJ };
+}
+
+// 假设「下一交易日收盘 = px」，推算那天的 J（用于反推触发价）
+//   明日 9 日窗 = 最近 8 个交易日（i-7..i）的 high/low + 明日的 px
+function kdjJAtPrice(high, low, close, i, px, n, m1, m2, kPrev, dPrev) {
+  let hh = px, ll = px;
+  for (let j = Math.max(0, i - n + 2); j <= i; j++) {
+    if (high[j] > hh) hh = high[j];
+    if (low[j] < ll) ll = low[j];
+  }
+  const rng = hh - ll;
+  if (rng <= 0) return null;
+  const rsv = (px - ll) / rng * 100;
+  const k = ((m1 - 1) * kPrev + rsv) / m1;
+  const d = ((m2 - 1) * dPrev + k) / m2;
+  return 3 * k - 2 * d;
+}
+
+// 在 [lo, hi] 上二分求「J = th」对应的价格（J 对 px 单调不减）；无交点返回 null
+function solveJPrice(high, low, close, i, kPrev, dPrev, th, n, m1, m2, lo, hi) {
+  const f = px => kdjJAtPrice(high, low, close, i, px, n, m1, m2, kPrev, dPrev);
+  const fLo = f(lo), fHi = f(hi);
+  if (fLo === null || fHi === null) return null;
+  if ((fLo - th) * (fHi - th) > 0) return null;   // 两端同侧，区间内无交点
+  let a = lo, b = hi;
+  for (let t = 0; t < 64; t++) {
+    const mid = (a + b) / 2;
+    if (f(mid) < th) a = mid; else b = mid;
+  }
+  return (a + b) / 2;
 }
 
 function calcMA(p, n) {
@@ -558,17 +658,21 @@ async function updateData() {
       if (a398.length !== d398raw.length) d398 = a398;
     } catch (e) { /* 实时增强失败不影响主流程 */ }
 
-    const m780 = new Map(d780.map(x => [x.date, x.close]));
-    const m398 = new Map(d398.map(x => [x.date, x.close]));
+    const m780 = new Map(d780.map(x => [x.date, x]));      // ★存整条 bar，KDJ 要用 high/low
+    const m398 = new Map(d398.map(x => [x.date, x]));
     const m300 = new Map(d300raw.map(x => [x.date, x.close]));
     const dates = [...m780.keys()].filter(dd => m398.has(dd)).sort();
     if (dates.length < 100) throw new Error("对齐后交易日不足");
-    const c780 = dates.map(dd => m780.get(dd));
-    const c398 = dates.map(dd => m398.get(dd));
+    const c780 = dates.map(dd => m780.get(dd).close);
+    const h780 = dates.map(dd => { const b = m780.get(dd); return (b.high !== undefined && b.high !== null) ? b.high : b.close; });
+    const l780 = dates.map(dd => { const b = m780.get(dd); return (b.low !== undefined && b.low !== null) ? b.low : b.close; });
+    const c398 = dates.map(dd => m398.get(dd).close);
     const c300 = dates.map(dd => m300.get(dd));
     const N = dates.length;
 
-    const rsi6 = calcRSI(c780, 6);
+    const rsi6 = calcRSI(c780, 6);          // 保留：文案对照与诊断用，不参与交易决策
+    const kdj = calcKDJ(h780, l780, c780, KDJ_N, KDJ_M1, KDJ_M2);   // ★买点指标
+    const jval = kdj.j;
     const ma20 = calcMA(c780, 20);
     const ma60 = calcMA(c780, 60);
     const ma398_20 = calcMA(c398, 20);   // ★398 的 MA20 —— 止损换仓前的位置尺
@@ -591,7 +695,7 @@ async function updateData() {
     const sig = i => ({
       sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
       sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
-      bk: rsi6[i] !== null && rsi6[i] < 25,
+      bk: jval[i] !== null && jval[i] < KDJ_TH,   // ★KDJ J<8（原 RSI6<25）
       d398: r5[i] !== null && r5[i] < -0.02,
       aMA: ma20[i] !== null && c780[i] > ma20[i]
     });
@@ -929,16 +1033,16 @@ async function updateData() {
     const reSec = document.getElementById("reentry");
     if (posNow !== "780") {
       reSec.style.display = "";
-      const rsNow = rsi6[li];
-      const st = rsiWilder(c780, 6, li);
+      const jNow = jval[li], kNow = kdj.k[li], dNow = kdj.d[li];
       let pxUp = null, pxDown = null;
-      if (st) {
-        const dUp = (5 * st.al - 15 * st.ag) / 3;   // 需上涨多少，RSI6 才回到 25
-        const dDn = 15 * st.ag - 5 * st.al;         // 需下跌多少，RSI6 才跌破 25
-        if (dUp > 0) pxUp = price780 + dUp;
-        if (dDn > 0) pxDown = price780 - dDn;
+      if (kNow !== null && kNow !== undefined && dNow !== null && dNow !== undefined) {
+        // ★KDJ 反推：J = 3K-2D 对价格单调，二分求「J 恰好 = 8」的价位
+        pxDown = solveJPrice(h780, l780, c780, li, kNow, dNow, KDJ_TH, KDJ_N, KDJ_M1, KDJ_M2,
+          price780 * 0.70, price780);              // 再跌到多少 J 才跌破 8（搜到 −30%，覆盖 2 个跌停）
+        pxUp = solveJPrice(h780, l780, c780, li, kNow, dNow, KDJ_TH, KDJ_N, KDJ_M1, KDJ_M2,
+          price780, price780 * 1.25);              // 反弹到多少 J 才复位回 8 上方
       }
-      const armed = (rsNow !== null && rsNow !== undefined && rsNow >= 25);
+      const armed = (jNow !== null && jNow !== undefined && jNow >= KDJ_TH);
       const upPct = pxUp ? (pxUp / price780 - 1) * 100 : null;
 
       const e1v = document.getElementById("re1v"), e1s = document.getElementById("re1s");
@@ -946,14 +1050,14 @@ async function updateData() {
         e1v.textContent = "已复位 · 等下穿";
         e1v.className = "m-value up";
         e1s.textContent = pxDown
-          ? "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；跌到 ≤ ¥" + pxDown.toFixed(3) + " 即触发买入"
-          : "RSI6 " + rsNow.toFixed(1) + " 已在 25 上方；单日跌幅不足以触发，明日再看";
+          ? "J " + jNow.toFixed(1) + "（K " + kNow.toFixed(1) + "/D " + dNow.toFixed(1) + "）已在 8 上方；跌到 ≤ ¥" + pxDown.toFixed(3) + " 即触发买入"
+          : "J " + jNow.toFixed(1) + "（K " + kNow.toFixed(1) + "/D " + dNow.toFixed(1) + "）已在 8 上方，距 8 还差 " + (jNow - KDJ_TH).toFixed(1) + "；K/D 有平滑惯性，跌 30% 内都到不了 8，需连续阴跌数日";
       } else {
         e1v.textContent = "等反弹复位";
         e1v.className = "m-value down";
         e1s.textContent = pxUp
-          ? "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方（事件已用掉）；涨到 ≥ ¥" + pxUp.toFixed(3) + "（+" + upPct.toFixed(2) + "%）复位后，再跌破 25 才买入"
-          : "RSI6 " + rsNow.toFixed(1) + " 仍在 25 下方；需先反弹回 25 上方复位";
+          ? "J " + jNow.toFixed(1) + "（K " + kNow.toFixed(1) + "/D " + dNow.toFixed(1) + "）仍在 8 下方（事件已用掉）；涨到 ≥ ¥" + pxUp.toFixed(3) + "（+" + upPct.toFixed(2) + "%）复位后，再跌破 8 才买入"
+          : "J " + jNow.toFixed(1) + "（K " + kNow.toFixed(1) + "/D " + dNow.toFixed(1) + "）仍在 8 下方；需先反弹回 8 上方复位";
       }
 
       const bullPx = BULL_PCT * rh250[li];
@@ -966,8 +1070,11 @@ async function updateData() {
       const e3v = document.getElementById("re3v");
       e3v.textContent = (r5p >= 0 ? "+" : "") + r5p.toFixed(2) + "%";
       e3v.className = "m-value " + (r5p < -2 ? "down" : "up");
-      document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；空仓后 780 站上 MA20 = ¥" +
-        ma20[li].toFixed(3) + "（+" + ((ma20[li] / price780 - 1) * 100).toFixed(1) + "%）";
+      const ma20rel = (price780 / ma20[li] - 1) * 100;   // 现价相对 MA20（正=上方）
+      document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；780 " +
+        (ma20rel > 0
+          ? "现价在 MA20（¥" + ma20[li].toFixed(3) + "）上方 " + ma20rel.toFixed(1) + "% —— 该路径需先失守 MA20、再重新收上才算回场"
+          : "现价在 MA20（¥" + ma20[li].toFixed(3) + "）下方 " + (-ma20rel).toFixed(1) + "% —— 空仓期间收上即回场");
 
       const mn = document.getElementById("ma20Note");
       if (mn) {
@@ -1008,12 +1115,12 @@ async function updateData() {
       const bn = document.getElementById("reentryBanner");
       const cdPre = cdLeft > 0 ? cdNote + "<br>" : "";
       if (armed) {
-        bn.innerHTML = cdPre + "<b>当前状态：</b>RSI6 已复位到 25 上方 —— <b>等它再跌破 25 的那一天</b>，当天 14:50 前挂单买回 159780。";
+        bn.innerHTML = cdPre + "<b>当前状态：</b>KDJ 的 J 值已复位到 <b>8</b> 上方 —— <b>等它再跌破 8 的那一天</b>，当天 14:50 前挂单买回 159780。";
       } else if (pxUp) {
-        bn.innerHTML = cdPre + "<b>当前状态：</b>抄底事件已被消耗（RSI6 在持 780 期间就下穿了 25）。<b>先等一根约 +" +
-          upPct.toFixed(2) + "% 的阳线把 RSI6 推回 25 上方</b>；复位之后哪天下穿 25，就在那天 14:50 前挂单买回 159780。";
+        bn.innerHTML = cdPre + "<b>当前状态：</b>抄底事件已被消耗（J 值在持 780 期间就下穿了 8）。<b>先等一波约 +" +
+          upPct.toFixed(2) + "% 的反弹把 J 推回 8 上方</b>；复位之后哪天下穿 8，就在那天 14:50 前挂单买回 159780。";
       } else {
-        bn.innerHTML = cdPre + "<b>当前状态：</b>等 RSI6 回到 25 上方并重新下穿 —— 那一天买回 159780。";
+        bn.innerHTML = cdPre + "<b>当前状态：</b>等 J 值回到 8 上方并重新下穿 —— 那一天买回 159780。";
       }
     } else {
       reSec.style.display = "none";
@@ -1149,8 +1256,8 @@ async function updateData() {
       if (t.stop && t.stopBlocked) return "★成本止损 → <b>改空仓</b>（398 乖离 " + bTxt + " &gt; +" + Math.round(BIAS_MAX * 100) + "%，不追高）";
       if (t.stop) return "★成本止损 跌破买入价 −" + Math.round(STOP_PCT * 100) + "% → 切工行防守（398 乖离 " + bTxt + "）";
       if (t.maBlocked) return "★398 跌破 MA" + MA398_LEN + " 达 " + Math.round(MA398_BUF * 100) + "% → <b>不用它防守</b>，改空仓等信号";
-      if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 RSI6<25 抢底";
-      if (t.to === "780") return "牛市开关 ON / RSI6<25 / MA20 恢复";
+      if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 KDJ J<8 抢底";
+      if (t.to === "780") return "牛市开关 ON / KDJ J<8 / MA20 恢复";
       if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
       return "780回撤>12% 双跌避险 或 398五日跌>2%";
     };
