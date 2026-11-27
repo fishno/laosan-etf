@@ -1287,7 +1287,7 @@ async function updateData() {
     const act = t => {
       const nm2 = { "780": "159780", "398": "601398", "CASH": "空仓" };
       if (t.from === "CASH") return "<b class='up'>买入 " + nm2[t.to] + "</b>";
-      if (t.to === "CASH") return "<b class='down'>清仓 → 空仓</b>";
+      if (t.to === "CASH") return "<b class='down'>清仓 " + nm2[t.from] + " → 空仓</b>";
       return "<b>" + nm2[t.from] + " → " + nm2[t.to] + "</b>";
     };
     const reason = t => {
