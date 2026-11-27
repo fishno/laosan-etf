@@ -235,6 +235,7 @@
           <div><div class="m-label">最后一笔浮盈</div><div class="m-value" id="lastPl">--</div></div>
         </div>
         <div class="m-sub" id="lastDetail"></div>
+        <div class="m-sub" id="todayWhy" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--accent-light);line-height:1.75;font-size:13px"></div>
       </div>
     </div>
   </section>
@@ -956,6 +957,44 @@ async function updateData() {
       ? "<b class='down'>★冷却中：最近止损 " + lastStopTr.date + "，还需 " + cdLeft + " 个交易日才允许买回 780（期间信号一律不执行）</b>"
       : "";
     document.getElementById("posNow").textContent = { "780": "159780 科技", "398": "601398 银行", "CASH": "空仓" }[posNow];
+    // ---- ★今日动作说明（2026-11-27）：面板自己要讲清「今天为什么切」，不靠人问 ----
+    (function () {
+      const el = document.getElementById("todayWhy");
+      if (!el) return;
+      try {
+      const i = N - 1, s = sig(i), pv = sig(i - 1);
+      const NMC = { "780": "159780", "398": "601398", "CASH": "空仓" };
+      const fs = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+      const tr = hy.trades[hy.trades.length - 1];
+      const todayTr = (tr && tr.date === dates[i]) ? tr : null;
+      const why = [];
+      if (s.sc && !pv.sc) why.push("<b>780 距 250 日高 " + (dd[i] * 100).toFixed(1) + "%（跌破 −12%）</b> ＋ <b>398 五日 " + fs(r5[i] * 100) + "（≤0）</b> ＝ 双弱，两个都不站边 → 切空仓");
+      if (s.d398 && !pv.d398) why.push("<b>398 五日 " + fs(r5[i] * 100) + " 首次跌破 −2%</b>" + (posNow === "398" ? " → 清仓" : "（今日不持 398，此条不生效）"));
+      if (s.bk && !pv.bk) why.push("<b>KDJ J=" + jval[i].toFixed(1) + " 跌破 8</b> → 买回 780");
+      if (s.aMA && !pv.aMA) why.push("<b>780 首次站上 MA20 " + ma20[i].toFixed(4) + "</b>" + (posNow === "780" ? "（已在 780 上，此条不参与决策）" : " → 买回 780"));
+      if (s.sw && !pv.sw) why.push("<b>780 距高回撤 &gt;10% 且 398 五日转正</b> → 切 398");
+      if (!why.length) why.unshift("今日无规则触发，继续持有 <b>" + NMC[posNow] + "</b>");
+      let h = "<b style='color:var(--accent)'>" + dates[i] + " · 今日动作</b>　" + why.join("　｜　");
+      if (todayTr) {
+        h += "<br>成交：" + NMC[todayTr.from] + " → <b>" + NMC[todayTr.to] + "</b>" + (todayTr.price ? " @ " + todayTr.price.toFixed(3) : "");
+        if (todayTr.from !== "CASH") {
+          let ent = null;
+          for (let k = hy.trades.length - 2; k >= 0; k--) { if (hy.trades[k].to === todayTr.from) { ent = hy.trades[k]; break; } }
+          if (ent && ent.price) {
+            const pp = (todayTr.from === "780" ? c780[i] : c398[i]) / ent.price - 1;
+            h += "　本笔 <b class='" + (pp >= 0 ? "up" : "down") + "'>" + (pp >= 0 ? "+" : "") + (pp * 100).toFixed(2) + "%</b>（" + ent.date + " 进 @" + ent.price.toFixed(3) + "）";
+          }
+        }
+      }
+      // ★空仓 + 780 已在 MA20 上方：提醒「首次站上」事件可能已被今日清仓用掉，追不回来
+      if (posNow === "CASH" && ma20[i] && c780[i] > ma20[i]) {
+        h += "<br><b class='down'>注意：780 现价已在 MA20（" + ma20[i].toFixed(4) + "）上方，" +
+          "但「首次站上」这个事件若在今日或此前已被消耗，后续继续上涨也不会自动买回 —— " +
+          "回场只能等三条：① J 跌回 8 以下 ② 重新跌破 MA20 后再上穿 ③ 398 五日转正走「双弱转多」切 398。</b>";
+      }
+      el.innerHTML = h;
+      } catch (err) { el.textContent = "今日动作说明渲染失败：" + err.message; }
+    })();
     let entry = null;
     if (posNow !== "CASH") {
       for (let k = hy.trades.length - 1; k >= 0; k--) {
@@ -1259,7 +1298,10 @@ async function updateData() {
       if (t.from === "CASH" && t.to === "780") return "牛市开关 ON 或 KDJ J<8 抢底";
       if (t.to === "780") return "牛市开关 ON / KDJ J<8 / MA20 恢复";
       if (t.to === "398") return "780回撤>10% 且 398五日涨>0";
-      return "780回撤>12% 双跌避险 或 398五日跌>2%";
+      if (t.to === "CASH") return t.from === "780"
+        ? "780 距高 &lt;−12% 且 398 五日≤0 → 双弱避险"
+        : "398 五日跌幅 &gt;2% → 清仓";
+
     };
     const pxFmt = p => p === null || p === undefined ? "-" : p.toFixed(3);
     let th = "<tr><th>日期</th><th>动作</th><th>原因</th><th>成交价</th><th>净值</th><th>累计盈利率</th><th>佣金</th></tr>";
