@@ -1,10 +1,9 @@
 // Service Worker — 只缓存应用外壳(页面/图标/图表库)，行情数据一律走网络不缓存
-const CACHE = 'laosan-d3-v34';   // v34: 2026-11-27 复核更正——「398 乖离>4% 拦截」原写「10-29 止损后切工行亏 4.9%、贡献 23pct」，实为错述（10-29 无止损、当时持 398）；真实：3 次止损当日乖离 −0.89/+3.81/+2.40%，全未达 4%，该规则 0 次生效、贡献 0
+const CACHE = 'laosan-d3-v2';
 
 const SHELL = [
   './',
   './index.html',
-  './hybrid.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

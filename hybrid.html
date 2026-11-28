@@ -69,13 +69,6 @@
   .px-scale span{position:absolute;transform:translateX(-50%);white-space:nowrap}
   .px-scale span.f{left:0;transform:none}
   .px-scale span.l{left:auto;right:0;transform:none}
-  /* 780 相对 MA20 状态提示（2026-11-27） */
-  .ma20-note{margin-top:10px;font-size:12.5px;line-height:1.65;padding:9px 12px;border-radius:10px;background:#faf7f1;border-left:3px solid #d8d2c6;color:#5f5e5a}
-  .ma20-note b{color:#444441}
-  .ma20-note.hot{background:#fdf1ea;border-left-color:#e8792e;color:#8a4a1f}
-  .ma20-note.hot b{color:#a34d15}
-  .ma20-note.ok{background:#eef7f2;border-left-color:#1d9e75;color:#0f6e56}
-  .ma20-note.ok b{color:#0b5a45}
   .disc-list{display:flex;flex-direction:column;gap:8px}
   .disc-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
   .disc-item b{color:var(--accent2)}
@@ -130,7 +123,7 @@
       <a href="#trades">交易记录</a>
     </nav>
     <button class="refresh" onclick="location.reload()">更新数据</button>
-    <div style="font-size:11px;color:#9a968c;margin-top:6px;text-align:right">页面版本 <b style="color:#e8792e">v34</b>（最新为 v34；若显示更小说明是浏览器旧缓存，按 Ctrl+Shift+R 强刷）</div>
+    <div style="font-size:11px;color:#9a968c;margin-top:6px;text-align:right">页面版本 <b style="color:#e8792e">v35</b>（2026-11-28：撤回 r20 并联项 ＋ 移除「今日动作说明」「780 vs MA20 提示」；最新为 v35，若显示更小说明是浏览器旧缓存，按 Ctrl+Shift+R 强刷）</div>
   </div>
 </header>
 
@@ -143,7 +136,7 @@
     <details class="fold">
       <summary>规则说明 <span class="hint">点击展开 · 牛市开关 / 成本止损 / 位置检查 / 回补 / 止损冷却</span></summary>
       <div class="fold-body">
-    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25 或 20日累计跌&gt;15% 或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——四条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）　<b>①' 20 日累计跌幅超 15%</b>（2026-11-27 新增，补阴跌盲区）② 站上 MA20 ③ 牛市开关 ON。<b>实时进度看下方「★780 回补监控」。</b><br><b>★止损冷却（2026-11-15 新增）：</b>780 被<b>成本止损</b>后 <b>30 个交易日内不买回</b>（即使上面三条成立），且该规则<b>只在 780 低于 250 日高 −10% 时生效</b>——牛市里的正常回踩不拦。理由：刚被 −4% 打出来说明趋势对己不利，立刻再抄等于同一个坑摔第二次。<b>设为 0 即关闭。</b></div>
+    <div class="rule-box"><b>牛市开关规则：</b>159780 收盘价 ≥ 0.95 × 近250个交易日最高收盘 → <b>满仓 159780</b>（无视 D3 切换/避险）。<br><b>★成本止损：</b>持有 159780 期间<b>跌破买入价 4%</b> → 切 <b>601398 工行</b>防守（借两者负相关对冲），不再等回撤信号。<br><b>★位置检查（2026-11-06 新增）：</b>切工行前先看 <b>601398 自身位置</b>——它<b>乖离 MA20 &gt; 4%</b>（避险资金顶上去的追高区）就<b>不换仓、直接空仓</b>，等下方「★780 回补监控」的信号再进。理由：止损信号来自 780 的风险，不该在工行最贵的位置满仓接。<br><b>其余时间：</b>维持 D3 逻辑（回撤&gt;10%切398 / &gt;12%空仓 / RSI6&lt;25 或重回MA20上方回780）。<br><b>★回补 780（空仓/持工行时）——三条任一成立即买回：</b>① RSI6 跌破 25（<b>事件式</b>：今&lt;25 且 昨≥25）② 站上 MA20 ③ 牛市开关 ON。<b>（2026-11-28 撤回「20 日累计跌 &gt; 15%」并联项 → 降为纯观察指标，不触发买入）</b><b>实时进度看下方「★780 回补监控」。</b><br><b>★止损冷却（2026-11-15 新增）：</b>780 被<b>成本止损</b>后 <b>30 个交易日内不买回</b>（即使上面三条成立），且该规则<b>只在 780 低于 250 日高 −10% 时生效</b>——牛市里的正常回踩不拦。理由：刚被 −4% 打出来说明趋势对己不利，立刻再抄等于同一个坑摔第二次。<b>设为 0 即关闭。</b></div>
       </div>
     </details>
     <div class="grid g5">
@@ -185,16 +178,15 @@
   <section id="reentry" class="card" style="display:none">
     <h2><span class="dot"></span>★780 回补监控（未持 159780 时显示）</h2>
     <div class="rule-box" id="reentryBanner">--</div>
-    <div class="ma20-note" id="ma20Note">--</div>
     <div class="grid g3">
-      <div class="m"><div class="m-label">路径① RSI6 &lt; 25　或　20 日累计跌 &gt; 15%</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
+      <div class="m"><div class="m-label">路径① RSI6 &lt; 25</div><div class="m-value" id="re1v">--</div><div class="m-sub" id="re1s">--</div></div>
       <div class="m"><div class="m-label">路径② 牛市开关 ON</div><div class="m-value" id="re2v">--</div><div class="m-sub" id="re2s">--</div></div>
       <div class="m"><div class="m-label">路径③ 绕道空仓 → 站上 MA20</div><div class="m-value" id="re3v">--</div><div class="m-sub" id="re3s">--</div></div>
     </div>
-    <details class="fold"><summary>※ 三条注解（点击展开）<span class="hint">事件式机制 · 20 日跌幅为何必要 · KDJ 一日往返</span></summary>
+    <details class="fold"><summary>※ 三条注解（点击展开）<span class="hint">事件式机制 · 20 日跌幅为何已撤回 · KDJ 一日往返</span></summary>
     <div style="padding:0 14px 14px">
     <div class="warn"><b>路径①是「事件式」</b>——要求「今天 &lt; 25 且 昨天 ≥ 25」。如果 RSI6 在<b>持有 780 期间</b>就跌破了 25，这个事件会被记录下来但被忽略（持 780 时不响应抄底信号），等你止损离场时它已经用完了；此时必须等 RSI6 <b>先反弹回 25 上方复位</b>，之后再跌破 25 才构成新事件。这正是 2026-10-08 止损后迟迟回不去的原因。</div>
-    <div class="warn"><b>★2026-11-27 新增：20 日累计跌 &gt; 15% 这条为什么必要</b> —— RSI6 是 6 日窗口，只量「最近几天跌得急不急」。2026-11 的 780 是每天跌 0.3% 的台阶式阴跌，从 1.467 跌到 0.681（−53.6%），<b>RSI6 却全程没跌破 25</b>（最低 29.8）：11-26 收盘 0.681 时 RSI6=31.8 不给信号，次日就 +16.30%。实测口径：<b>780 距 250 日高 −40% 以下的 51 个交易日里，有 66.7% 的日子 RSI6 ≥ 25（完全没信号）</b>。<br><b>并联后效果：</b>2023 起 +623.3% → <b>+673.4%</b>，最大回撤 −18.5% <b>不变</b>，卡玛 3.76 → <b>3.93</b>，5 个起点全胜（+20.7 ~ +50.1pct）。<b>阈值 −14% ~ −16% 是连续平台，取中心 −15%</b>；−12%~−13.5% 立刻塌到 1/5 胜，−17% 也失效。<br><b class="down">必须记住的弱点：</b>全历史「20 日跌 &gt; 15%」只触发 <b>10 次</b>（RSI6 本来能覆盖 5 次），引擎里真正变成买入的 <b>4 笔</b>，其中 3 笔在 2026 年 —— <b>样本薄</b>。支撑它的证据是「剔除 2024-09 窗口后提升不变」（+37.6/+39.7/+50.1/+37.5/+20.7），说明超额不来自单次黑天鹅，这点与 KDJ 有本质区别。<br><b>11 月这次为什么落在 11-20：</b>11-16~11-17 的 20 日跌幅已到 −16.7%，但 10-08 成本止损后的 30 日冷却期要到 11-19 才解禁，信号被冷却拦下；<b>11-20 是解禁后第一个新信号</b>（RSI6 31.3、20 日 −16.2%），当日 0.691 买 780 → 11-27 卖 0.792，<b class="up">+14.59%</b>。这就是「如果早两周上线会吃到的那一笔」。<b class="down">注意：规则 2026-11-27 收盘后才上线，不回补、不追溯</b>，从下一个交易日起生效。</div>
+    <div class="warn"><b>★2026-11-28 撤回：20 日累计跌 &gt; 15% 已从买点移除</b> —— 它 2026-11-27 上线，次日复核后即撤回。<br><b>撤回理由①：收益全靠一根 K 线。</b>11-20 买入 780 后，11-27 当天暴涨 <b>+16.30%</b>（0.681→0.792），才让它领先 RSI6 版 +50 点。二分法求得<b>盈亏平衡点 = 当日涨幅 ≥ +8.8%</b>（收盘 ≥ 0.741）；而 2021-07 以来 1310 个交易日里，780 单日涨幅 ≥8.8% 的只有 <b>6 天（0.46%）</b>。<br><b>撤回理由②：长阳不来就倒亏。</b>情景测试（只改 11-27 收盘价、不碰策略逻辑）：当天平盘 → <b>+565.0%</b>（落后 58.3 点）；先回吐 3%（0.661）→ 跌破买入价 0.691 的 4% 止损线，当日就被打出来，<b>+545.0%</b>（<b>落后 78.4 点</b>）。<br><b>撤回理由③：前三年零触发。</b>2023/2024/2025 一次都没碰过，全部影响只发生在 2026 年、实际只改变 2 笔交易（08-06、11-20），属事后追加规则。<br><b>现在的口径：</b>2023 起 <b>+623.3%</b>，最大回撤 −18.5%，卡玛 <b>3.76</b>。20 日累计跌幅仍在下方「回补监控」显示，但<b>只作观察，不触发任何买入</b>。<br><b class="hint">想复看原口径：把 bkLevel 里的 <code>|| (r20[i] !== null &amp;&amp; r20[i] &lt; -0.15)</code> 加回去即可，回测会变回 +673.4%。</b></div>
     <div class="warn"><b>★2026-11-27 一日往返记录（值得记住）</b> —— 今天上午曾把买点从 RSI6&lt;25 改成 KDJ J&lt;8（回测 +623%→+687%、卡玛 3.76→4.99），<b>当天下午已回滚</b>。原因：那 +64pct 里<b>约 50pct 来自 2024-09-23 一笔 780 交易（+50.22%）</b>——KDJ 在 9-23 就抄进 780，RSI 等到 9-30 才换，正好差 9·24 政策暴动那 5 个交易日。<b>把 2024-09-20~10-15 的买点屏蔽后，KDJ 在 5 个起点全部落后 RSI（−31 ~ −119pct）</b>；唯一不含 2024 的独立样本（2025-01 起）RSI 卡玛 6.24 &gt; KDJ 5.60，且少交易 7 笔。结论：KDJ 的敏感度只是运气撞上黑天鹅，不是能力。<span class="down">教训同 MA50 那次（+157pct 也全来自 2024-09 单次拦截）——凡「只在一个年份暴赚」的改动，一律不采纳。</span></div>
     </div></details>
   </section>
@@ -243,7 +235,6 @@
           <div><div class="m-label">最后一笔浮盈</div><div class="m-value" id="lastPl">--</div></div>
         </div>
         <div class="m-sub" id="lastDetail"></div>
-        <div class="m-sub" id="todayWhy" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--accent-light);line-height:1.75;font-size:13px"></div>
       </div>
     </div>
   </section>
@@ -594,7 +585,7 @@ async function updateData() {
     const dd = calcDD(c780);
     const r5 = new Array(N).fill(null);
     for (let i = 5; i < N; i++) r5[i] = (c398[i] - c398[i - 5]) / c398[i - 5];
-    // ★20 日累计跌幅：补 RSI6 的结构性盲区（6 日窗口看不见台阶式阴跌，2026-11 全程没破 25）
+    // 20 日累计跌幅：仅作观察指标展示，不参与任何买卖判断（2026-11-28 降级）
     const r20 = new Array(N).fill(null);
     for (let i = 20; i < N; i++) r20[i] = (c780[i] - c780[i - 20]) / c780[i - 20];
     // 注：2026-11-04 曾试「距20日高回撤>=4%」(dd4)，实盘口径回测 2023-26 少赚 96pct → 已回滚
@@ -603,8 +594,8 @@ async function updateData() {
     for (let i = 0; i < N; i++) bull.push(c780[i] >= BULL_PCT * rh250[i]);
 
     const S = dates.findIndex(d => d >= WINDOW_START);
-    // ★买点 2026-11-27 起并联「20 日累计跌 > 15%」：RSI6<25 只抓急跌，阴跌时钝化（dd<-40% 区间 66.7% 的日子给不出信号）
-    const bkLevel = i => (rsi6[i] !== null && rsi6[i] < 25) || (r20[i] !== null && r20[i] < -0.15);
+    // ★买点仅保留 RSI6<25（2026-11-28 撤回「20 日累计跌 > 15%」并联项，降为纯观察指标）
+    const bkLevel = i => rsi6[i] !== null && rsi6[i] < 25;
     const sig = i => ({
       sw: dd[i] < -0.10 && r5[i] !== null && r5[i] > 0,
       sc: dd[i] < -0.12 && r5[i] !== null && r5[i] <= 0,
@@ -871,56 +862,6 @@ async function updateData() {
       ? "<b class='down'>★冷却中：最近止损 " + lastStopTr.date + "，还需 " + cdLeft + " 个交易日才允许买回 780（期间信号一律不执行）</b>"
       : "";
     document.getElementById("posNow").textContent = { "780": "159780 科技", "398": "601398 银行", "CASH": "空仓" }[posNow];
-    // ---- ★今日动作说明（2026-11-27）：面板自己要讲清「今天为什么切」，不靠人问 ----
-    (function () {
-      const el = document.getElementById("todayWhy");
-      if (!el) return;
-      try {
-      const i = N - 1, s = sig(i), pv = sig(i - 1);
-      const NMC = { "780": "159780", "398": "601398", "CASH": "空仓" };
-      const fs = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
-      const tr = hy.trades[hy.trades.length - 1];
-      const todayTr = (tr && tr.date === dates[i]) ? tr : null;
-      const why = [];
-      if (s.sc && !pv.sc) why.push("<b>780 还在坑底：距 250 日高 " + (dd[i] * 100).toFixed(1) + "%（阈值 −12%）</b> ＋ <b>398 这个避风港也漏风：五日 " + fs(r5[i] * 100) + "（≤0）</b> ＝ <b>位置双弱</b> → 切空仓　<span style='color:var(--muted)'>（sc 判的是位置，不看 780 当日涨跌，今天涨多少都照卖）</span>");
-      if (s.d398 && !pv.d398) why.push("<b>398 五日 " + fs(r5[i] * 100) + " 首次跌破 −2%</b>" + (posNow === "398" ? " → 清仓" : "（今日不持 398，此条不生效）"));
-      if (s.bk && !pv.bk) {
-        const byRSI = rsi6[i] !== null && rsi6[i] < 25;
-        const by20 = r20[i] !== null && r20[i] < -0.15;
-        const t20 = by20 ? "20 日累计跌 " + (r20[i] * 100).toFixed(1) + "%（跌破 −15%）" : "";
-        if (byRSI && by20) why.push("<b>RSI6=" + rsi6[i].toFixed(1) + " 跌破 25 且 " + t20 + "</b> → 买回 780");
-        else if (byRSI) why.push("<b>RSI6=" + rsi6[i].toFixed(1) + " 跌破 25</b> → 买回 780");
-        else why.push("<b>" + t20 + "</b> → 买回 780　<span style='color:var(--muted)'>（RSI6 盲区补位：阴跌时它给不出信号）</span>");
-      }
-      if (s.aMA && !pv.aMA) why.push("<b>780 首次站上 MA20 " + ma20[i].toFixed(4) + "</b>" + (posNow === "780" ? "（已在 780 上，此条不参与决策）" : " → 买回 780"));
-      if (s.sw && !pv.sw) why.push("<b>780 距高回撤 &gt;10% 且 398 五日转正</b> → 切 398");
-      if (!why.length) why.unshift("今日无规则触发，继续持有 <b>" + NMC[posNow] + "</b>");
-      let h = "<b style='color:var(--accent)'>" + dates[i] + " · 今日动作</b>　" + why.join("　｜　");
-      if (todayTr) {
-        const tpx = todayTr.price ? " @ " + todayTr.price.toFixed(3) : "", toC = NMC[todayTr.to], fromC = NMC[todayTr.from];
-        let actTxt;
-        if (todayTr.from === "CASH") actTxt = "买入 <b>" + toC + "</b>" + tpx;
-        else if (todayTr.to === "CASH") actTxt = "卖出 " + fromC + tpx + " → <b>空仓</b>";
-        else actTxt = fromC + " → <b>" + toC + "</b>" + tpx;
-        h += "<br>成交：" + actTxt;
-        if (todayTr.from !== "CASH") {
-          let ent = null;
-          for (let k = hy.trades.length - 2; k >= 0; k--) { if (hy.trades[k].to === todayTr.from) { ent = hy.trades[k]; break; } }
-          const sellPx = todayTr.to === "CASH" ? todayTr.price : (todayTr.from === "780" ? c780[i] : c398[i]);
-          if (ent && ent.price) {
-            const pp = sellPx / ent.price - 1;
-            h += "　本笔 <b class='" + (pp >= 0 ? "up" : "down") + "'>" + (pp >= 0 ? "+" : "") + (pp * 100).toFixed(2) + "%</b>（" + ent.date + " 进 @" + ent.price.toFixed(3) + "）";
-          }
-        }
-      }
-      if (posNow === "CASH" && ma20[i] && c780[i] > ma20[i]) {
-        h += "<br><b class='down'>注意：780 现价已在 MA20（" + ma20[i].toFixed(4) + "）上方，" +
-          "但「首次站上」这个事件若在今日或此前已被消耗，后续继续上涨也不会自动买回 —— " +
-          "回场只能等：① RSI6 跌回 25 以下 ② 20 日累计跌幅超 15%（阴跌补位） ③ 重新跌破 MA20 后再上穿 ④ 398 五日转正走「双弱转多」切 398。</b>";
-      }
-      el.innerHTML = h;
-      } catch (err) { el.textContent = "今日动作说明渲染失败：" + err.message; }
-    })();
     let entry = null;
     if (posNow !== "CASH") {
       for (let k = hy.trades.length - 1; k >= 0; k--) {
@@ -1011,22 +952,15 @@ async function updateData() {
       const upPct = pxUp ? (pxUp / price780 - 1) * 100 : null;
 
       const e1v = document.getElementById("re1v"), e1s = document.getElementById("re1s");
-      // ★20 日累计跌幅这条并联路径的实时读数（2026-11-27 新增）
+      // 20 日累计跌幅：仅作观察展示，不参与买入判断（2026-11-28 降级）
       const base20 = (li >= 20) ? c780[li - 20] : null;
       const r20now = base20 ? (price780 / base20 - 1) * 100 : null;
-      const px20 = base20 ? base20 * 0.85 : null;
       let line20 = "";
       if (r20now !== null) {
-        if (r20now < -15) line20 = "<br>20 日累计 <b class='down'>" + r20now.toFixed(1) + "%</b> —— <b>已跌破 −15%，此路径已触发</b>";
-        else line20 = "<br>20 日累计 <b>" + (r20now >= 0 ? "+" : "") + r20now.toFixed(1) +
-          "%</b>（按今日基准 −15% = ¥" + px20.toFixed(3) + "，还需 <b class='down'>−" + Math.abs((px20 / price780 - 1) * 100).toFixed(2) +
-          "%</b>；基准每日滚动，明日以新基准为准）";
+        line20 = "<br><span style='color:var(--muted)'>观察项 · 20 日累计 <b>" + (r20now >= 0 ? "+" : "") +
+          r20now.toFixed(1) + "%</b>（不触发买入）</span>";
       }
-      if (r20now !== null && r20now < -15) {
-        e1v.textContent = "20 日跌幅已触发";
-        e1v.className = "m-value down";
-        e1s.innerHTML = "阴跌路径成立：20 日累计 <b class='down'>" + r20now.toFixed(1) + "%</b> <b>→ 买回 159780</b>" + line20;
-      } else if (armed) {
+      if (armed) {
         e1v.textContent = "已复位 · 等下穿";
         e1v.className = "m-value up";
         e1s.innerHTML = (pxDown
@@ -1052,42 +986,6 @@ async function updateData() {
       e3v.className = "m-value " + (r5p < -2 ? "down" : "up");
       document.getElementById("re3s").textContent = "工行 5 日涨跌（需 < −2% 才切空仓）；空仓后 780 站上 MA20 = ¥" +
         ma20[li].toFixed(3) + "（+" + ((ma20[li] / price780 - 1) * 100).toFixed(1) + "%）";
-
-      const mn = document.getElementById("ma20Note");
-      if (mn) {
-        const m20 = ma20[li];
-        const above = (m20 !== null && m20 !== undefined) && c780[li] > m20;
-        const abovePrev = (li > 0 && ma20[li - 1] !== null && ma20[li - 1] !== undefined)
-          ? c780[li - 1] > ma20[li - 1] : false;
-        const first = above && !abovePrev;
-        const gap = (m20 !== null && m20 !== undefined) ? (c780[li] / m20 - 1) * 100 : 0;
-        const isCash = (posNow === "CASH");
-        const m20s = (m20 !== null && m20 !== undefined) ? m20.toFixed(4) : "--";
-        const r5now = (r5[li] === null || r5[li] === undefined) ? 0 : r5[li];
-        const r5prev = (li > 0 && r5[li - 1] !== null && r5[li - 1] !== undefined) ? r5[li - 1] : 0;
-        const clearToday = (r5now < -0.02) && !(r5prev < -0.02);
-        if (first && clearToday) {
-          mn.className = "ma20-note hot";
-          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
-            "%），但今天同时是 601398 的<b>五日跌幅清仓日</b> —— 两个信号撞在同一天，<b>回场不成立</b>（引擎先处理清仓，站上事件被跳过）。历史同类 7 次，780 后 10 日 5 跌 2 涨、均值 −3.52%。";
-        } else if (first && isCash) {
-          mn.className = "ma20-note ok";
-          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
-            "%），且当前空仓 —— <b>回场条件成立，收盘前买回 159780</b>。";
-        } else if (first) {
-          mn.className = "ma20-note hot";
-          mn.innerHTML = "780 今日<b>首次站上</b> MA20（¥" + m20s + "，现价高出 " + gap.toFixed(2) +
-            "%），但当前持有 601398 —— <b>该路径要求先空仓，本次信号不生效</b>。";
-        } else if (above) {
-          mn.className = "ma20-note";
-          mn.innerHTML = "780 在 MA20 上方 <b>+" + gap.toFixed(2) + "%</b>（¥" + m20s +
-            "）—— <b>非首次站上</b>，需先跌破再重新收上，才算新的回场信号。";
-        } else {
-          mn.className = "ma20-note";
-          mn.innerHTML = "780 在 MA20 下方 <b>" + gap.toFixed(2) + "%</b>（¥" + m20s +
-            "）—— 空仓期间若出现「首次收上」，即为买回 159780 的时点。";
-        }
-      }
 
       const bn = document.getElementById("reentryBanner");
       const cdPre = cdLeft > 0 ? cdNote + "<br>" : "";
