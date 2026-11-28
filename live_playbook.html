@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="fyKg9L8hCMIpwstIBqDInK">
+<head data-page-node-id="xFS34B6X8M7jAkOfqHTkeC">
+<meta charset="UTF-8" data-page-node-id="913DGuH5QLwbAtOBkvVstv">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="YNc3o3fDHbHDkYjFB3h4hP">
+<title>杨老三的轮动策略D3 · 实盘执行协议</title>
+<style>
+  :root{
+    --bg:#fdf6ee; --card:#ffffff; --ink:#2c2c2a; --ink2:#6b6560; --ink3:#9a9188;
+    --accent:#d9772e; --accent-soft:#fbeee0; --line:#e8ddd0;
+    --up:#c0392b; --down:#1e8449; --warn:#b8860b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.7;padding:20px 14px 60px}
+  .wrap{max-width:900px;margin:0 auto}
+  header{border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:22px}
+  h1{font-size:23px;font-weight:600;letter-spacing:.5px}
+  .sub{font-size:13px;color:var(--ink2);margin-top:5px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:16px}
+  h2{font-size:16px;font-weight:600;margin-bottom:12px;padding-left:10px;
+    border-left:4px solid var(--accent);line-height:1.3}
+  h3{font-size:14px;font-weight:600;margin:14px 0 7px;color:var(--ink)}
+  p{font-size:14px;color:var(--ink2);margin-bottom:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th{background:var(--accent-soft);color:var(--ink);font-weight:600;text-align:left;
+    padding:8px 10px;border:1px solid var(--line);white-space:nowrap}
+  td{padding:8px 10px;border:1px solid var(--line);vertical-align:top}
+  td.c,th.c{text-align:center}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .up{color:var(--up);font-weight:600}
+  .down{color:var(--down);font-weight:600}
+  .tag{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;font-weight:600}
+  .t-buy{background:#fdecea;color:var(--up)}
+  .t-sell{background:#e8f5ec;color:var(--down)}
+  .t-hold{background:#eef1f4;color:#4a5560}
+  .t-cash{background:#fff4d6;color:var(--warn)}
+  .big{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 4px}
+  .metric{background:var(--bg);border-radius:9px;padding:11px 13px}
+  .metric .lab{font-size:12px;color:var(--ink3);margin-bottom:3px}
+  .metric .val{font-size:20px;font-weight:600;line-height:1.25}
+  .metric .hint{font-size:11px;color:var(--ink3);margin-top:2px}
+  .hl{background:#fff8e6;border-left:3px solid var(--accent);padding:9px 12px;
+    border-radius:0 7px 7px 0;margin:10px 0;font-size:13.5px}
+  .red-line{background:#fdecea;border-left:3px solid var(--up);padding:9px 12px;
+    border-radius:0 7px 7px 0;margin:10px 0;font-size:13.5px}
+  ol,ul{margin:6px 0 6px 22px}
+  li{font-size:14px;color:var(--ink2);margin-bottom:5px}
+  li strong{color:var(--ink)}
+  .calc{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;margin:12px 0}
+  .calc label{font-size:12px;color:var(--ink3);display:block;margin-bottom:3px}
+  input,select{font-family:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);
+    border-radius:7px;background:#fff;color:var(--ink);width:130px}
+  button{font-family:inherit;font-size:13px;padding:8px 15px;border-radius:7px;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button:hover{background:#c4661f}
+  #calcOut{background:var(--bg);border-radius:9px;padding:11px 13px;margin-top:10px;font-size:13.5px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .d-g{background:#27ae60}.d-y{background:#f39c12}.d-r{background:#c0392b}
+  .rt{font-size:12px;color:var(--ink3);margin-top:8px}
+  .log td input{width:100%;border:none;background:transparent;font-size:13px;padding:3px 2px}
+  footer{text-align:center;font-size:12px;color:var(--ink3);margin-top:26px;line-height:1.8}
+  @media print{body{background:#fff;padding:0}.card{break-inside:avoid;border-color:#ccc}}
+</style>
+</head>
+<body data-page-node-id="H4t9cT90H6jDieWC573PBS">
+<div class="wrap" data-page-node-id="FLA8Xh8wCGbeEPLSfdiSuN">
+
+<header data-page-node-id="5VCQtXBO02jozZsXP6plwX">
+  <h1 data-page-node-id="gmttM6BO5qozEhFNFcc8pH">杨老三的轮动策略 D3 · 实盘执行协议</h1>
+  <div class="sub" data-page-node-id="u4MlXjPrB9KvyDLR60RUq5">标的 159780 科创创业50ETF（进攻）／ 601398 工商银行（防守）　·
+    混合开关：780 收盘 ≥ 0.95 × 近 250 日最高收盘 → 满仓 780　·　佣金万一，10 万本金<br>
+    <span style="color:#d9772e">最近更新：2026-11-28（新增 159207 独立波段执行卡；未来信号请以 hybrid.html 为准）</span></div>
+</header>
+
+<div class="card" data-page-node-id="Q8UkX8ylcLj9cxUAyh5Cll">
+  <h2 data-page-node-id="sP8qrwuBlkj1n3lbPVANs8">零、风险与预期校准（2026-09-09 更新 · 开仓前必读）</h2>
+  <div class="rt">本章的风险数据与「熊市预警灯」一章的干预对比表，均为 2026-09 版（v33）回测口径，基准「原策略」= +470.2%。
+    当前线上版本为 <b>v35</b>（2026-11-28 撤回 r20 并联项）：总收益 <b>+623.3%</b>、最大回撤 <b>−18.5%</b>、卡玛 <b>3.76</b>、年化 <b>69.5%</b>。
+    「人工干预是负优化」这个结论方向不变，但具体点数请以 hybrid.html 为准。</div>
+
+  <h3 data-page-node-id="IgD8wlbkONdaE11m2yk6aH">1. 159780 不是宽基，它是全市场最猛的一档</h3>
+  <table data-page-node-id="ATqXoWOAbf4B971UD9haeb">
+    <tr data-page-node-id="MKPaKxBi5yOJQ6avVVejm5"><th data-page-node-id="NDxBHRKb8BLocBKs3q5ZVG">标的</th><th class="c" data-page-node-id="Sj9HsaLPckdK7Us4oyF1uv">年化波动率</th><th class="c" data-page-node-id="ZLmurTKcMF4ZQNxiCNPEiS">最大回撤</th><th class="c" data-page-node-id="cvR1cx6BGpZgviHYi9aFHA">单日跌&gt;3%</th><th data-page-node-id="LM3lhAcQZEczytGFx0YQnD">性质</th></tr>
+    <tr data-page-node-id="afx93JK2D8A0ISotHqi9uD"><td data-page-node-id="AaPjaNVTRbWtWLblXGDKyI"><b data-page-node-id="jqgH9N7NLYXBsgsCyCwOC8">159780 科创创业50ETF</b></td><td class="c" data-page-node-id="ijt27aEZDPWLAcybXZYUUK">32.9%</td><td class="c" data-page-node-id="G5b3kvB5EwWJ4auUraj8aB">−42.2%</td><td class="c" data-page-node-id="pYBVmj7UInMLbMQs2ZP3EA">37 天</td><td data-page-node-id="TbrV2QfsB49GouwECkDHcL">成长股集中，<b data-page-node-id="NVSxlqMsu4Sjzqydtk5h8a">非宽基</b></td></tr>
+    <tr data-page-node-id="u3nwYF2AAI2Y4liMGFkRAW"><td data-page-node-id="WbgJThwZDw5waPtcPjNJmj">创业板指</td><td class="c" data-page-node-id="jZQDHJ5m5ecZWPWp2799No">30.7%</td><td class="c" data-page-node-id="DKgbaj4ywFcQSqGMlAYY8M">−46.3%</td><td class="c" data-page-node-id="Mch8ivYjBGkJ5o3L5oehlm">34 天</td><td data-page-node-id="VCV1dPnnYNGtqkncUOFRv1">同上</td></tr>
+    <tr data-page-node-id="CshdElsYIhdo904AtfkxLY"><td data-page-node-id="WZzPFAdi47dUPEeqYGUVTF">中证500</td><td class="c" data-page-node-id="34AWtjVvok7AXXPtbPmKI4">22.6%</td><td class="c" data-page-node-id="VLJLE7MuNuvhUlhN0s7Ylc">−31.8%</td><td class="c" data-page-node-id="Ym73Y6rTVgMqTnSC6ztR7p">17 天</td><td data-page-node-id="vIEkLawQ19V4HjW5LuOtEn">真宽基</td></tr>
+    <tr data-page-node-id="BLh7fUl40B69YANqwR4zAU"><td data-page-node-id="Fa9DkeH5DBcAzOeCNAAKAA">601398 工商银行</td><td class="c" data-page-node-id="YhIBIDaVaHeoeIhifo0ui8">20.3%</td><td class="c" data-page-node-id="v9GSy4GM05s4JEsS6NK8AE">−16.7%</td><td class="c" data-page-node-id="cG7YCnA0uR2x9nxVIW1QWq">16 天</td><td data-page-node-id="wtZsOds53ys3HPWUxiC2Pf">防守端</td></tr>
+    <tr data-page-node-id="ILkHbFGEamZEeZx90kods5"><td data-page-node-id="t9NF4asEk7BKweKXSuyup7">沪深300</td><td class="c" data-page-node-id="J7xDzX1mt1sPLOQFQGUPSI">17.5%</td><td class="c" data-page-node-id="kpsZGsFvcdXPQ5hAaTmD8V">−29.7%</td><td class="c" data-page-node-id="h0cuFwS2XxL2761J74bxo4">6 天</td><td data-page-node-id="FJGuzApyYWhghqj8TsFMPk">真宽基</td></tr>
+    <tr data-page-node-id="SFVJxC0koS5w5bWYHHx7S2"><td data-page-node-id="TYD0AUFwQuyVjBxkVK3Sco">上证50</td><td class="c" data-page-node-id="ibD6PkHtfqB4Sy1viam2Oz">16.3%</td><td class="c" data-page-node-id="FATbEN09ad4mILMSzgDYZz">−27.9%</td><td class="c" data-page-node-id="fZWs0dCL3UNO9yR5ytSYb5">4 天</td><td data-page-node-id="DzT9C6A1Av7GNx1wc9EA66">真宽基</td></tr>
+  </table>
+  <div class="hl" data-page-node-id="LQoLhx17rn82wAKB78KUHE">159780 波动率<b data-page-node-id="HTIQ5yAI51xOzQW6rgfITZ">比创业板指还高</b>，是沪深300 的 1.88 倍。
+    「ETF = 稳」是错觉——ETF 消除的是<b data-page-node-id="SuzhBJBfkunvCxhDVMrGmG">归零风险</b>，不是波动。
+    它照样能让你亏 42%，只是<b data-page-node-id="KMjTu4F4lRhyXZCdh9TQwr">跌下去 10.6 个月能爬回来</b>（2024-09-23 底 → 2025-08-22 回前高），个股爆雷则永远回不来。</div>
+
+  <h3 data-page-node-id="T3J1wWgWI7q5nqkESqXoAM">2. 用仓位管风险，不要用手管风险</h3>
+  <table data-page-node-id="rUyOiirwguTj3QJahgHNfE">
+    <tr data-page-node-id="XkJvlcOT6eFcZd1TmoQv2K"><th class="c" data-page-node-id="DksYDFMopPBvsRb93g4yX7">仓位</th><th class="c" data-page-node-id="yrcfYFtENWj301a3GP3V0q">年化</th><th class="c" data-page-node-id="DFN82dTbEiqX6tTeTALzAE">最大回撤</th><th class="c" data-page-node-id="7oqbl56PmTf39t7c6BWdA7">12月中位</th><th class="c" data-page-node-id="8cuQFUD299KHHobhneZUGj">达成≥30%</th><th data-page-node-id="wLaLJa2naHW9ADlAeqklCg">说明</th></tr>
+    <tr data-page-node-id="nYb2G1DvQxZ9xyRxHOH1qG"><td class="c" data-page-node-id="Zo6MB960p3SLYMjdEIHqiD">100%</td><td class="c" data-page-node-id="xHE7dvLFt8DzPX1UyYkFLm">+63.3%</td><td class="c" data-page-node-id="uFOT2kDg286ajrNRdjdqJh">−20.0%</td><td class="c" data-page-node-id="7MHKFzFmelZCRBVYreuPFu">+58.6%</td><td class="c" data-page-node-id="cIkKmJAW5ke3zeaMIPLptE">87%</td><td data-page-node-id="3Va9B84cpEplqX4bAQZaEb">回测口径</td></tr>
+    <tr data-page-node-id="VbFR5IFafjaUDGhqVcNTDp"><td class="c" data-page-node-id="uLAp10bVtpunqwUN0V1pux">80%</td><td class="c" data-page-node-id="ssHjcBODVITXtobFBhzVIS">+55.3%</td><td class="c" data-page-node-id="7fupyCzue5985xb5Db4Krm">−16.8%</td><td class="c" data-page-node-id="tbHp6wO2mix4opOPnRaARh">+50.7%</td><td class="c" data-page-node-id="jFxlvBY9UxRJADaziZXIM1">83%</td><td data-page-node-id="luvol9UTayk42dl61Hi5Xm"></td></tr>
+    <tr data-page-node-id="RAKx8lgzgmffFVmuYTQhVS"><td class="c" data-page-node-id="SO9il7YkpKqE7bfL0EwfDo"><b data-page-node-id="B6OnOHNRod4HYPEd1GzKDr">70%</b></td><td class="c" data-page-node-id="6x977C0vpfiTrteKYD5yiB">+51.0%</td><td class="c" data-page-node-id="Yw1QHDQZfmLUbKz9GozLZQ">−15.5%</td><td class="c" data-page-node-id="Jfw4KMj2TORe0Na6Kwsnpa">+46.4%</td><td class="c" data-page-node-id="VtVu8Xu7GN2muptuAB4jKF">78%</td><td data-page-node-id="lDHusG1lNLREvSXJXK3LPD">平衡档</td></tr>
+    <tr data-page-node-id="ZKwB0xw2vNFcihZ8bpLAPr"><td class="c" data-page-node-id="VqrxIjjZ91URVVlcqNSdD0">60%</td><td class="c" data-page-node-id="UJH0axVDBy9yueZI3qvO3A">+46.2%</td><td class="c" data-page-node-id="xunBjInfiDyGwzogmBZMqI">−14.2%</td><td class="c" data-page-node-id="U6djoML7Al4geKAYzuTAyX">+41.5%</td><td class="c" data-page-node-id="H4kfGCqmjzWX8KKHSgJFhJ">74%</td><td data-page-node-id="rEEGPqin1mDDw7mcaWYPmh"></td></tr>
+    <tr data-page-node-id="Tch3W4wNodwlXqymZaxnJE"><td class="c" data-page-node-id="62bRpY4MGgU8FfLaGfsdJ8"><b data-page-node-id="ZjH17NDG49lPuwQL4Q96Wj">50%</b></td><td class="c" data-page-node-id="RnxB2YmRiJzSqVpHAtOraw">+40.9%</td><td class="c" data-page-node-id="hF8ZPt8trqtpgjEg9044Eu">−12.7%</td><td class="c" data-page-node-id="OnPpEy24wW9oRLwuLHOK1N">+36.0%</td><td class="c" data-page-node-id="PAih9mr1vLHdEwPP7XHBgQ">66%</td><td data-page-node-id="PBsmyJVnbCC3s9OWm8ojBR"><b data-page-node-id="CENnaYG2jOxlp6oS9ZoVKm">推荐起步</b></td></tr>
+    <tr data-page-node-id="Rzo8SAVLlZQQGqYzOHw06v"><td class="c" data-page-node-id="wHWXicqqqKA8GbsK8AflQO">40%</td><td class="c" data-page-node-id="7S81CtiuPTxTxXHc14RKyN">+35.2%</td><td class="c" data-page-node-id="zawFimCWWEybw2FsARBbuc">−11.0%</td><td class="c" data-page-node-id="hD29oLRFvAf7x2MApeuyDB">+30.2%</td><td class="c" data-page-node-id="5boD3j9C1D05sCJA2lLiDd">51%</td><td data-page-node-id="gFUD1SbpPEBDNZt4JcwOCr"></td></tr>
+  </table>
+  <div class="hl" data-page-node-id="xGlSasvj1hFEoopiBdZSm7"><b data-page-node-id="9gs7WvmC8o0ikAYx1XNpFy">起步用 50%（10 万本金先投 5 万），扛过一次完整 &gt;10% 回撤且不干预 → 再加到 70%。</b>
+    半仓达成 30% 的概率只有 66%，约 1/3 的年份做不到——这点必须提前认。</div>
+
+  <h3 data-page-node-id="VRBAyH6z20bgRs7ZWUoYRF">3. 水下体验：痛点是「时间」不是「幅度」</h3>
+  <div class="big" data-page-node-id="l7l1ffMb4rZCcqNgE7eCX5">
+    <div class="metric" data-page-node-id="rfpkSGJBvOYYKXi4AwmsTI"><div class="lab" data-page-node-id="NQwogArye7PB4Vybi4wHB5">水下段数</div><div class="val" data-page-node-id="13HOnWnQFQ8atiDEIsBceI">51 段</div><div class="hint" data-page-node-id="wB8acJIGoUMdrbtHTVBwRU">3.55 年内</div></div>
+    <div class="metric" data-page-node-id="NiUEBO5dwUYcWGyjHNinCH"><div class="lab" data-page-node-id="vl2XV1J4yTtNqmZ8ZVtDKj">最深回撤</div><div class="val" data-page-node-id="hLS73pS3PzuALGZYoXcb7x">−20.0%</div><div class="hint" data-page-node-id="TJoC00EpzUNh9tE9HMODkk">23-05→24-02</div></div>
+    <div class="metric" data-page-node-id="7qqoX27p6o516uSHOqHk7x"><div class="lab" data-page-node-id="yRy1EAWXVsztCUCcLbUls2">最长水下</div><div class="val" data-page-node-id="J1LUoLLPqeqB0LmkrGcCLI">184 天</div><div class="hint" data-page-node-id="dUp9Ca0Bw7qPIPqcmX22hf">约 9 个月</div></div>
+    <div class="metric" data-page-node-id="x2WcVCTG0k90E92Wwn2HXG"><div class="lab" data-page-node-id="EDOOqKuDqeKn3EhzWjLqLm">&gt;10% 回撤中位持续</div><div class="val" data-page-node-id="eBpGrWkbn09idgM5P0OhrZ">127 天</div><div class="hint" data-page-node-id="C0SJtFLlrIDjps8nYnQq3E">共 4 段</div></div>
+  </div>
+  <div class="hl" data-page-node-id="tdjVZt5BJJ9kakjisVmqAX">你要熬的不是「跌 20%」，是<b data-page-node-id="pWSoiAEUp6ICcYBtKkMwTb">连续 9 个月账户浮亏</b>。
+    而且回测区间（2023-01 至今）<b data-page-node-id="v6nynjGvr5oM4uEWLyNEOt">一次完整系统性熊市都没有</b>——
+    真·2022 式熊市压测下策略约 <b data-page-node-id="4MrwUKyAjtroR85VZjlWLe">−32%</b>。<b data-page-node-id="kZgiUDdgeturxKsnq0W9BG">实盘请按 −30% 做心理准备，不是 −20%。</b></div>
+
+  <h3 data-page-node-id="hR8c3gTEoEeZ0lR88rsl9x">4. 「手动清仓」这个后门，历史上 5 次全错</h3>
+  <table data-page-node-id="hRIO0qNUr7d53ADILvj1gf">
+    <tr data-page-node-id="cOyIeDWTVo3ZdCJQ6XuIJz"><th data-page-node-id="EaLIq4PyldIlv3IpDk2ykS">规则</th><th class="c" data-page-node-id="2leD87Q57kBHRaBzhBBGAq">总收益</th><th class="c" data-page-node-id="237TEza7aV0MUTCkChGjjr">最大回撤</th><th class="c" data-page-node-id="qOPSnqsJxK81YNJ6YenUT5">vs 不干预</th></tr>
+    <tr data-page-node-id="U8Le13vOiyxUcwcWgRSuyG"><td data-page-node-id="TobNAZI2cprV0HtEhnDbHA"><b data-page-node-id="ayxLg2dAF4RDB5PMSrQ40w">原策略（不人工干预）</b></td><td class="c" data-page-node-id="LFxynXay5Oj38V2CTgwWPM">+470.2%</td><td class="c" data-page-node-id="RFTtMgshiY32kZE0AYxnGB">−20.0%</td><td class="c" data-page-node-id="8wDVjTe9MvBTOPAGPzu5Xy">—</td></tr>
+    <tr data-page-node-id="oivwCehB6cNuxdqzqmf4DX"><td data-page-node-id="x952qbOdYuZvI2HX2GN48U">红灯后空仓 20 天</td><td class="c" data-page-node-id="gWwJBEzlH9JtAeJdCltuH7">+330.5%</td><td class="c" data-page-node-id="AmZl3MIG2FWis3Vu6Om12t">−15.1%</td><td class="c" data-page-node-id="il2PBDeCkxsD8wy405ffP9">−139.7 点</td></tr>
+    <tr data-page-node-id="WZAMETRY0JYarhiMGcX0nx"><td data-page-node-id="4uDzvDWwTDeY3Cx56OunN2">红灯后空仓 40 天</td><td class="c" data-page-node-id="nA6MGcJDv9MUgQAUItC1mY">+359.0%</td><td class="c" data-page-node-id="5FWaDaDGsm28Jeyjhp9HM3">−15.1%</td><td class="c" data-page-node-id="BOHvbq3ks3BeL2JeREhJJv">−111.2 点</td></tr>
+    <tr data-page-node-id="1TTYw13ZptSmQncDuAYD1z"><td data-page-node-id="bLmGrnAXAzW0YFi2FUb5Cr">红灯后空仓 60 天</td><td class="c" data-page-node-id="edxTE0zgkPC20TLtJYm7rY">+250.6%</td><td class="c" data-page-node-id="sI696zzERDmCfXOETKY71N">−15.1%</td><td class="c" data-page-node-id="EtnELMDuu10JyOmmO662wp">−219.6 点</td></tr>
+    <tr data-page-node-id="GEA6KplL0R4IOlZGTOlEa9"><td data-page-node-id="VyhB8QF0x2nMy6Owa7Eh7Z">红灯后空仓 120 天</td><td class="c" data-page-node-id="EMGJZfbrYjAiH6aZdzDpkQ">+135.6%</td><td class="c" data-page-node-id="1pzkmRX0MDsfiJmEpFNqBI">−13.3%</td><td class="c" data-page-node-id="T1p5phFtGx5nmD7po5txxv">−334.6 点</td></tr>
+  </table>
+  <div class="hl" data-page-node-id="vUG4ff1KAwtJ5xfRuLUNFm">红灯（780 回撤≥20% <b data-page-node-id="pZ4Bl3993pAr9pMZ7semdk">且</b> 398 破自身 MA60）回测里只亮过 <b data-page-node-id="PCXLDG6mEqC8kilqKrsuD6">34 天 / 5 段</b>，
+    每次清仓都是<b data-page-node-id="5A7QQxSURFbz6aH5uOMI78">负优化</b>：回撤少 5~7 个点，代价 111~335 个点。
+    熊市预警灯 = <b data-page-node-id="yZ2JHQdqqCumhRYYqshsfA">纯显示的心理安慰，不是策略的一部分，一次都没被验证过有效。</b>
+    心里想用它的时候，就是你快要脱离策略的时候。</div>
+
+  <h3 data-page-node-id="UF2nBT8unkFFVhKBMBjJy0">5. 年化 30% 需要什么条件</h3>
+  <table data-page-node-id="V2IUlooj43ZinTcZuHcQuF">
+    <tr data-page-node-id="Hv3Ao5s1lYyN8bMvLvr2uq"><th class="c" data-page-node-id="mSjuEsVHDfVF0HmAxYFSTA">情景（策略有效性）</th><th class="c" data-page-node-id="EO5mWqwQXHMEt5Pk3ErTPn">年化</th><th class="c" data-page-node-id="jNOSujjhuC8HubFr3gMIkA">10 万 → 3 年后</th></tr>
+    <tr data-page-node-id="Fb3aoeEsgO1imGlUMR2j7N"><td class="c" data-page-node-id="20KXSZgXQdwMWIzw397ynz">100% 历史重演（不可能）</td><td class="c" data-page-node-id="vGojuHaQIHViLEc0yPHQn6">+63.3%</td><td class="c" data-page-node-id="URazaN2f0vnVyGs0bEvDtF">43.6 万</td></tr>
+    <tr data-page-node-id="NbEWUsLaFZzaFpYaK3BZOz"><td class="c" data-page-node-id="tvcBPL9CBeIeaGufisGc3l">80% 略衰减</td><td class="c" data-page-node-id="73WuxVFKNuDLUnQeajdBZn">+48.1%</td><td class="c" data-page-node-id="sYFPMLOLKQxIlSTLg7v4sW">32.5 万</td></tr>
+    <tr data-page-node-id="HcJkso2AfGstWa9PnV6gQX"><td class="c" data-page-node-id="F2nibeTqbmpXyubXWpIsjS">60% 正常衰减</td><td class="c" data-page-node-id="3ZygfE3BOEHmG7aHkiIaqm">+34.2%</td><td class="c" data-page-node-id="2EgE5gRVc4eH9P81oEijAi">24.2 万</td></tr>
+    <tr data-page-node-id="SpB1rQG7qHXrpqXZ7AEenu"><td class="c" data-page-node-id="J3hL9ZF5owOtpuHO8BjkJP"><b data-page-node-id="EJ5msxxYvdyKXRAxfVPBDm">50% 明显衰减</b></td><td class="c" data-page-node-id="AYGflE4qjUXngaLQ3aexEh"><b data-page-node-id="6UlB0qTHoynAmK2C2dlylI">+27.8%</b></td><td class="c" data-page-node-id="A8TKOvwwYcPK0cgmOLMSf0">20.9 万</td></tr>
+    <tr data-page-node-id="iG4V4azlFzsnOvwfy1i3Yp"><td class="c" data-page-node-id="qR1KlF6oHUqTTrUmsSGMT6">40% 半失效</td><td class="c" data-page-node-id="jA2104Z92EHvzagNUKfJq4">+21.7%</td><td class="c" data-page-node-id="wHuZYpfCxkAQVoZXHRy3QC">18.0 万</td></tr>
+    <tr data-page-node-id="bpZ4o2VshUeApEUD9aDtBa"><td class="c" data-page-node-id="xl6cPynJJGqUUTHlxraaTx">30% 基本失效</td><td class="c" data-page-node-id="7trEG5f850FiYqYtsRE7uY">+15.9%</td><td class="c" data-page-node-id="j0Q3imcQfPDAbFqHEUGtVz">15.6 万</td></tr>
+  </table>
+  <div class="hl" data-page-node-id="Wa6FQ1t7P5QbixEH70H8te"><b data-page-node-id="N88HA9ayDfvbhfnZmi7MwZ">要达到年化 30%，需要这套策略保持历史有效性的 54% 以上。</b>
+    最脆弱的一环：防守端依赖工行相对银行板块约 100 点的超额收益（换成银行 ETF，策略从 +479.9% 掉到 +261.2%）。
+    这是标的特异性，未来未必重现。<b data-page-node-id="jJ7FWKwCfw4N2PXH1H1RRB">真正的风险不是回撤，是衰减。</b></div>
+
+  <h3 data-page-node-id="2HEsz2cibCUXuR4zLrJsA5">6. 别被「持有越久越稳」骗了</h3>
+  <table data-page-node-id="mkzxCL0eV0BywyvbjshIOk">
+    <tr data-page-node-id="dGIrVGnuiY0hdYA4xrzW2j"><th class="c" data-page-node-id="u1taYSB18W7l2T3UdgSBhG">持有期</th><th class="c" data-page-node-id="ye9wghUDSvzh9q6Xtuq03k">滚动窗口数</th><th class="c" data-page-node-id="Nv8lyne6CEOlizD4siEiAG">真正独立样本</th><th class="c" data-page-node-id="4mIWH5BsOLdha1Bez22pRd">年化≥30%</th><th class="c" data-page-node-id="3ZqE8BIFionFZeW0CfejzJ">年化最差</th></tr>
+    <tr data-page-node-id="84Xe2zOxA6Sme5HeAc6kue"><td class="c" data-page-node-id="EUIUEuWzxXjnBX7uHJ6aI3">1 年</td><td class="c" data-page-node-id="z08MrBsOBEjDvuGaQdWFDi">643</td><td class="c" data-page-node-id="KQTRJFsc2O4EWmLOKCQpCD"><b data-page-node-id="O5kRVkog6pL8fHD7RzJMSC">3.5</b></td><td class="c" data-page-node-id="vVEb7fLMSTBjK6Fo6OCCyg">87%</td><td class="c" data-page-node-id="rF6FHe7xpBBzNOMVmk18wP">+13.4%</td></tr>
+    <tr data-page-node-id="2q35mRsyHOIYamoLf9CIvu"><td class="c" data-page-node-id="wWC2r85gQpvXEKqPJlrsg2">2 年</td><td class="c" data-page-node-id="i3LZx3Xt63G5OJTZULwHdu">391</td><td class="c" data-page-node-id="uHcjsfnm0LuuHDPVIZEGev"><b data-page-node-id="TJev519uGkSn5IzURdBjV8">1.8</b></td><td class="c" data-page-node-id="9xZ32v1ETVSqx50SpZgnOG">98%</td><td class="c" data-page-node-id="p4xssYXWXqU6mX7DvwRUPu">+27.6%</td></tr>
+    <tr data-page-node-id="9imm3m3iWNouK5AYhL2sk5"><td class="c" data-page-node-id="YVezaJVjBDjVe5pDjDeiKL">3 年</td><td class="c" data-page-node-id="bfCWNUt3CbrBMdcilbfp73">139</td><td class="c" data-page-node-id="Ejm7K3PpBAUfFJnGkn9ahJ"><b data-page-node-id="qKuZasufyOjgAB1Vl6Y5HP">1.2</b></td><td class="c" data-page-node-id="9He5zqcSCJDsqabqNA1LaT">100%</td><td class="c" data-page-node-id="vZeBtFggwwISbJsPvvBKCq">+43.5%</td></tr>
+  </table>
+  <div class="hl" data-page-node-id="XMHyjsNLQ0SGtWrqo5Ikhm">回测总长仅 3.55 年。<b data-page-node-id="ewfHWXWwnFxmqh7qmHZVlx">「3 年达成率 100%」= 约 1.2 个独立样本全部为正，统计上等于没有证据。</b>
+    持有期越长达成率越高，是<b data-page-node-id="qIkRBhwlCgXDVNEGeqOE4I">样本量幻觉</b>，不是规律。</div>
+</div>
+
+<div class="card" data-page-node-id="ph8frRGeWlrDuddScWn6yv">
+  <h2 data-page-node-id="AqmR6R3qlES2TnUL9mPviQ">一、每日 14:50 四步清单</h2>
+  <table data-page-node-id="0Nas5IVhMMQl8A44drCqBX">
+    <tr data-page-node-id="csfv1NBHpp3YM9YcPzuD6E"><th style="width:52px" class="c" data-page-node-id="lMi7fVQnYtqcWmbGzpY0FM">步</th><th data-page-node-id="FZt6ASxoyYUC48epBmiGHZ">做什么</th><th style="width:230px" data-page-node-id="aP4IBssKM6DyJSeLfFwE9r">判定标准</th></tr>
+    <tr data-page-node-id="615OjXerdo4qCBionwyHDO">
+      <td class="c" data-page-node-id="fBFzCILxXjxww4RJ8OIhbS">1</td>
+      <td data-page-node-id="zMzUlVwE7Yn6FaKmjdTnJG">先看牛市开关</td>
+      <td data-page-node-id="HCpzA11qyKcjHKdOHCm3t3">780 收盘 ≥ 0.95 × 近 250 日最高收盘？<br data-page-node-id="ikcZ5Z5KdSLiBw2bvSglxM">
+        <span class="tag t-buy" data-page-node-id="jxct9HXLNOpQlKBJnUaypH">是</span> 满仓 780，其余全不看<br data-page-node-id="jrYk4J9Sj9Ta6CA7xWy8r5">
+        <span class="tag t-hold" data-page-node-id="kU9jhTN9OZ2je0Stw6cgF3">否</span> 进第 2 步走 D3 状态机</td>
+    </tr>
+    <tr data-page-node-id="GMtEI6FxQeLAtlAYRgRrXm">
+      <td class="c" data-page-node-id="Q87UdpC9mQ3OVGFQG7XSo6">2</td>
+      <td data-page-node-id="J7jDG8DoavPo4HxRx9RHwA">对当前持仓查对应触发条件</td>
+      <td data-page-node-id="Mi4ndPhkXcM9YHUqbw42wV">见下方「信号—动作对照表」，按<strong data-page-node-id="8MQ3PcXFh5qEumswY3lquj">当前持仓</strong>那一行查</td>
+    </tr>
+    <tr data-page-node-id="HUEBp3OjMWILJsbHZWEwwR">
+      <td class="c" data-page-node-id="7Q7Ph4BCWpfHd0W9feZXPP">3</td>
+      <td data-page-node-id="PcuhlkzfxN6dxUtSzjXlnF">条件成立 → 14:57 集合竞价换仓</td>
+      <td data-page-node-id="54GxQuu80wpRTfH610C9VF">卖出 + 买入当日完成，不留隔夜空档</td>
+    </tr>
+    <tr data-page-node-id="HePj2Gf79kUnDN3KeilGG9">
+      <td class="c" data-page-node-id="YgLCciHuodSiRSiCWZmTrY">4</td>
+      <td data-page-node-id="QECWGAgqXh7Uslh7q6LCzD">条件不成立 → 什么都不做</td>
+      <td data-page-node-id="GiYA9JdqRDvSOpuVfDAlFv">「什么都不做」是正确的执行结果，不是懈怠</td>
+    </tr>
+  </table>
+  <div class="hl" data-page-node-id="KDlaKxou2o1CrHOsgwUUb7">只在<strong data-page-node-id="pz7q0Vxx7SCUBJeqDAFgip">条件成立的那一天</strong>动手。其余时间不动，是这套策略收益的主要来源之一——
+    回测里平均 4.9 个交易日才切换一次，频繁看盘只会增加手动干预的冲动。</div>
+</div>
+
+<div class="card" data-page-node-id="XMtf05JtWg7VIm5DNt4lDO">
+  <h2 data-page-node-id="kMCLisRev8EhiXjYHDtq4J">二、信号—动作对照表（完整状态机）</h2>
+  <table data-page-node-id="RYB6l1F9apWWF0n0W4l3YD">
+    <tr data-page-node-id="AR5ODW1D0fNOrDa5x94kFF"><th data-page-node-id="QyQytmmdGvuvQ9f4EEitVV">当前持仓</th><th data-page-node-id="hou1E2UmwAylZd44CiwWPs">触发条件</th><th class="c" style="width:88px" data-page-node-id="ww4ThEUBBrDxZxhXIMr6Jp">动作</th><th style="width:150px" data-page-node-id="uJCIAmwY9jPQ5fM1S1dkcV">换到</th></tr>
+    <tr data-page-node-id="rnyF6NbSf3h2EzF2FFkFhA"><td colspan="4" style="background:var(--accent-soft);font-weight:600" data-page-node-id="nwSJUe7nQ9tTyoG8ONrnWc">优先判定：牛市开关（覆盖下面全部规则）</td></tr>
+    <tr data-page-node-id="clHwozqhDEUELm1pUc0Pp0"><td data-page-node-id="5rHLMf56p284wGTiD6VWea">任意</td><td data-page-node-id="JWqHKp3BbCwyB2M5KfbcgM">780 收盘 ≥ 0.95 × 近 250 日最高收盘</td>
+      <td class="c" data-page-node-id="CZgvlx5WL6DBVAP2dZgv2T"><span class="tag t-buy" data-page-node-id="PVwBV3liriPH9I017RU18o">买入</span></td><td data-page-node-id="tufua4cCLCGt1mLaGzmM8j">满仓 159780</td></tr>
+
+    <tr data-page-node-id="OCoH7CsWW0Te8y7cVhnoeR"><td colspan="4" style="background:#f4f1ec;font-weight:600" data-page-node-id="R9Tb5xX4cYdEIAOAgbSgv2">开关关闭时 · 当前持 159780</td></tr>
+    <tr data-page-node-id="WHU6UHL9badM2m4kxBLby4"><td data-page-node-id="tcsrdFPjvehAWeKaoKdCY8">780</td><td data-page-node-id="TaS4N7u55Ke729EzuWFBWM">780 回撤 &gt; 10% <strong data-page-node-id="o2epNUtH9hd8KFMYgggQza">且</strong> 398 近五日涨幅 &gt; 0</td>
+      <td class="c" data-page-node-id="UNVft3EAIB2k5ILvYWIbX0"><span class="tag t-sell" data-page-node-id="SzZFQcuYs1NqcsDG9qMigm">换仓</span></td><td data-page-node-id="zlBSrcSvjlPgfqriWdNr7l">601398（防守）</td></tr>
+    <tr data-page-node-id="UB0TlTUHA3Bv5XDeSTjB6Q"><td data-page-node-id="pNiDLyAr4oaEmG2IOCEk6B">780</td><td data-page-node-id="AwiETWVIDWPiZaxzh2MG6y">780 回撤 &gt; 12% <strong data-page-node-id="iXApkBArsIOVzIhTJHNwDE">且</strong> 398 近五日涨幅 ≤ 0</td>
+      <td class="c" data-page-node-id="aGgAnXIkjcw0Di57pWB0kC"><span class="tag t-cash" data-page-node-id="0DYGKosVECbhcOA1HcjBla">清仓</span></td><td data-page-node-id="RwU0AwSiA4iwCEd5ca2iay">空仓（逆回购）</td></tr>
+    <tr data-page-node-id="6BGQZbRTVFoRcXw1IxA6Nu"><td data-page-node-id="9Ly5xsimOuehvRHSMAahvL">780</td><td data-page-node-id="vTAW1Q8OHtO66cLJxxR4zE">以上都不成立</td>
+      <td class="c" data-page-node-id="VLjBGHS4YPABcS131H4VcY"><span class="tag t-hold" data-page-node-id="P4IvFG88dUWASkgv2BhYYL">持有</span></td><td data-page-node-id="4J48026uyAjIny0NwEvOkk">不动</td></tr>
+
+    <tr data-page-node-id="szvGXn4mjnIqX1UXsd1ULD"><td colspan="4" style="background:#f4f1ec;font-weight:600" data-page-node-id="2Hgz4TG964AQjXxYsHldNz">开关关闭时 · 当前持 601398</td></tr>
+    <tr data-page-node-id="ude0pv8bl8zbH2aI9cnaP6"><td data-page-node-id="a479G9gUZUuNNxAW2jRAUs">398</td><td data-page-node-id="Z7Vde1tjEuuqL5rNt14C6a">780 的 RSI6 &lt; 25</td>
+      <td class="c" data-page-node-id="lf77tUv3uLSsRFDjVDB0xb"><span class="tag t-buy" data-page-node-id="43SHRAtfnMTMI4xGvFl2Xi">换仓</span></td><td data-page-node-id="WZ7lPqWxFUcrDLqlQBzUjU">159780（抄底）</td></tr>
+    <tr data-page-node-id="MJT4DhjlFxbmEAk8xu59MB"><td data-page-node-id="SJz365A6E7fBoh6LEyoIoT">398</td><td data-page-node-id="q78Cfco5bEfS4UDH5fTuNs">780 收盘站上 MA20</td>
+      <td class="c" data-page-node-id="GVdtIeV0TX8GlWT6achGLG"><span class="tag t-buy" data-page-node-id="9zJq8BdxIui9Fy7Hu6myFA">换仓</span></td><td data-page-node-id="Y7RSmjjlXISKYGLJpOI5XL">159780（趋势恢复）</td></tr>
+    <tr data-page-node-id="WVFMpaTCLq1usRS8zLm7WH"><td data-page-node-id="4qDDDViEHh9OhZ8I20aZZI">398</td><td data-page-node-id="1nWCFbjYOP9cGfUkKvWNXQ">780 回撤<strong data-page-node-id="GG4in3It5epDr7vjU1tFiG">重新</strong>跌破 −10%（边沿触发）<strong data-page-node-id="7BGZu1c5ZHbuzlcFj2Mpfg">且</strong> 398 五日涨 &gt; 0</td>
+      <td class="c" data-page-node-id="vZbj5XIi7zQvdiMlRn6313"><span class="tag t-hold" data-page-node-id="0QcdHPpalvQXxpqfzFEoXV">持有</span></td><td data-page-node-id="atUjux8ZFnHoIdlCvfXmEU">继续 398</td></tr>
+    <tr data-page-node-id="5sy36nJhyOi3ADElzQEkUF"><td data-page-node-id="2Yx5DARawCmFpStawaakZp">398</td><td data-page-node-id="XlT5FQXNgBQkKdZDP4CGnC">以上都不成立</td>
+      <td class="c" data-page-node-id="O2oXXgLIpZvOyMBmc3dpLj"><span class="tag t-hold" data-page-node-id="Nfg2JGvXNXJDW4hyH6r5LW">持有</span></td><td data-page-node-id="d1LXVTtUAleqj9raCa2qAB">不动</td></tr>
+
+    <tr data-page-node-id="gSEO5x6HM5WSQT8geID6a3"><td colspan="4" style="background:#f4f1ec;font-weight:600" data-page-node-id="ZfBdqlG751Sr7VFqNqnbs3">开关关闭时 · 当前空仓</td></tr>
+    <tr data-page-node-id="OChevRkNwZxMSe6Uy3kR7y"><td data-page-node-id="HyxSnH5yemkepBR2OrBSbw">空仓</td><td data-page-node-id="QIwBMY8NGBw9BkFvO3xcT3">780 的 RSI6 &lt; 25</td>
+      <td class="c" data-page-node-id="gsITM3rhbQDUy5wAwkkaeA"><span class="tag t-buy" data-page-node-id="ZtoUbmngSuvUneOIZsdDHr">买入</span></td><td data-page-node-id="YrCWpVPwBicY8KVA20CBjb">159780</td></tr>
+    <tr data-page-node-id="nEJgiV75RdDkoqdWZzwaKn"><td data-page-node-id="hlJAxaKuWYgCRW9nAPDRTf">空仓</td><td data-page-node-id="xhBWZtqip4D9JIVqCIWKWW">780 收盘站上 MA20</td>
+      <td class="c" data-page-node-id="XDvxGcEtFzZ95rnxozCOJw"><span class="tag t-buy" data-page-node-id="KGRbzCxlMuA38IdfZN5iag">买入</span></td><td data-page-node-id="pANK0YRoxvu9aeHfGkdt25">159780</td></tr>
+    <tr data-page-node-id="suc5KtqrY1UAaS1EY4Kslh"><td data-page-node-id="ND4QV7SuLUeNiGBmpaGnDy">空仓</td><td data-page-node-id="J8UZKeLabrb6EBDQK58hBt">780 回撤跌破 −10%（边沿）<strong data-page-node-id="AkP8YAVrfwcRTQArVZLa0d">且</strong> 398 五日涨 &gt; 0</td>
+      <td class="c" data-page-node-id="5mx1UFcJCrVzdYP2fQiUw0"><span class="tag t-buy" data-page-node-id="LETKXGXchYAOUO5bzOS4Qv">买入</span></td><td data-page-node-id="0rUIFBjnpAmmYHTBg9Tmul">601398</td></tr>
+    <tr data-page-node-id="SjHmRJ6xK7ufNCas58MY2u"><td data-page-node-id="sdoh5Zrq7C9jUb5q186SLa">空仓</td><td data-page-node-id="r5lOuqj2s4n1Rdm7UsxocH">以上都不成立</td>
+      <td class="c" data-page-node-id="t9mLnbPL2xveOWrC6ZYvBu"><span class="tag t-hold" data-page-node-id="od3RKQnrIh5lImGvuj1qy9">空仓</span></td><td data-page-node-id="jXAOBKDtJxG9RoNlZ2d0BE">逆回购计息</td></tr>
+  </table>
+  <h3 data-page-node-id="lYvZsj6d07Gm5Mr2fWavBS">必须记住的一件事</h3>
+  <div class="red-line" data-page-node-id="VxMM7QPoKD6cawaooTfLos">状态机里<strong data-page-node-id="dWQzBTv0EwY18DyFGgJC5J">没有</strong>「398 跌下来就买回 398」这条规则。
+    从 398 或空仓出发，买入信号有 3 条，其中 2 条是买 780。历史上 42 次「持 398 时空仓等待」，
+    重入时 <strong data-page-node-id="MpzyazgXiIJgIAup9z5Xz1">27 次买的是 780，只有 14 次买回 398</strong>。
+    以为在等 398 回调接回，实际是在赌 780 先出信号——赌注完全变了。</div>
+</div>
+
+<div class="card" data-page-node-id="OzTDqMjOXuFTIKzSz59oBC">
+  <h2 data-page-node-id="TErjcmRrQvbxfcOCCQRJFe">三、熊市预警灯（人工观察，不触发自动交易）</h2>
+  <table data-page-node-id="TkzYje3AcVCk0snLaAHFgR">
+    <tr data-page-node-id="TmR8aShYub0AwTvqUExC4d"><th style="width:110px" data-page-node-id="E2YX389Voz27ulgpT0w6mh">灯</th><th data-page-node-id="Xde56eHvoEQHl5cSMhaq05">触发条件</th><th data-page-node-id="y4XXSLeSOFl17Df1OZnUsH">含义与建议动作</th></tr>
+    <tr data-page-node-id="1iVxkzLtEdTChfTDBNkN7k"><td data-page-node-id="tNHn07GPPKYhr80iyYvZ4P"><span class="dot d-g" data-page-node-id="WtBjMT9CXiYQRBcUmcb8XH"></span><strong data-page-node-id="NNDglFDaJ0XbQ71e3JRS7q">绿灯</strong></td><td data-page-node-id="nEb75nTbuoEzdbolyKU5ud">780 回撤 &lt; 10%</td>
+      <td data-page-node-id="CaUlGcIPdpJpiMHVe5haD1">正常。机械执行即可，不做任何人为干预</td></tr>
+    <tr data-page-node-id="n5oxzfxZXICi8pHGyk3S6I"><td data-page-node-id="TTAyLFBsF2jBbSB8RM8gfd"><span class="dot d-y" data-page-node-id="Xko4igjDc9nI3XIxUZGnDV"></span><strong data-page-node-id="Ku7hzCPiE90C9o2XMD8Ghw">黄灯</strong></td><td data-page-node-id="ZFHiqSBqZEHrK8yJ94SFnL">780 回撤 ≥ 10%</td>
+      <td data-page-node-id="xMT4bnVeg0LTx7GE1iLFcu">注意。策略已在防守端（398 或空仓），继续机械执行</td></tr>
+    <tr data-page-node-id="NtpBFYkH4pHdVIa9T5IM70"><td data-page-node-id="umK94G4PZeCRBz4uxQT4I4"><span class="dot d-r" data-page-node-id="ovyGG22tCKfRxQtzNZdD4W"></span><strong data-page-node-id="nKao8Dw3PBvrEC5xicoRgo">红灯</strong></td><td data-page-node-id="SADi2Meq9auWfJK5CxJx5Q">780 回撤 ≥ 20% <strong data-page-node-id="nxbA87keW2wZPxxpoCXZ9c">且</strong> 398 跌破 MA60</td>
+      <td data-page-node-id="dm2YiYYoIkXLcX33fNZJiZ">双弱，系统性风险。<strong data-page-node-id="rXjsVwDxZD504MRAIm3hqq">这是唯一允许人工减仓的窗口</strong>，可主动降至半仓</td></tr>
+  </table>
+  <div class="hl" data-page-node-id="plM6ynnQJxJybvECfoiZbh">为什么不做自动空仓：测试过 6 种熊市锚定规则，能在 2022 熊市少亏的，
+    都会把牛市收益从 +476% 砍到 +100~145%。自动避险不划算，所以改成人工预警灯。</div>
+</div>
+
+<div class="card" data-page-node-id="TtjXnRleqtigjYv3up1ikw">
+  <h2 data-page-node-id="cl4dOE2NZKWqHZzNEGMrgA">四、三条红线（违反即脱离策略，收益不可归因）</h2>
+  <div class="red-line" data-page-node-id="gz8QWqTOHWODlAhQyzEt2x"><strong data-page-node-id="E0YAkf1H4lLBNl8IB1u5mr">1. 不因「觉得太高／太低」手动干预。</strong>
+    398 RSI6 = 77.2 看着超买，但历史上 21 段「398 超买」后 3 个月有 20 段继续上涨。
+    要改规则，就写下来回测，不能在盘中临时起意。</div>
+  <div class="red-line" data-page-node-id="g9c7STO0DAfP2i0YyH1IEj"><strong data-page-node-id="WyCwF5WTG89GuRWUusXkFn">2. 不空仓等信号。</strong>
+    金钱成本虽小（历史均值差 0.5~0.7 个百分点），但会让你与策略永久错位：
+    你等的入场指令大概率是买 780，不是你以为的 398。</div>
+  <div class="red-line" data-page-node-id="cinfCoIXrBsGl2J2P8JPUf"><strong data-page-node-id="RBSKRoeeKHbZyT2szAmEdg">3. 不在 14:57 之后追单。</strong>
+    卡点就放弃，等下一个交易日。等待成本约 0.3%/笔，远低于慌乱交易的损失。</div>
+  <h3>动摇场景应答表（照读，不用思考）</h3>
+  <table>
+    <tr><th>盘中冒出的念头</th><th>已核对过的事实</th><th class="c">照做</th></tr>
+    <tr><td>「它还在跌，再等等」</td><td>bk 触发的典型画面就是标的正在暴跌；历史 12 次同类，3/6 个月 <b>12/12 为正</b></td><td class="c"><b>按信号买</b></td></tr>
+    <tr><td>「创新高了，不能买」</td><td>创新高组的后续 3 个月 <b>+17.5%</b>，位置越高后续越强</td><td class="c"><b>买</b></td></tr>
+    <tr><td>「RSI 超买，先清仓」</td><td>398 超买后 3 个月 20/21 段继续涨；改用超买清仓，总收益 491% → 145%</td><td class="c"><b>什么都不做</b></td></tr>
+    <tr><td>「780 都站上 MA20 了，别卖」</td><td>站上 MA20 那组 sc 出场后 +1 日 <b>3/3 下跌</b>；把这条写成规则是全样本最差版（454%）</td><td class="c"><b>按 sc 卖</b></td></tr>
+    <tr><td>「刚卖就涨，我卖错了」</td><td>sc 单笔历史优势 +1.32%，780 单日波动 ±2~3% —— 1 天必是噪音</td><td class="c"><b>等下一个信号</b></td></tr>
+    <tr><td>「这次不一样」</td><td>你盘中能拿到的信息只有收盘价，跟历史每一次完全相同</td><td class="c"><b>按规则</b></td></tr>
+    <tr><td>「先半仓试试水」</td><td>仓位在开仓前定（50% 起步），不是盘中的情绪旋钮</td><td class="c"><b>不调仓</b></td></tr>
+  </table>
+  <div class="rt">这张表的用法：念头一冒出来，先查表，再决定要不要行动。查完还是想动 → 说明是情绪，不是信号。</div>
+</div>
+
+<div class="card" data-page-node-id="LETaFEfJqtaaUisyf6BIcC">
+  <h2 data-page-node-id="7oasVzWj7s2yoOSJUE9JzC">五、实盘台账（每笔必记）</h2>
+  <table class="log" data-page-node-id="QUFQKE33dabrAQ1B17wYG8">
+    <tr data-page-node-id="lMnIOjGUFrCXnGv3DLiaCP"><th data-page-node-id="04w6ZzljwwfhwIkB4GIhMl">日期</th><th data-page-node-id="foYRtMRwUQ5btnjQNqQbK0">动作</th><th data-page-node-id="DZd0svA857ayQ2Fx2DLHFg">标的</th><th data-page-node-id="diDtUgEimyhth8EYAKPYDI">成交价</th><th data-page-node-id="3tS7FDW8DGQdyV8JuL1AUt">股数</th><th data-page-node-id="LwGjCIErU3KVLLf894Z3f4">佣金/税费</th><th data-page-node-id="GzfJljwAEF8V6l2iVk8FyR">触发原因</th></tr>
+    <tr data-page-node-id="FYtX0dfMoZnIpiPWLng22Y"><td data-page-node-id="865kbNm0sWCJOhXe2eCEzY"><input placeholder="2026-09-01" data-page-node-id="pbQNu57m4bQnCwKH0ZAliO"></td><td data-page-node-id="CRNgegxrZFSKBkPHmk8jmD"><input placeholder="买入" data-page-node-id="Ff6ETeisUGaDkGZDdzw9ds"></td><td data-page-node-id="Xhwn1KF9T92kgAD39Z6iKj"><input placeholder="601398" data-page-node-id="HeFJgfHBAEln4KnviETMhb"></td>
+      <td data-page-node-id="kWFinVD3C0pDoDq7mGOdFa"><input placeholder="8.100" data-page-node-id="75s9EJBuyZxhJfFkfQUWn2"></td><td data-page-node-id="RCZB6LEwCnoCGEBFm61Okp"><input placeholder="12300" data-page-node-id="zuupUziciE7ORfX4pn6Hfj"></td><td data-page-node-id="fkD42fWoBGh2S8IXAGPa0r"><input placeholder="9.96" data-page-node-id="kbcNOxKcy8AlDUkmPWuRuh"></td>
+      <td data-page-node-id="SfA7Zbb5fu03zu370wRt2u"><input placeholder="按信号建仓" data-page-node-id="DArgJO3rZlPjguaVReVJkv"></td></tr>
+    <tr data-page-node-id="DCGSlLDv1jzNLslCh3kAn4"><td data-page-node-id="SDA1SIyAVE3ftIJuqpvKIM"><input data-page-node-id="BFzhh4xs1EmpKbOQfZUTSO"></td><td data-page-node-id="gkykBRFWuPDOmzI0ylHgXp"><input data-page-node-id="dIlNcnyAHm0We8OXYGc27h"></td><td data-page-node-id="dbCeYzQlpq6MJewktKZveT"><input data-page-node-id="39S9Z58CrqFCTkkoChNrLA"></td><td data-page-node-id="GHFqTZ4UutGHVsph6ZA4hB"><input data-page-node-id="Hif3CNHAq7cDEeXplTXofs"></td><td data-page-node-id="0DehhyE4iYRhfxlxCMiXFE"><input data-page-node-id="AAfmkPzrFex6XzmAjYM6Bx"></td><td data-page-node-id="bkCyspGvqXhjww2bFuEtz6"><input data-page-node-id="8WrZT2mj5ZXOo9BBfBSXRy"></td><td data-page-node-id="CPFH83JaKwWh62bbaufEDq"><input data-page-node-id="UqNmh1afGCms6t74JOo6hS"></td></tr>
+    <tr data-page-node-id="jlhwnEkwRFrW5L0YewyVM4"><td data-page-node-id="RqrbMXV8lHhQdg2IPlCh1H"><input data-page-node-id="m65Dbh0x6y9vjY7yIdnR8Z"></td><td data-page-node-id="SLLs9sIQ0eSj28PlyuGyNs"><input data-page-node-id="cIDaZmbvncuc0jOeBAGqGp"></td><td data-page-node-id="owOWstEWo8WGVyUSGvl383"><input data-page-node-id="vloTGcHXK5rldv0jjVE3de"></td><td data-page-node-id="UoC5dMeN54lujmiK8iH1ig"><input data-page-node-id="NO9SvLvfZ4jlPCR0cHaG4D"></td><td data-page-node-id="zUbYKUwGDXRfeTmvZHOmkd"><input data-page-node-id="Mx4NXcGffCqnb7uxYvaGcR"></td><td data-page-node-id="xEEJAXCzd8582vfCYuzMdS"><input data-page-node-id="wZsoKJtLkV9qzNjIdfhisd"></td><td data-page-node-id="nVkTck3mUfA4mEWvMF92Rm"><input data-page-node-id="aZKVWskUMm0dEvAcAcwtKW"></td></tr>
+    <tr data-page-node-id="shXIuiqqysdX4GNP8LFeq0"><td data-page-node-id="Ayth94JO9bL73EeAHzNJU7"><input data-page-node-id="jmKocn8yINcUJRGKVCY8Ja"></td><td data-page-node-id="EpBffHHw0chWHodIvFXREZ"><input data-page-node-id="qXcFgm1XJIpGn9GJsvNuqw"></td><td data-page-node-id="zTFUGGa5YDB656l5thAblW"><input data-page-node-id="FmdWBDf7coD8xxChHnxJvE"></td><td data-page-node-id="QyaTp1DQsFbFYM9NYoM8BD"><input data-page-node-id="6veedHRUTEsKJYclMmQFfQ"></td><td data-page-node-id="EOAxuIMDVCVKINFOD6YBt4"><input data-page-node-id="oW05lHgCz6B8zqAjYeELa5"></td><td data-page-node-id="qLRog7ZqbwaDY6JjQUJ3vn"><input data-page-node-id="HqrQs3sFPK8yKUBsBAdUqa"></td><td data-page-node-id="SNdfe5YsEdzuZUpfmjM8GE"><input data-page-node-id="Fhh9mxHA3DOA0W9RpPctx9"></td></tr>
+    <tr data-page-node-id="8bokN4fj54DtDeXyH4Cyuv"><td data-page-node-id="YLEMlaZliCNImZgoMTZgAm"><input data-page-node-id="bpJcaP6aDVbFVYExViQuBG"></td><td data-page-node-id="wmSYDsWI9SCWl3WaGcWLFh"><input data-page-node-id="Yh5pGxVFYRtzlxZteBNOzG"></td><td data-page-node-id="7UazD976zeA9gQhB9kx83T"><input data-page-node-id="ydBGsVDdAXxk2qs7YVMYyn"></td><td data-page-node-id="w7oTQqn1fbixpPa2NYqddo"><input data-page-node-id="iKMGhZ9Vtvp1BLUiKCNRUQ"></td><td data-page-node-id="ly39ANHUfgJWJXbFL2AoW4"><input data-page-node-id="f1ghsH8d22IPrO30AgWCCc"></td><td data-page-node-id="opo9m470JHkII25yb4MokH"><input data-page-node-id="Wf0snn4AP3RrMfuWlPZvbr"></td><td data-page-node-id="1g0mkZBJgjJC77fEWatQeU"><input data-page-node-id="PqZVhfIH5MRooMZGbZgfsy"></td></tr>
+  </table>
+  <div class="rt" data-page-node-id="k9qCu3dtC29V8MthWWBlvp">601398 是股票，卖出按成交额 0.05% 征印花税；159780 是 ETF 免征。
+    回测的 +491.7% 是仅扣佣金口径，实盘含印花税约 +479.9%（3.3 年少约 11.8 个百分点）。</div>
+</div>
+
+<div class="card">
+  <h2>六、159207 独立波段（手动仓 · 2026-11-28 立）</h2>
+  <p><b>性质：这一章不属于 D3 策略。</b>它是一笔独立的手动波段，单独资金、单独记账、单独算收益。任何情况下不并入策略净值，也不参与卡玛比率与年度战绩的计算。</p>
+
+  <h3>1. 执行卡（照抄，不改）</h3>
+  <table>
+    <tr><th>项目</th><th>数值</th><th>说明</th></tr>
+    <tr><td>标的</td><td><b>159207 高股息ETF广发</b></td><td>别和 159780 科创创业50 混；159207 是慢牛震荡，159780 是高波动成长</td></tr>
+    <tr><td>买入触发</td><td class="num"><b>≤ 1.120</b></td><td>直接挂限价单，不等信号确认、不看当天新闻</td></tr>
+    <tr><td>卖出触发</td><td class="num"><b>1.199</b></td><td>1.120 × 1.07 = 1.1984，向上取到 0.001</td></tr>
+    <tr><td>卖出价算法</td><td class="num">实际买入价 × 1.07，向上取整</td><td>例：买 1.105 → 卖 1.183；买 1.112 → 卖 1.190</td></tr>
+    <tr><td>目标价位置</td><td class="num">低于历史最高收盘 1.231 约 2.65%</td><td><b>关键</b>：不赌新高，目标够得着</td></tr>
+    <tr><td>距 11-27 收盘 1.187</td><td class="num">−5.64%</td><td>需要跌破年线才到得了</td></tr>
+    <tr><td>价格止损</td><td><b>不设</b></td><td>见第 3 条，这是硬纪律不是可选项</td></tr>
+    <tr><td>时间止损</td><td>持仓满 <b>120 个交易日</b>未达目标 → 平仓</td><td>历史最长兑现 67 天，120 天是两倍余量</td></tr>
+  </table>
+
+  <h3>2. 为什么是 1.120：「1.12 附近买 + 7% 止盈」历史 4 战 4 胜</h3>
+  <table>
+    <tr><th>买点</th><th class="c">买价</th><th class="c">目标</th><th class="c">兑现</th><th class="c">用时</th><th class="c">中途最大浮亏</th></tr>
+    <tr><td>2025-11-17</td><td class="c num">1.118</td><td class="c num">1.196</td><td class="c up">达成</td><td class="c">67 日</td><td class="c num">−5.1%</td></tr>
+    <tr><td>2026-03-23</td><td class="c num">1.116</td><td class="c num">1.194</td><td class="c up">达成</td><td class="c">26 日</td><td class="c num">−4.9%</td></tr>
+    <tr><td>2026-06-18</td><td class="c num">1.112</td><td class="c num">1.190</td><td class="c up">达成</td><td class="c">29 日</td><td class="c num">−4.6%</td></tr>
+    <tr><td>2026-09-28</td><td class="c num">1.120</td><td class="c num">1.198</td><td class="c up">达成</td><td class="c">21 日</td><td class="c num">0（没破买价）</td></tr>
+  </table>
+  <div class="hl">4 战 4 胜，中位 <b>27 个交易日</b>兑现，最慢 67 天。<b>前提是买入价真的落在 1.12 附近</b>——不是"跌了就想买"。</div>
+
+  <h3>3. 为什么不能设 −4% 止损（这条最容易破功）</h3>
+  <p>上面 4 笔里有 3 笔，在你买入后<b>先跌了 4.6% ~ 5.1%</b>。设 −4% 止损，这 3 笔会全部被扫掉，一笔都吃不到 +7%。</p>
+  <table>
+    <tr><th>止损设置</th><th class="c">按历史 4 笔推演的结果</th></tr>
+    <tr><td>−4%（1.0752）</td><td class="c down">3 笔被扫 → 成功率 0/4</td></tr>
+    <tr><td>−6%（1.0528）</td><td class="c">给足呼吸空间，但要接受 −6% 单笔</td></tr>
+    <tr><td><b>不设价格止损 + 120 日时间止损</b></td><td class="c up"><b>4/4（历史口径）</b></td></tr>
+  </table>
+  <div class="red-line">看到浮亏 −5% 想割，等于把这套打法唯一的优势（高胜率）亲手拆掉。<b>要么按这张卡执行，要么现在就别开这一笔。</b></div>
+
+  <h3>4. 1.120 是什么位置：跌破年线，不是普通回调</h3>
+  <table>
+    <tr><th>参考线</th><th class="c">数值</th><th class="c">1.120 相对它</th></tr>
+    <tr><td>MA20</td><td class="c num">1.204</td><td class="c">下方 6.9%</td></tr>
+    <tr><td>MA60</td><td class="c num">1.168</td><td class="c">下方 4.1%</td></tr>
+    <tr><td><b>250 日年线</b></td><td class="c num">1.149</td><td class="c"><b>下方 2.5%（跌穿年线）</b></td></tr>
+  </table>
+  <p>能跌到 1.12，说明红利板块出了一轮像样的调整，那几天新闻面大概率一片看空。<b>到时候敢不敢挂单，才是这一笔真正的考验。</b></p>
+
+  <h3>5. 与主策略的分账规则（红线，破一条这笔就失去意义）</h3>
+  <ol>
+    <li><b>资金隔离</b>：159207 用独立资金，任何情况下不占用 D3 策略仓。398 触发信号时用策略仓买，与本章无关。</li>
+    <li><b>收益隔离</b>：159207 的盈亏不计入 D3 净值、不计入卡玛、不计入与沪深300 的年度对比。</li>
+    <li><b>分别记账</b>：月末各自算一次。混在一起，三个月后就分不清哪笔是规则赚的、哪笔是手痒赚的。</li>
+    <li><b>不追不等</b>：如果 159207 一路上行不回 1.12，这笔就永远不成交。<b>不许追高进场</b>——等不到是这套打法正常的成本。</li>
+    <li><b>不做第二次</b>：平仓后不立刻找下一个价位接回。要再做，重新写一张执行卡。</li>
+  </ol>
+
+  <h3>6. 159207 独立台账（与第五章的 D3 台账分开记）</h3>
+  <table class="log">
+    <tr><th>日期</th><th>动作</th><th>成交价</th><th>份额</th><th>金额</th><th>备注</th></tr>
+    <tr><td><input placeholder="2026-12-__"></td><td><input placeholder="买入"></td><td><input placeholder="1.120"></td><td><input placeholder="0"></td><td><input placeholder="0"></td><td><input placeholder="价格触及 1.120 限价成交"></td></tr>
+    <tr><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+  </table>
+
+  <h3>7. 决策留痕（2026-11-28 立）</h3>
+  <div class="hl">
+    老杨原话：「<b>207 到 1.12 我买入，盈利 7% 我卖出</b>」。<br>
+    立此卡时 159207 收 1.187、收盘 RSI6 = 37.9、距 250 日高 −3.57%。<br>
+    放弃 1.164（11-27 盘中 RSI6 已到 19.0）而选 1.120 的理由：<b>1.164 × 1.07 = 1.245，要突破历史最高 1.235；而「距 250 日高 −5%~0 这一档买入、60 日内涨过 7%」的历史 43 个样本，达成率是 0/43。</b>1.120 × 1.07 = 1.198，落在历史高点下方 2.65%，历史上 4 次全中。
+  </div>
+  <div class="rt">本章独立于 D3 策略，仅为个人手动仓执行与留痕。若日后要把这套做法制度化并入策略，需另做样本外回测，不能直接沿用本页结论。</div>
+</div>
+
+<footer data-page-node-id="uzxw0dVvimCOpjkziiJYvj">
+  杨老三的轮动策略 D3 · 混合开关版　|　数据窗口 2023-01-01 起回测　|　本页为执行协议，信号以每日 14:50 实盘查询为准<br data-page-node-id="fb0ztbjuRCQl5PB0tw4HEN">
+  历史回测为样本内结果，不代表未来收益
+</footer>
+
+</div>
+
+<script>
+function fmt(n,d){return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function calc(){
+  const cap=parseFloat(document.getElementById('capital').value)||0;
+  const px=parseFloat(document.getElementById('price').value)||0;
+  const isStock=document.getElementById('which').value==='398';
+  if(px<=0){document.getElementById('calcOut').textContent='请输入有效价格';return}
+  const lot=100;
+  const shares=Math.floor(cap*0.9999/px/lot)*lot;
+  const amt=shares*px;
+  const feeBuy=Math.max(amt*0.0001, isStock?0:0.1);
+  const stampSell=isStock?amt*0.0005:0;
+  const feeSell=amt*0.0001+stampSell;
+  const cashLeft=cap-amt-feeBuy;
+  const totalCost=feeBuy+feeSell;
+  document.getElementById('calcOut').innerHTML=
+    '买入 <strong>'+fmt(shares,0)+'</strong> 股 × '+px.toFixed(3)+' = <strong>'+fmt(amt,2)+'</strong> 元<br>'+
+    '佣金（万一）：'+fmt(feeBuy,2)+' 元'+(isStock?'　印花税（卖出时 0.05%）：'+fmt(stampSell,2)+' 元':'　ETF 免印花税')+'<br>'+
+    '剩余现金：'+fmt(cashLeft,2)+' 元　|　一次完整买卖往返成本：'+fmt(totalCost,2)+' 元（占本金 '+(totalCost/cap*100).toFixed(3)+'%）'+
+    (isStock?'<br><span style="color:var(--warn)">注意：601398 卖出另需印花税，往返成本高于 ETF</span>':'');
+}
+calc();
+
+function rt(codes){
+  const s=document.createElement('script');
+  s.charset='gbk';
+  s.src='https://qt.gtimg.cn/q='+codes;
+  document.body.appendChild(s);
+}
+window.v_sh601398=null; window.v_sz159780=null;
+window.rtcallback=function(){};
+var t0=setInterval(function(){
+  if(!window.v_sh601398) return;
+  clearInterval(t0);
+  try{
+    var f=window.v_sh601398.split('~');
+    var px=parseFloat(f[3]), prev=parseFloat(f[4]);
+    var chg=(px/prev-1)*100;
+    var el=document.getElementById('pxNow');
+    el.textContent=px.toFixed(3)+' ('+(chg>=0?'+':'')+chg.toFixed(2)+'%)';
+    el.style.color=chg>=0?'var(--up)':'var(--down)';
+    document.getElementById('pxTime').textContent=f[1]+' '+f[30].slice(0,10)+' 实时';
+    document.getElementById('price').value=px.toFixed(3);
+    calc();
+  }catch(e){
+    document.getElementById('pxTime').textContent='实时价获取失败，请手填最新收盘价';
+  }
+},400);
+rt('sh601398,sz159780');
+setTimeout(function(){ if(!window.v_sh601398){document.getElementById('pxTime').textContent='实时价获取失败，请手填最新收盘价';} },6000);
+</script>
+</body>
+</html>
