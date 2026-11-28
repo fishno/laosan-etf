@@ -123,7 +123,7 @@
       <a href="#trades">交易记录</a>
     </nav>
     <button class="refresh" onclick="location.reload()">更新数据</button>
-    <div style="font-size:11px;color:#9a968c;margin-top:6px;text-align:right">页面版本 <b style="color:#e8792e">v35</b>（2026-11-28：撤回 r20 并联项 ＋ 移除「今日动作说明」「780 vs MA20 提示」；最新为 v35，若显示更小说明是浏览器旧缓存，按 Ctrl+Shift+R 强刷）</div>
+    <div style="font-size:11px;color:#9a968c;margin-top:6px;text-align:right">页面版本 <b style="color:#e8792e">v36</b>（2026-11-28：撤回 r20 并联项 ＋ 移除「780 vs MA20 提示」＋「今天为什么这么切」恢复但改为折叠默认收起；最新为 v36，若显示更小说明是浏览器旧缓存，按 Ctrl+Shift+R 强刷）</div>
   </div>
 </header>
 
@@ -235,6 +235,10 @@
           <div><div class="m-label">最后一笔浮盈</div><div class="m-value" id="lastPl">--</div></div>
         </div>
         <div class="m-sub" id="lastDetail"></div>
+        <details class="fold" id="todayWhyFold" style="margin:10px 0 0">
+          <summary>今天为什么这么切 <span class="hint">点击展开 · 今日动作与触发条件逐条核对</span></summary>
+          <div class="fold-body" id="todayWhy" style="line-height:1.75">--</div>
+        </details>
       </div>
     </div>
   </section>
@@ -862,6 +866,51 @@ async function updateData() {
       ? "<b class='down'>★冷却中：最近止损 " + lastStopTr.date + "，还需 " + cdLeft + " 个交易日才允许买回 780（期间信号一律不执行）</b>"
       : "";
     document.getElementById("posNow").textContent = { "780": "159780 科技", "398": "601398 银行", "CASH": "空仓" }[posNow];
+    // ---- ★今日动作说明（2026-11-28 恢复为折叠区，默认收起）：面板自己要讲清「今天为什么这么切」，不靠人问 ----
+    (function () {
+      const el = document.getElementById("todayWhy");
+      if (!el) return;
+      try {
+        const i = N - 1, s = sig(i), pv = sig(i - 1);
+        const NMC = { "780": "159780", "398": "601398", "CASH": "空仓" };
+        const fs = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+        const tr = hy.trades[hy.trades.length - 1];
+        const todayTr = (tr && tr.date === dates[i]) ? tr : null;
+        const why = [];
+        if (s.sc && !pv.sc) why.push("<b>780 还在坑底：距 250 日高 " + (dd[i] * 100).toFixed(1) + "%（阈值 −12%）</b> ＋ <b>398 这个避风港也漏风：五日 " + fs(r5[i] * 100) + "（≤0）</b> ＝ <b>位置双弱</b> → 切空仓　<span style='color:var(--muted)'>（sc 判的是位置，不看 780 当日涨跌，今天涨多少都照卖）</span>");
+        if (s.d398 && !pv.d398) why.push("<b>398 五日 " + fs(r5[i] * 100) + " 首次跌破 −2%</b>" + (posNow === "398" ? " → 清仓" : "（今日不持 398，此条不生效）"));
+        if (s.bk && !pv.bk) why.push("<b>RSI6=" + rsi6[i].toFixed(1) + " 跌破 25</b> → 买回 780");
+        if (s.aMA && !pv.aMA) why.push("<b>780 首次站上 MA20 " + ma20[i].toFixed(4) + "</b>" + (posNow === "780" ? "（已在 780 上，此条不参与决策）" : " → 买回 780"));
+        if (s.sw && !pv.sw) why.push("<b>780 距高回撤 &gt;10% 且 398 五日转正</b> → 切 398");
+        if (!why.length) why.unshift(posNow === "CASH"
+          ? "今日无规则触发，继续<b>空仓等待</b>（逆回购 1.8% 计息）"
+          : "今日无规则触发，继续持有 <b>" + NMC[posNow] + "</b>");
+        let h = "<b style='color:var(--accent)'>" + dates[i] + " · 今日动作</b>　" + why.join("　｜　");
+        if (todayTr) {
+          const tpx = todayTr.price ? " @ " + todayTr.price.toFixed(3) : "", toC = NMC[todayTr.to], fromC = NMC[todayTr.from];
+          let actTxt;
+          if (todayTr.from === "CASH") actTxt = "买入 <b>" + toC + "</b>" + tpx;
+          else if (todayTr.to === "CASH") actTxt = "卖出 " + fromC + tpx + " → <b>空仓</b>";
+          else actTxt = fromC + " → <b>" + toC + "</b>" + tpx;
+          h += "<br>成交：" + actTxt;
+          if (todayTr.from !== "CASH") {
+            let ent = null;
+            for (let k = hy.trades.length - 2; k >= 0; k--) { if (hy.trades[k].to === todayTr.from) { ent = hy.trades[k]; break; } }
+            const sellPx = todayTr.to === "CASH" ? todayTr.price : (todayTr.from === "780" ? c780[i] : c398[i]);
+            if (ent && ent.price) {
+              const pp = sellPx / ent.price - 1;
+              h += "　本笔 <b class='" + (pp >= 0 ? "up" : "down") + "'>" + (pp >= 0 ? "+" : "") + (pp * 100).toFixed(2) + "%</b>（" + ent.date + " 进 @" + ent.price.toFixed(3) + "）";
+            }
+          }
+        }
+        if (posNow === "CASH" && ma20[i] && c780[i] > ma20[i]) {
+          h += "<br><b class='down'>注意：780 现价已在 MA20（" + ma20[i].toFixed(4) + "）上方，" +
+            "但「首次站上」这个事件若在今日或此前已被消耗，后续继续上涨也不会自动买回 —— " +
+            "回场只能等：① RSI6 跌回 25 以下 ② 重新跌破 MA20 后再上穿 ③ 牛市开关 ON ④ 398 五日转正走「双弱转多」切 398。</b>";
+        }
+        el.innerHTML = h;
+      } catch (err) { el.textContent = "今日动作说明渲染失败：" + err.message; }
+    })();
     let entry = null;
     if (posNow !== "CASH") {
       for (let k = hy.trades.length - 1; k >= 0; k--) {
